@@ -1,7 +1,9 @@
 import Mathlib.Analysis.SpecialFunctions.Pow.Asymptotics
 import Mathlib.Analysis.SpecialFunctions.Log.Basic
+import Mathlib.Analysis.SpecialFunctions.Pow.Real
 import Mathlib.Algebra.Order.Floor.Semiring
 import Mathlib.Topology.Algebra.Order.Field
+import Mathlib.Topology.MetricSpace.Pseudo.Defs
 
 namespace Nondividing
 
@@ -57,5 +59,51 @@ theorem eventually_const_mul_rpow_le_rpow_nat
     _ = Real.rpow (n : ℝ) ((b - a) + a) :=
       (Real.rpow_add hn0 (b - a) a).symm
     _ = Real.rpow (n : ℝ) b := by ring_nf
+
+/-- Squeeze from two-sided `rpow` bounds to a logarithmic-ratio limit.  If a
+positive function `f` is eventually sandwiched between `N^{σ-ε}` and `N^{σ+ε}`
+for every `ε > 0`, then `log (f N) / log N → σ`.  This is the final step
+combining the two epsilon bounds into `main_log_limit`. -/
+theorem tendsto_log_div_log_of_rpow_bounds {f : ℕ → ℝ} {σ : ℝ}
+    (hpos : ∀ᶠ N : ℕ in Filter.atTop, 0 < f N)
+    (hlb : ∀ ε : ℝ, 0 < ε →
+      ∀ᶠ N : ℕ in Filter.atTop, Real.rpow (N : ℝ) (σ - ε) ≤ f N)
+    (hub : ∀ ε : ℝ, 0 < ε →
+      ∀ᶠ N : ℕ in Filter.atTop, f N ≤ Real.rpow (N : ℝ) (σ + ε)) :
+    Filter.Tendsto (fun N : ℕ => Real.log (f N) / Real.log N)
+      Filter.atTop (nhds σ) := by
+  rw [Metric.tendsto_atTop]
+  intro ε hε
+  have hε2 : (0 : ℝ) < ε / 2 := by linarith
+  have H : ∀ᶠ N : ℕ in Filter.atTop,
+      0 < f N ∧ 2 ≤ N ∧ Real.rpow (N : ℝ) (σ - ε / 2) ≤ f N ∧
+        f N ≤ Real.rpow (N : ℝ) (σ + ε / 2) := by
+    filter_upwards [hpos, Filter.eventually_ge_atTop 2, hlb (ε / 2) hε2,
+      hub (ε / 2) hε2] with N h1 h2 h3 h4
+    exact ⟨h1, h2, h3, h4⟩
+  rw [Filter.eventually_atTop] at H
+  obtain ⟨N₀, hN₀⟩ := H
+  refine ⟨N₀, fun N hN => ?_⟩
+  obtain ⟨hfpos, hN2, hlbf, hubf⟩ := hN₀ N hN
+  have hNr : (2 : ℝ) ≤ (N : ℝ) := by exact_mod_cast hN2
+  have hN0 : (0 : ℝ) < (N : ℝ) := by linarith
+  have hlogN : 0 < Real.log (N : ℝ) := Real.log_pos (by linarith)
+  set L := Real.log (f N) with hL
+  -- Lower and upper log bounds.
+  have hlb2 : (σ - ε / 2) * Real.log (N : ℝ) ≤ L := by
+    rw [← Real.log_rpow hN0 (σ - ε / 2)]
+    exact (Real.log_le_log_iff (Real.rpow_pos_of_pos hN0 _) hfpos).mpr hlbf
+  have hub2 : L ≤ (σ + ε / 2) * Real.log (N : ℝ) := by
+    rw [← Real.log_rpow hN0 (σ + ε / 2)]
+    exact (Real.log_le_log_iff hfpos (Real.rpow_pos_of_pos hN0 _)).mpr hubf
+  -- Divide by `log N > 0` and bound the distance.
+  have hlow : σ - ε / 2 ≤ L / Real.log (N : ℝ) :=
+    (le_div_iff₀ hlogN).mpr hlb2
+  have hhigh : L / Real.log (N : ℝ) ≤ σ + ε / 2 :=
+    (div_le_iff₀ hlogN).mpr hub2
+  rw [Real.dist_eq]
+  have : |L / Real.log (N : ℝ) - σ| ≤ ε / 2 :=
+    abs_le.mpr ⟨by linarith, by linarith⟩
+  linarith [this]
 
 end Nondividing
