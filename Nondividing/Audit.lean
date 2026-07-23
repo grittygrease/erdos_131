@@ -35,3 +35,5 @@ import Nondividing.Main
 #print axioms Nondividing.lattice_section_box
 #print axioms Nondividing.index_cardinality_bound
 #print axioms Nondividing.realRank_eq_of_index
+#print axioms Nondividing.integerRealSpan_eq_top
+#print axioms Nondividing.smul_projNorm_mem_realBox
