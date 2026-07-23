@@ -1,4 +1,5 @@
 import Nondividing.Projective.Normalization
+import Nondividing.Projective.Separation
 import Mathlib.Analysis.Convex.Combination
 
 open scoped BigOperators
@@ -208,5 +209,57 @@ theorem duality_representation_from_projective {d : ℕ} {ℓ : Fin d → ℤ}
     have he : 4 / μn - 4 / 3 * (2 / μn) = 4 / (3 * μn) := by field_simp; ring
     linarith [hd, he]
   linarith [hbv, h43]
+
+/-- **Projective duality** (`lem:projective-duality`, full).  If a shell set's
+projective family is not in `μ`-convex position — some `a ∈ V` whose every
+half-space carries more than `μ|V| ≥ 4` indices — then `a` is a combination of the
+other points with weights in `[0, 4/(μ|V|)]` totalling in `[1/3, 3]`. -/
+theorem projective_duality {d : ℕ} {ℓ : Fin d → ℤ} {V : Finset (Fin d → ℤ)}
+    {μ : ℝ} {X : ℕ} (hX : 1 ≤ X)
+    (hshell : ∀ v ∈ V, (X : ℤ) ≤ intFunctional ℓ v ∧ intFunctional ℓ v ≤ 2 * X)
+    (hμn4 : 4 ≤ μ * V.card) {a : Fin d → ℤ} (haV : a ∈ V)
+    (hfail : ∀ u : Module.Dual ℝ (Fin d → ℝ),
+      μ * V.card <
+        ((V.filter fun k => u (projNorm ℓ a) ≤ u (projNorm ℓ k)).card : ℝ)) :
+    ∃ β : (Fin d → ℤ) → ℝ,
+      realPoint a = ∑ v ∈ V.erase a, β v • realPoint v ∧
+      (∀ v ∈ V.erase a, 0 ≤ β v ∧ β v ≤ 4 / (μ * V.card)) ∧
+      1 / 3 ≤ ∑ v ∈ V.erase a, β v ∧ ∑ v ∈ V.erase a, β v ≤ 3 := by
+  classical
+  set M : ℝ := μ * V.card with hM
+  have hM1 : 1 ≤ M := by linarith
+  -- Move to the subtype index `↥V`.
+  set p : ↥V → (Fin d → ℝ) := fun k => projNorm ℓ k.1 with hp
+  -- translate the incidence failure to the subtype
+  have hfail' : ∀ u : Module.Dual ℝ (Fin d → ℝ),
+      M < ((Finset.univ.filter fun k : ↥V => u (p ⟨a, haV⟩) ≤ u (p k)).card : ℝ) := by
+    intro u
+    have hcard : (Finset.univ.filter fun k : ↥V => u (p ⟨a, haV⟩) ≤ u (p k)).card
+        = (V.filter fun k => u (projNorm ℓ a) ≤ u (projNorm ℓ k)).card := by
+      rw [Finset.card_filter, Finset.card_filter, ← Finset.sum_coe_sort V
+        (fun k => if u (projNorm ℓ a) ≤ u (projNorm ℓ k) then 1 else 0)]
+    rw [hcard]; exact hfail u
+  obtain ⟨c, hc0, hcub, hcsum, hpc⟩ :=
+    exists_capped_combination p ⟨a, haV⟩ hM1 hfail'
+  -- transfer `c : ↥V → ℝ` to a function on `Fin d → ℤ` supported on `V`
+  set c' : (Fin d → ℤ) → ℝ := fun w => if h : w ∈ V then c ⟨w, h⟩ else 0 with hc'
+  have hc'V : ∀ v (hv : v ∈ V), c' v = c ⟨v, hv⟩ := by
+    intro v hv; simp [hc', hv]
+  have hproj : projNorm ℓ a = ∑ v ∈ V, c' v • projNorm ℓ v := by
+    rw [← Finset.sum_coe_sort V (fun v => c' v • projNorm ℓ v),
+      show projNorm ℓ a = ∑ k : ↥V, c k • p k from hpc]
+    apply Finset.sum_congr rfl
+    intro k _
+    show c k • p k = c' k.1 • projNorm ℓ k.1
+    rw [hc'V k.1 k.2]
+  have hc'0 : ∀ v ∈ V, 0 ≤ c' v := fun v hv => by rw [hc'V v hv]; exact hc0 _
+  have hc'ub : ∀ v ∈ V, c' v ≤ M⁻¹ := fun v hv => by rw [hc'V v hv]; exact hcub _
+  have hc'sum : ∑ v ∈ V, c' v = 1 := by
+    rw [← hcsum, ← Finset.sum_coe_sort V c']
+    apply Finset.sum_congr rfl
+    intro k _
+    exact hc'V k.1 k.2
+  exact duality_representation_from_projective haV hμn4 hX hshell hc'0 hc'ub
+    hc'sum hproj
 
 end Nondividing
