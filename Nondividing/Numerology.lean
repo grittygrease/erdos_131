@@ -319,4 +319,20 @@ theorem box_exponent_of_excess {ζ₀ A B : ℝ} (hζ : 0 < ζ₀) (hζ1 : ζ₀
   rwa [← Real.rpow_mul hB0.le, mul_one_div, div_self (ne_of_gt hexp),
     Real.rpow_one] at h3
 
+/-- **Uniform sigma gap** (`thm:projective-main` preamble):
+`Δ_D = min_{2≤r≤D}(σ_r − σ_{r−1}) > 0` — the exponent sequence has a uniform
+positive step below any fixed dimension `D`. -/
+theorem exists_sigma_gap (D : ℕ) (hD : 2 ≤ D) :
+    ∃ Δ : ℝ, 0 < Δ ∧ ∀ r, 2 ≤ r → r ≤ D → sigma (r - 1) + Δ ≤ sigma r := by
+  obtain ⟨r₀, hr₀mem, hmin⟩ := (Finset.Icc 2 D).exists_min_image
+    (fun r => sigma r - sigma (r - 1)) ⟨2, Finset.mem_Icc.mpr ⟨le_refl 2, hD⟩⟩
+  obtain ⟨hr₀2, _⟩ := Finset.mem_Icc.mp hr₀mem
+  refine ⟨sigma r₀ - sigma (r₀ - 1), ?_, ?_⟩
+  · have hlt : sigma (r₀ - 1) < sigma r₀ :=
+      sigma_lt_sigma (by omega) (by omega)
+    linarith
+  · intro r h2 hDr
+    have := hmin r (Finset.mem_Icc.mpr ⟨h2, hDr⟩)
+    linarith
+
 end Nondividing
