@@ -156,6 +156,35 @@ theorem scale_card_carrier_le_dilated (hP : P.Proper) {t : ℝ} (ht : 1 ≤ t)
   rw [hcarrier, hdil]
   exact card_le_dilatedCoordinateBox P.radius (fun i => P.radius_pos i) ht
 
+/-- For a dilation `t ≥ 1`, the base coefficient box embeds into the dilated
+one (the dilated radii `⌊t·Nᵢ⌋₊` dominate `Nᵢ`). -/
+theorem coeffBox_subset_dilatedCoeffBox {t : ℝ} (ht : 1 ≤ t) :
+    P.coeffBox ⊆ P.dilatedCoeffBox t := by
+  intro n hn
+  rw [coeffBox, mem_coordinateBox] at hn
+  rw [dilatedCoeffBox, mem_coordinateBox]
+  intro i
+  have hle : P.radius i ≤ P.dilatedRadius t i := by
+    show P.radius i ≤ ⌊t * (P.radius i : ℝ)⌋₊
+    have hstep : (P.radius i : ℝ) ≤ t * (P.radius i : ℝ) := by
+      nlinarith [Nat.cast_nonneg (α := ℝ) (P.radius i), ht]
+    calc P.radius i = ⌊(P.radius i : ℝ)⌋₊ := (Nat.floor_natCast _).symm
+      _ ≤ ⌊t * (P.radius i : ℝ)⌋₊ := Nat.floor_mono hstep
+  refine ⟨?_, ?_⟩
+  · have h1 : -((P.dilatedRadius t i : ℕ) : ℤ) ≤ -(P.radius i : ℤ) := by
+      exact_mod_cast neg_le_neg (by exact_mod_cast hle)
+    exact h1.trans (hn i).1
+  · exact (hn i).2.trans (by exact_mod_cast hle)
+
+/-- Hazard: properness of a proper dilate `t·P` (`t ≥ 1`) implies properness of
+`P` itself, since the base coefficient box is a subset of the dilated one and
+injectivity restricts to subsets.  (`lem:progression-comparison`, route §7.4.) -/
+theorem proper_of_dilate {t : ℝ} (ht : 1 ≤ t)
+    (hInj : Set.InjOn P.evalHom (P.dilatedCoeffBox t : Set (Fin e → ℤ))) :
+    P.Proper :=
+  Set.InjOn.mono (Finset.coe_subset.mpr (P.coeffBox_subset_dilatedCoeffBox ht))
+    hInj
+
 /-- Counting core of `lem:progression-comparison`.  Given a proper rank-`e` GAP
 `R = P` living in `ℤ^r`, a dilation `t = c·s ≥ 1` whose dilated coefficient box
 is evaluated injectively, a core set `C₀` inside a coordinate box `Q` of radii
