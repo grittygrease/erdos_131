@@ -206,4 +206,26 @@ theorem card_dilatedCarrier_le_index {d e : ℕ} (P : GAP d e) {t : ℝ}
         apply mul_le_mul_of_nonneg_right _ (by positivity)
         exact pow_le_pow_right₀ ht1 hfr
 
+/-- Assembled index inequality: the proper lower bound `t^e |P| ≤ 3^e |csP|`
+composed with the section upper bound gives
+`t^e |P| ≤ 3^e (2|C₀|)^r |B|`.  With `t = c·s`, `|C₀| ≤ s`, `e = d`, and
+`|P| ≥ γ|B|`, the exponent gap `d - r` yields the full-rank conclusion of
+`lem:index-bound`. -/
+theorem index_cardinality_bound {d e : ℕ} (P : GAP d e) (hP : P.Proper) {t : ℝ}
+    (ht : 1 ≤ t)
+    (hInj : Set.InjOn P.evalHom (P.dilatedCoeffBox t : Set (Fin e → ℤ)))
+    {M : Fin d → ℕ} {C₀ : Finset (Fin d → ℤ)} (hC₀ : C₀ ⊆ coordinateBox M)
+    (hcard : 1 ≤ C₀.card) {q : Fin d → ℤ}
+    (hincl : ∀ z ∈ P.dilatedCarrier t, q + z ∈ subsetSums C₀) :
+    t ^ e * (P.carrier.card : ℝ) ≤
+      3 ^ e * (2 * C₀.card : ℝ) ^ P.realRank * ((coordinateBox M).card : ℝ) := by
+  have h1 := P.scale_card_carrier_le_dilated hP ht hInj
+  have h2 := card_dilatedCarrier_le_index P hC₀ hcard hincl
+  calc t ^ e * (P.carrier.card : ℝ)
+      ≤ 3 ^ e * ((P.dilatedCarrier t).card : ℝ) := h1
+    _ ≤ 3 ^ e * ((2 * C₀.card : ℝ) ^ P.realRank * ((coordinateBox M).card : ℝ)) :=
+        mul_le_mul_of_nonneg_left h2 (by positivity)
+    _ = 3 ^ e * (2 * C₀.card : ℝ) ^ P.realRank * ((coordinateBox M).card : ℝ) := by
+        ring
+
 end Nondividing
