@@ -99,4 +99,18 @@ theorem weighted_density_injective (r : ℕ) (hr : 1 ≤ r) (eps : ℝ)
 
 end
 
+/-- **Stabilized subsequence** (Blaschke step of `lem:weighted-density`): a
+sequence with finitely many possible values has a constant strictly monotone
+subsequence — used to fix the index set `{i : qᵢ^{(m)} ∈ K_m}` along the
+Blaschke-convergent subsequence. -/
+theorem exists_constant_subseq {α : Type*} [Finite α] (f : ℕ → α) :
+    ∃ (a : α) (φ : ℕ → ℕ), StrictMono φ ∧ ∀ k, f (φ k) = a := by
+  classical
+  obtain ⟨a, ha⟩ := Finite.exists_infinite_fiber f
+  haveI : Infinite (f ⁻¹' {a} : Set ℕ) := ha
+  refine ⟨a, Nat.orderEmbeddingOfSet (f ⁻¹' {a}), (Nat.orderEmbeddingOfSet _).strictMono, ?_⟩
+  intro k
+  have hrange := Nat.orderEmbeddingOfSet_range (f ⁻¹' {a})
+  exact (Set.ext_iff.mp hrange _).mp (Set.mem_range_self k)
+
 end Nondividing
