@@ -106,6 +106,13 @@ theorem exists_coordProjR_injOn :
       (Module.forall_dual_apply_eq_zero_iff ℝ _).mp hall
     exact congrArg (Subtype.val) hx0
 
+/-- The step rank never exceeds the displayed dimension. -/
+theorem realRank_le {d e : ℕ} (P : GAP d e) : P.realRank ≤ e := by
+  have h := finrank_range_le_card (R := ℝ)
+    (fun i : Fin e => (fun j : Fin d => (P.step i j : ℝ)))
+  rw [Fintype.card_fin] at h
+  exact h
+
 /-- The real rank of a dilated GAP carrier is at most the rank of its step
 vectors: every carrier point is an integer combination of the steps. -/
 theorem finrank_integerRealSpan_dilatedCarrier_le_realRank {d e : ℕ} (P : GAP d e)
@@ -227,5 +234,74 @@ theorem index_cardinality_bound {d e : ℕ} (P : GAP d e) (hP : P.Proper) {t : �
         mul_le_mul_of_nonneg_left h2 (by positivity)
     _ = 3 ^ e * (2 * C₀.card : ℝ) ^ P.realRank * ((coordinateBox M).card : ℝ) := by
         ring
+
+/-- **Full rank from irreducibility** (`lem:index-bound`, first conclusion).  If
+the progression's box occupancy is at least `γ|B|` and the scale product `sγ` is
+large (`6^d < c^d·s·γ`), then the step lattice has full rank `d`.  The proof is
+the exponent-gap contradiction `s^{d-r}γ ≪ 1`. -/
+theorem realRank_eq_of_index {d : ℕ} (hd : 1 ≤ d) (P : GAP d d) (hP : P.Proper)
+    {c s γ : ℝ} (hc : 0 < c) (hs : 1 ≤ s) (hγ : 0 < γ) (hcs : 1 ≤ c * s)
+    (hInj : Set.InjOn P.evalHom (P.dilatedCoeffBox (c * s) : Set (Fin d → ℤ)))
+    {M : Fin d → ℕ} {C₀ : Finset (Fin d → ℤ)} (hC₀ : C₀ ⊆ coordinateBox M)
+    (hcard1 : 1 ≤ C₀.card) (hcards : (C₀.card : ℝ) ≤ s) {q : Fin d → ℤ}
+    (hincl : ∀ z ∈ P.dilatedCarrier (c * s), q + z ∈ subsetSums C₀)
+    (hB : 0 < ((coordinateBox M).card : ℝ))
+    (hPlow : γ * ((coordinateBox M).card : ℝ) ≤ (P.carrier.card : ℝ))
+    (hthresh : (6 : ℝ) ^ d < c ^ d * (s * γ)) :
+    P.realRank = d := by
+  refine le_antisymm (realRank_le P) ?_
+  by_contra hlt
+  push_neg at hlt
+  set r := P.realRank with hr
+  have hspos : (0 : ℝ) < s := by linarith
+  -- index bound + substituting `|C₀| ≤ s` and `|P| ≥ γ|B|`
+  have hib := index_cardinality_bound P hP hcs hInj hC₀ hcard1 hincl
+  have hbase : (2 * (C₀.card : ℝ)) ^ r ≤ (2 * s) ^ r :=
+    pow_le_pow_left₀ (by positivity) (by linarith) r
+  have hD : (c * s) ^ d * γ ≤ 3 ^ d * (2 * s) ^ r := by
+    have hstep : (c * s) ^ d * (γ * ((coordinateBox M).card : ℝ)) ≤
+        3 ^ d * (2 * s) ^ r * ((coordinateBox M).card : ℝ) := by
+      calc (c * s) ^ d * (γ * ((coordinateBox M).card : ℝ))
+          ≤ (c * s) ^ d * (P.carrier.card : ℝ) :=
+            mul_le_mul_of_nonneg_left hPlow (by positivity)
+        _ ≤ 3 ^ d * (2 * (C₀.card : ℝ)) ^ r * ((coordinateBox M).card : ℝ) := hib
+        _ ≤ 3 ^ d * (2 * s) ^ r * ((coordinateBox M).card : ℝ) := by
+            apply mul_le_mul_of_nonneg_right _ (by positivity)
+            exact mul_le_mul_of_nonneg_left hbase (by positivity)
+    have := le_of_mul_le_mul_right (by nlinarith [hstep] : ((c * s) ^ d * γ)
+        * ((coordinateBox M).card : ℝ) ≤ (3 ^ d * (2 * s) ^ r)
+        * ((coordinateBox M).card : ℝ)) hB
+    linarith [this]
+  -- expand and split `s^d = s^r · s^{d-r}`
+  have hsplit : s ^ d = s ^ r * s ^ (d - r) := by
+    rw [← pow_add, Nat.add_sub_cancel' (le_of_lt hlt)]
+  have hsr : (0 : ℝ) < s ^ r := by positivity
+  have hexp : c ^ d * (s ^ r * s ^ (d - r)) * γ ≤ 3 ^ d * (2 ^ r * s ^ r) := by
+    have h1 : (c * s) ^ d = c ^ d * s ^ d := by rw [mul_pow]
+    have h2 : (2 * s) ^ r = 2 ^ r * s ^ r := by rw [mul_pow]
+    rw [h1, h2, hsplit] at hD
+    linarith [hD]
+  -- divide by `s^r`
+  have hdiv : c ^ d * s ^ (d - r) * γ ≤ 3 ^ d * 2 ^ r :=
+    le_of_mul_le_mul_right (by nlinarith [hexp]) hsr
+  -- `s ≤ s^{d-r}` and `2^r ≤ 2^d`
+  have hge : s ≤ s ^ (d - r) := by
+    have : s ^ (1 : ℕ) ≤ s ^ (d - r) := pow_le_pow_right₀ hs (by omega)
+    simpa using this
+  have h2r : (2 : ℝ) ^ r ≤ 2 ^ d := pow_le_pow_right₀ (by norm_num) hlt.le
+  -- assemble the contradiction with the threshold
+  have hfinal : c ^ d * (s * γ) ≤ 6 ^ d := by
+    have hmono : c ^ d * (s * γ) ≤ c ^ d * s ^ (d - r) * γ := by
+      have : c ^ d * s * γ ≤ c ^ d * s ^ (d - r) * γ := by
+        apply mul_le_mul_of_nonneg_right _ hγ.le
+        exact mul_le_mul_of_nonneg_left hge (by positivity)
+      nlinarith [this]
+    have h6 : (3 : ℝ) ^ d * 2 ^ d = 6 ^ d := by
+      rw [← mul_pow]; norm_num
+    calc c ^ d * (s * γ) ≤ c ^ d * s ^ (d - r) * γ := hmono
+      _ ≤ 3 ^ d * 2 ^ r := hdiv
+      _ ≤ 3 ^ d * 2 ^ d := by apply mul_le_mul_of_nonneg_left h2r (by positivity)
+      _ = 6 ^ d := h6
+  linarith [hthresh, hfinal]
 
 end Nondividing
