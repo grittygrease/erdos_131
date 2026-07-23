@@ -106,6 +106,68 @@ theorem exists_coordProjR_injOn :
       (Module.forall_dual_apply_eq_zero_iff ℝ _).mp hall
     exact congrArg (Subtype.val) hx0
 
+/-- The real point of a subset sum of `V` lies in the real span of `V`. -/
+theorem realPoint_subsetSums_mem {d : ℕ} {V : Finset (Fin d → ℤ)} {w : Fin d → ℤ}
+    (hw : w ∈ subsetSums V) : realPoint w ∈ integerRealSpan V := by
+  obtain ⟨S, hSV, rfl⟩ := mem_subsetSums.mp hw
+  have hrw : realPoint (∑ a ∈ S, a) = ∑ a ∈ S, realPoint a := by
+    funext j
+    simp only [realPoint, Finset.sum_apply]
+    push_cast
+    rfl
+  rw [hrw]
+  exact Submodule.sum_mem _ fun a ha =>
+    Submodule.subset_span ⟨a, hSV ha, rfl⟩
+
+/-- Each real step vector of `P` lies in the real span of the shell set `V`,
+using the E1 inclusion `q + step_i ∈ Σ(C₀) ⊆ ⟨V⟩` (valid once `c·s ≥ 1`, so the
+unit coefficient vector is admissible). -/
+theorem realStep_mem_integerRealSpan {d e : ℕ} (P : GAP d e) {c s : ℝ}
+    (hcs : 1 ≤ c * s) {V C₀ : Finset (Fin d → ℤ)} (hC₀V : C₀ ⊆ V) {q : Fin d → ℤ}
+    (hincl : ∀ z ∈ P.dilatedCarrier (c * s), q + z ∈ subsetSums C₀) (i : Fin e) :
+    (fun j => (P.step i j : ℝ)) ∈ integerRealSpan V := by
+  classical
+  have hri : 1 ≤ P.dilatedRadius (c * s) i := by
+    show 1 ≤ ⌊(c * s) * (P.radius i : ℝ)⌋₊
+    apply Nat.le_floor
+    have : (1 : ℝ) ≤ (P.radius i : ℝ) := by exact_mod_cast P.radius_pos i
+    push_cast
+    nlinarith [hcs, this]
+  have hei : (Pi.single i (1 : ℤ)) ∈ P.dilatedCoeffBox (c * s) := by
+    rw [GAP.dilatedCoeffBox, mem_coordinateBox]
+    intro j
+    rcases eq_or_ne j i with rfl | hj
+    · rw [Pi.single_eq_same]
+      have : (1 : ℤ) ≤ (P.dilatedRadius (c * s) j : ℤ) := by exact_mod_cast hri
+      omega
+    · rw [Pi.single_eq_of_ne hj]
+      have : (0 : ℤ) ≤ (P.dilatedRadius (c * s) j : ℤ) := Int.natCast_nonneg _
+      omega
+  have heval : P.evalHom (Pi.single i (1 : ℤ)) = (fun j => P.step i j) := by
+    funext j
+    rw [GAP.evalHom_apply, Finset.sum_eq_single i]
+    · rw [Pi.single_eq_same, one_mul]
+    · intro k _ hk; rw [Pi.single_eq_of_ne hk, zero_mul]
+    · intro h; exact absurd (Finset.mem_univ i) h
+  have hstep_mem : (fun j => P.step i j) ∈ P.dilatedCarrier (c * s) :=
+    (P.mem_dilatedCarrier).mpr ⟨Pi.single i 1, hei, heval⟩
+  have hsub : subsetSums C₀ ⊆ subsetSums V := by
+    intro w hw
+    obtain ⟨S, hSC₀, rfl⟩ := mem_subsetSums.mp hw
+    exact mem_subsetSums.mpr ⟨S, hSC₀.trans hC₀V, rfl⟩
+  have hq_mem : q ∈ subsetSums C₀ := by
+    have := hincl 0 (P.zero_mem_dilatedCarrier _); rwa [add_zero] at this
+  have hqs_mem : q + (fun j => P.step i j) ∈ subsetSums C₀ := hincl _ hstep_mem
+  have h1 := realPoint_subsetSums_mem (hsub hq_mem)
+  have h2 := realPoint_subsetSums_mem (hsub hqs_mem)
+  have hdiff : (fun j => (P.step i j : ℝ)) =
+      realPoint (q + (fun j => P.step i j)) - realPoint q := by
+    funext j
+    simp only [realPoint, Pi.sub_apply, Pi.add_apply]
+    push_cast; ring
+  rw [hdiff]
+  exact Submodule.sub_mem _ h2 h1
+
 /-- The step rank never exceeds the displayed dimension. -/
 theorem realRank_le {d e : ℕ} (P : GAP d e) : P.realRank ≤ e := by
   have h := finrank_range_le_card (R := ℝ)
