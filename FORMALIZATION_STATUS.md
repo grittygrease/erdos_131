@@ -21,7 +21,8 @@
 - [x] index_bound PART 1 (full rank) — `index_cardinality_bound` (t^e|P| ≤ 3^e(2|C₀|)^r|B| via lattice_section_box) + `realRank_eq_of_index` (full rank d from irreducibility, exponent-gap contradiction); green. Part 2 (index ≪ γ⁻¹) needs covolume/determinant (deferred)
 - [x] projective_span PARTS 1 & 3 — `integerRealSpan_eq_top` + `projective_span_package` (⟨V⟩_ℝ = ℝ^d over package, from full rank + `realStep_mem_integerRealSpan`) + `smul_projNorm_mem_realBox` (X·π(v) ∈ B_ℝ) + `span_projNorm_eq_top` (π(V) lin spans); green. Part 2 (aff π(V) = H_λ, relative interior) pending
 - [ ] one_sided_filling (E3)
-- [~] Projective duality / convexity / robust zonotope — `IndexedMuConvexPosition` def + negation done; duality separation core pending (Hahn-Banach)
+- [~] Projective duality — MOSTLY DONE: `IndexedMuConvexPosition` + negation, `duality_representation` (arithmetic core), `projNorm_combination` (proj comb → integer relation), `duality_representation_from_projective` (full duality MODULO Hahn-Banach separation of 0 from the capped-simplex image). Remaining: the separation step (geometric_hahn_banach + index→coefficient counting)
+- [ ] Projective convexity / robust zonotope
 - [ ] Weighted density (indexed, from E4 by perturbation+compactness)
 - [ ] Cap lifting (perspective-cone volume)
 - [ ] Numerology optimisation lemma
