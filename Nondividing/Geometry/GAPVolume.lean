@@ -74,4 +74,16 @@ theorem abs_det_stepMapR {d : ℕ} (P : GAP d d) (hinj : Function.Injective P.ev
   simp only [Nat.cast_natAbs]
   exact Int.cast_abs.symm
 
+/-- **Parallelepiped volume**: the image of the coefficient box under the step
+map has volume `[ℤ^d:L]·2^d·∏Nᵢ` (`eq:index-volume` of `lem:index-bound`). -/
+theorem volume_stepMapR_realBox {d : ℕ} (P : GAP d d)
+    (hinj : Function.Injective P.evalHom) :
+    volume (stepMapR P '' realBox P.radius)
+      = ENNReal.ofReal
+          (((LinearMap.range P.evalHom.toIntLinearMap).toAddSubgroup.index : ℝ)
+            * (2 ^ d * ∏ i, (P.radius i : ℝ))) := by
+  rw [MeasureTheory.Measure.addHaar_image_linearMap, volume_realBox,
+    abs_det_stepMapR P hinj]
+  rw [← ENNReal.ofReal_mul (by positivity)]
+
 end Nondividing
