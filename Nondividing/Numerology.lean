@@ -150,6 +150,46 @@ theorem numerology_le_one_zeta {d e : ℕ} (hd : 1 ≤ d) (hde : d < e)
   rw [hrw]
   exact div_nonneg (by linarith [hmain]) hA.le
 
+/-- **Numerology strict gap** (`lem:numerology`, `ε = 0`).  For `ζ ∈ [ζ₀, 1-σ_d]`
+with `ζ₀ > 0`, `f_{d,e}(ζ) ≤ 1 - (2/5)·ζ₀` with the *explicit uniform* constant
+`c_* = (2/5)ζ₀` — no compactness argument needed, because `ζ ≤ 1-σ_d` forces
+`σ_d+ζ ≤ 1`, so the gap `1 - f` (a positive quantity over `σ_d+ζ`) is at least the
+numerator, which is `≥ (2/5)ζ₀`. -/
+theorem numerology_strict {d e : ℕ} (hd : 1 ≤ d) (hde : d < e) {ζ ζ₀ : ℝ}
+    (hζ₀ : 0 < ζ₀) (hζlo : ζ₀ ≤ ζ) (hζhi : ζ ≤ 1 - sigma d) :
+    (sigma e + ζ) * (1 / (sigma d + ζ) - ((e : ℝ) - d)) ≤ 1 - 2 / 5 * ζ₀ := by
+  have hsd := sigma_pos d
+  have hse := sigma_pos e
+  have h1 : (1 : ℝ) / 5 ≤ sigma d := one_fifth_le_sigma d
+  have h2 : (1 : ℝ) / 5 ≤ sigma e := one_fifth_le_sigma e
+  have hζ : (0 : ℝ) ≤ ζ := le_trans hζ₀.le hζlo
+  have hA : 0 < sigma d + ζ := by linarith
+  have hAle1 : sigma d + ζ ≤ 1 := by linarith
+  have hb := numerology_base hd hde
+  have hde1 : (1 : ℝ) ≤ (e : ℝ) - d := by
+    have : (d : ℝ) + 1 ≤ e := by exact_mod_cast hde
+    linarith
+  -- numerator `≥ (2/5) ζ₀`
+  have hnum : 2 / 5 * ζ₀ ≤
+      (sigma d + ζ) - (sigma e + ζ)
+        + (sigma e + ζ) * (sigma d + ζ) * ((e : ℝ) - d) := by
+    nlinarith [hb, hζlo, hζ₀, hde1, h1, h2, hsd, hse,
+      mul_nonneg (mul_nonneg hζ (by linarith : (0:ℝ) ≤ sigma e + sigma d))
+        (by linarith : (0:ℝ) ≤ (e:ℝ) - d),
+      mul_nonneg (mul_nonneg hζ hζ) (by linarith : (0:ℝ) ≤ (e:ℝ) - d)]
+  rw [← sub_nonneg]
+  have hrw : (1 - 2 / 5 * ζ₀) - (sigma e + ζ) * (1 / (sigma d + ζ) - ((e : ℝ) - d))
+      = (((sigma d + ζ) - (sigma e + ζ)
+            + (sigma e + ζ) * (sigma d + ζ) * ((e : ℝ) - d))
+          - 2 / 5 * ζ₀ * (sigma d + ζ)) / (sigma d + ζ) := by
+    field_simp
+    ring
+  rw [hrw]
+  refine div_nonneg ?_ hA.le
+  have hle : 2 / 5 * ζ₀ * (sigma d + ζ) ≤ 2 / 5 * ζ₀ :=
+    by nlinarith [hAle1, hζ₀]
+  linarith [hnum, hle]
+
 /-- Every numerology exponent is nonnegative. -/
 theorem sigma_nonneg (d : ℕ) : 0 ≤ sigma d := by
   unfold sigma
@@ -173,5 +213,32 @@ theorem sigma_one_le (d : ℕ) : sigma d < 1 := by
       exact_mod_cast this
     rw [div_lt_one (by linarith)]
     linarith
+
+/-- **Numerology lemma** (`lem:numerology`, full form).  For `ζ ∈ [ζ₀, 1-σ_d]`
+(`ζ₀ > 0`) and `ε ≥ 0` small (`ε·(e-d) ≤ ζ₀/10`), the perturbed functional obeys
+`(σ_e+ζ)(1/(σ_d+ζ) - (1-ε)(e-d)) ≤ 1 - (1/5)ζ₀` with the explicit uniform gap
+`c_* = (1/5)ζ₀`.  Derived from the `ε = 0` strict gap plus the bound
+`(σ_e+ζ)·ε·(e-d) ≤ (1/5)ζ₀`. -/
+theorem numerology_strict_eps {d e : ℕ} (hd : 1 ≤ d) (hde : d < e) {ζ ζ₀ ε : ℝ}
+    (hζ₀ : 0 < ζ₀) (hζlo : ζ₀ ≤ ζ) (hζhi : ζ ≤ 1 - sigma d) (hε : 0 ≤ ε)
+    (hεsmall : ε * ((e : ℝ) - d) ≤ ζ₀ / 10) :
+    (sigma e + ζ) * (1 / (sigma d + ζ) - (1 - ε) * ((e : ℝ) - d)) ≤ 1 - 1 / 5 * ζ₀ := by
+  have hbase := numerology_strict hd hde hζ₀ hζlo hζhi
+  have hse1 := sigma_one_le e
+  have h1 : (1 : ℝ) / 5 ≤ sigma d := one_fifth_le_sigma d
+  have hde1 : (0 : ℝ) ≤ (e : ℝ) - d := by
+    have : (d : ℝ) + 1 ≤ e := by exact_mod_cast hde
+    linarith
+  have hbnd : sigma e + ζ ≤ 2 := by linarith
+  have hexp : (sigma e + ζ) * (1 / (sigma d + ζ) - (1 - ε) * ((e : ℝ) - d))
+      = (sigma e + ζ) * (1 / (sigma d + ζ) - ((e : ℝ) - d))
+        + (sigma e + ζ) * (ε * ((e : ℝ) - d)) := by ring
+  rw [hexp]
+  have hincr : (sigma e + ζ) * (ε * ((e : ℝ) - d)) ≤ 1 / 5 * ζ₀ := by
+    calc (sigma e + ζ) * (ε * ((e : ℝ) - d))
+        ≤ 2 * (ζ₀ / 10) :=
+          mul_le_mul hbnd hεsmall (mul_nonneg hε hde1) (by norm_num)
+      _ = 1 / 5 * ζ₀ := by ring
+  linarith [hbase, hincr]
 
 end Nondividing
