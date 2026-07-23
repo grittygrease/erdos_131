@@ -202,6 +202,16 @@ theorem realStep_linearIndependent {d e : ℕ} (P : GAP d e) (hrank : P.realRank
   rw [linearIndependent_iff_card_eq_finrank_span, Fintype.card_fin]
   exact hrank.symm
 
+/-- The real coefficient map `n ↦ ∑ i nᵢ·stepᵢ` of a full-rank GAP is injective —
+this is the coefficient isomorphism `ψ` of `lem:one-sided-filling` (the inverse
+recovers the coefficient vector uniquely). -/
+theorem realEval_injective {d e : ℕ} (P : GAP d e) (hrank : P.realRank = e) :
+    Function.Injective
+      (Fintype.linearCombination ℝ
+        (fun i : Fin e => (fun j : Fin d => (P.step i j : ℝ)))) :=
+  (linearIndependent_iff_injective_fintypeLinearCombination).mp
+    (realStep_linearIndependent P hrank)
+
 /-- The step rank never exceeds the displayed dimension. -/
 theorem realRank_le {d e : ℕ} (P : GAP d e) : P.realRank ≤ e := by
   have h := finrank_range_le_card (R := ℝ)
