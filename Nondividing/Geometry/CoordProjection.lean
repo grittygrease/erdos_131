@@ -171,4 +171,39 @@ theorem lattice_section_box {d : ℕ} {M : Fin d → ℕ} {t : ℝ} (ht : 1 ≤ 
     rw [sub_eq_zero] at hx0; exact hx0
   exact realPoint_injective this
 
+/-- **Index cardinality bound** (`lem:index-bound`, section step).  The proper
+dilate `csP` has `|csP| ≤ (2|C₀|)^r · |B|`, where `r = realRank P` is the rank of
+the step lattice.  Combined with the proper lower bound `|csP| ≫ s^d |P|`, the
+gap `d - r` forces full rank. -/
+theorem card_dilatedCarrier_le_index {d e : ℕ} (P : GAP d e) {t : ℝ}
+    {M : Fin d → ℕ} {C₀ : Finset (Fin d → ℤ)} (hC₀ : C₀ ⊆ coordinateBox M)
+    (hcard : 1 ≤ C₀.card) {q : Fin d → ℤ}
+    (hincl : ∀ z ∈ P.dilatedCarrier t, q + z ∈ subsetSums C₀) :
+    ((P.dilatedCarrier t).card : ℝ) ≤
+      (2 * C₀.card : ℝ) ^ P.realRank * ((coordinateBox M).card : ℝ) := by
+  classical
+  have ht1 : (1 : ℝ) ≤ 2 * C₀.card := by
+    have : (1 : ℝ) ≤ (C₀.card : ℝ) := by exact_mod_cast hcard
+    linarith
+  have hcont : P.dilatedCarrier t ⊆
+      coordinateBox (fun i => ⌊(2 * (C₀.card : ℝ)) * (M i : ℝ)⌋₊) := by
+    have h1 := dilatedCarrier_subset_coordinateBox P hC₀ hincl
+    intro z hz
+    have hz2 := h1 hz
+    rw [mem_coordinateBox] at hz2 ⊢
+    intro i
+    have hfloor : ⌊(2 * (C₀.card : ℝ)) * (M i : ℝ)⌋₊ = 2 * C₀.card * M i := by
+      rw [show (2 * (C₀.card : ℝ)) * (M i : ℝ) = ((2 * C₀.card * M i : ℕ) : ℝ) by
+        push_cast; ring, Nat.floor_natCast]
+    rw [hfloor]; exact hz2 i
+  have hlsb := lattice_section_box (M := M) (t := 2 * (C₀.card : ℝ)) ht1 hcont
+  have hfr := finrank_integerRealSpan_dilatedCarrier_le_realRank P t
+  calc ((P.dilatedCarrier t).card : ℝ)
+      ≤ (2 * (C₀.card : ℝ)) ^
+            (Module.finrank ℝ (integerRealSpan (P.dilatedCarrier t)))
+          * ((coordinateBox M).card : ℝ) := hlsb
+    _ ≤ (2 * (C₀.card : ℝ)) ^ P.realRank * ((coordinateBox M).card : ℝ) := by
+        apply mul_le_mul_of_nonneg_right _ (by positivity)
+        exact pow_le_pow_right₀ ht1 hfr
+
 end Nondividing
