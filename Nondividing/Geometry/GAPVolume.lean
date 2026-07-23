@@ -190,6 +190,44 @@ theorem index_mul_le_volume_bound {d : ℕ} (P : GAP d d)
   have hrhs : (0 : ℝ) ≤ (8 / c) ^ d * ∏ j, (M j : ℝ) := by positivity
   exact (ENNReal.ofReal_le_ofReal_iff hrhs).mp hvol
 
+/-- A full-rank GAP's step lattice has nonzero (finite) index: the real step
+map is injective (`realEval_injective`), hence surjective, hence has nonzero
+determinant — and `|det| = index`. -/
+theorem stepLattice_index_ne_zero {d : ℕ} (P : GAP d d) (hrank : P.realRank = d)
+    (hinj : Function.Injective P.evalHom) :
+    (LinearMap.range P.evalHom.toIntLinearMap).toAddSubgroup.index ≠ 0 := by
+  intro h0
+  have habs := abs_det_stepMapR P hinj
+  rw [h0] at habs
+  push_cast at habs
+  have hdet0 : LinearMap.det (stepMapR P) = 0 := abs_eq_zero.mp habs
+  -- But the step map is injective, hence surjective, hence range = ⊤.
+  have hmapinj : Function.Injective (stepMapR P) := by
+    have hfun : ∀ x : Fin d → ℝ, stepMapR P x
+        = (Fintype.linearCombination ℝ
+            (fun i : Fin d => (fun j : Fin d => (P.step i j : ℝ)))) x := by
+      intro x
+      funext j
+      rw [stepMapR_apply]
+      simp only [Fintype.linearCombination_apply, Finset.sum_apply, Pi.smul_apply,
+        smul_eq_mul]
+    intro x y hxy
+    apply realEval_injective P hrank
+    rw [← hfun x, ← hfun y, hxy]
+  have hsurj : Function.Surjective (stepMapR P) :=
+    LinearMap.surjective_of_injective hmapinj
+  have hrange : LinearMap.range (stepMapR P) = ⊤ := LinearMap.range_eq_top.mpr hsurj
+  have := LinearMap.range_lt_top_of_det_eq_zero hdet0
+  rw [hrange] at this
+  exact absurd this (lt_irrefl ⊤)
+
+/-- The finite quotient instance for the step lattice of a full-rank GAP. -/
+theorem stepLattice_finite_quotient {d : ℕ} (P : GAP d d) (hrank : P.realRank = d)
+    (hinj : Function.Injective P.evalHom) :
+    Finite ((Fin d → ℤ) ⧸
+      (LinearMap.range P.evalHom.toIntLinearMap).toAddSubgroup) :=
+  AddSubgroup.index_ne_zero_iff_finite.mp (stepLattice_index_ne_zero P hrank hinj)
+
 /-- **Index bound, part 2** (`lem:index-bound`): under the `gap_contained`
 hypotheses, a proper full-rank GAP with `|P| ≥ γ|B|` has step-lattice index
 `[ℤ^d:L] ≤ (12/c)^d·γ⁻¹`.  Chain: `|P| ≤ 3^d∏Nᵢ`, so

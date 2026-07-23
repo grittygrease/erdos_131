@@ -22,6 +22,17 @@ theorem exists_positive_nsmul_mem {G : Type*} [AddCommGroup G] (L : AddSubgroup 
   rw [← QuotientAddGroup.eq_zero_iff, QuotientAddGroup.mk_nsmul,
     addOrderOf_nsmul_eq_zero]
 
+/-- The order of any element of a finite quotient is at most the index
+(`r ≪ γ⁻¹` in `thm:projective-convexity`, combined with `index_bound_part2`). -/
+theorem addOrderOf_quotient_le_index {G : Type*} [AddCommGroup G]
+    (L : AddSubgroup G) (hL : L.index ≠ 0) (a : G) :
+    addOrderOf (QuotientAddGroup.mk a : G ⧸ L) ≤ L.index := by
+  haveI : Finite (G ⧸ L) := AddSubgroup.index_ne_zero_iff_finite.mp hL
+  have hdvd : addOrderOf (QuotientAddGroup.mk a : G ⧸ L) ∣ Nat.card (G ⧸ L) :=
+    addOrderOf_dvd_natCard _
+  rw [← AddSubgroup.index_eq_card] at hdvd
+  exact Nat.le_of_dvd (Nat.pos_of_ne_zero hL) hdvd
+
 /-- Nearest multiple: for `1 ≤ r ≤ T` there is a positive multiple `m₀` of `r`
 within distance `r` of `T`.  (In `projective_convexity`, `m₀·a ∈ L` lies in the
 tube `T·a + ξn·B` since `r = o(ξn)`.) -/
