@@ -223,7 +223,7 @@ theorem card_natDilatedCarrier_le_mul (hP : P.Proper) (k : ℕ) :
       P.card_natDilatedCoeffBox k
     _ ≤
         ∏ i : Fin e, ((2 * k + 1) * (2 * P.radius i + 1)) := by
-          exact Finset.prod_le_prod (fun i _ => by omega)
+          exact Finset.prod_le_prod' (fun i _ => by nlinarith [P.radius_pos i])
     _ = (2 * k + 1) ^ e *
         ∏ i : Fin e, (2 * P.radius i + 1) := by
           rw [Finset.prod_mul_distrib]
@@ -245,10 +245,10 @@ theorem scale_card_carrier_le_natDilated (hP : P.Proper) (k : ℕ)
   calc
     k ^ e * ∏ i : Fin e, (2 * P.radius i + 1) =
         ∏ i : Fin e, (k * (2 * P.radius i + 1)) := by
-          rw [← Finset.prod_mul_distrib]
-          simp
+          rw [Finset.prod_mul_distrib, Finset.prod_const, Finset.card_univ,
+            Fintype.card_fin]
     _ ≤ ∏ i : Fin e, (3 * (2 * (k * P.radius i) + 1)) := by
-          exact Finset.prod_le_prod fun i _ => by omega
+          exact Finset.prod_le_prod' fun i _ => by nlinarith [P.radius_pos i]
     _ = 3 ^ e * ∏ i : Fin e, (2 * (k * P.radius i) + 1) := by
           rw [Finset.prod_mul_distrib]
           simp
