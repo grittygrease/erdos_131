@@ -1,5 +1,8 @@
 import Nondividing.Projective.Normalization
 import Mathlib.LinearAlgebra.AffineSpace.AffineSubspace.Defs
+import Mathlib.LinearAlgebra.FiniteDimensional.Basic
+import Mathlib.LinearAlgebra.FiniteDimensional.Lemmas
+import Mathlib.LinearAlgebra.Dimension.Constructions
 
 open scoped BigOperators
 
@@ -29,5 +32,57 @@ theorem vectorSpan_projNorm_le_ker {d : ℕ} (ℓ : Fin d → ℤ)
   rw [realFunctional_projNorm ℓ v (hpos v hv),
     realFunctional_projNorm ℓ w (hpos w hw)]
   ring
+
+/-- **Affine direction equality** (`lem:projective-span` part 2, direction).  When
+the projective family spans `ℝ^d` linearly (`span_projNorm_eq_top`), the direction
+of its affine span is exactly the hyperplane direction `ker λℝ`. -/
+theorem vectorSpan_projNorm_eq_ker {d : ℕ} (hd : 1 ≤ d) (ℓ : Fin d → ℤ)
+    {V : Finset (Fin d → ℤ)} (hVne : V.Nonempty)
+    (hpos : ∀ v ∈ V, intFunctional ℓ v ≠ 0)
+    (hspan : Submodule.span ℝ (projNorm ℓ '' (V : Set (Fin d → ℤ))) = ⊤) :
+    vectorSpan ℝ (projNorm ℓ '' (V : Set (Fin d → ℤ)))
+      = LinearMap.ker (realFunctional ℓ) := by
+  classical
+  obtain ⟨v₀, hv₀⟩ := hVne
+  set S := projNorm ℓ '' (V : Set (Fin d → ℤ)) with hSdef
+  set p := projNorm ℓ v₀ with hpdef
+  have hf1 : realFunctional ℓ p = 1 := realFunctional_projNorm ℓ v₀ (hpos v₀ hv₀)
+  have hpne : p ≠ 0 := by
+    intro h; rw [h] at hf1; simp at hf1
+  have hle : vectorSpan ℝ S ≤ LinearMap.ker (realFunctional ℓ) :=
+    vectorSpan_projNorm_le_ker ℓ hpos
+  have hfr_top : Module.finrank ℝ (Fin d → ℝ) = d := by
+    rw [Module.finrank_pi ℝ, Fintype.card_fin]
+  -- `span S = ⊤ ≤ vectorSpan ⊔ span{p}`
+  have hsub : (⊤ : Submodule ℝ (Fin d → ℝ)) ≤ vectorSpan ℝ S ⊔ Submodule.span ℝ {p} := by
+    rw [← hspan, Submodule.span_le]
+    rintro _ ⟨v, hv, rfl⟩
+    have hdiff : projNorm ℓ v - p ∈ vectorSpan ℝ S := by
+      rw [vectorSpan_def]
+      apply Submodule.subset_span
+      exact ⟨projNorm ℓ v, ⟨v, hv, rfl⟩, p, ⟨v₀, hv₀, rfl⟩, rfl⟩
+    have heq : projNorm ℓ v = (projNorm ℓ v - p) + p := by abel
+    rw [SetLike.mem_coe, heq]
+    exact Submodule.add_mem _ (Submodule.mem_sup_left hdiff)
+      (Submodule.mem_sup_right (Submodule.mem_span_singleton_self p))
+  -- dimension count: `d ≤ finrank(vectorSpan) + 1`
+  have hd_le : d ≤ Module.finrank ℝ (vectorSpan ℝ S) + 1 := by
+    have h1 := Submodule.finrank_sup_add_finrank_inf_eq (vectorSpan ℝ S)
+      (Submodule.span ℝ {p})
+    have h2 := Submodule.finrank_mono hsub
+    rw [finrank_span_singleton hpne] at h1
+    rw [finrank_top, hfr_top] at h2
+    omega
+  -- ker of a nonzero functional has dimension `d - 1`
+  have hker : Module.finrank ℝ (LinearMap.ker (realFunctional ℓ)) + 1 = d := by
+    have hrk := LinearMap.finrank_range_add_finrank_ker (realFunctional ℓ)
+    rw [hfr_top] at hrk
+    have hsurj : Function.Surjective (realFunctional ℓ) := fun r =>
+      ⟨r • p, by rw [map_smul, hf1, smul_eq_mul, mul_one]⟩
+    have hrange : Module.finrank ℝ (LinearMap.range (realFunctional ℓ)) = 1 := by
+      rw [LinearMap.range_eq_top.mpr hsurj, finrank_top, Module.finrank_self]
+    omega
+  apply Submodule.eq_of_le_of_finrank_le hle
+  omega
 
 end Nondividing
