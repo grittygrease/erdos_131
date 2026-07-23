@@ -5,6 +5,7 @@ import Nondividing.Geometry.LatticeIndex
 import Nondividing.Geometry.ConvexLatticeJohn
 import Nondividing.Projective.Normalization
 import Nondividing.Projective.Convexity
+import Nondividing.Projective.Separation
 import Nondividing.Geometry.CoordProjection
 import Nondividing.Numerology
 import Nondividing.Structure
