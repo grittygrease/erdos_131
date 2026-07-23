@@ -90,4 +90,29 @@ theorem shellNonDividing_of_nonDividing {A : Finset ℕ} (hA : NonDividing A)
     rw [hcast, Int.natCast_dvd_natCast] at hdvd
     exact hA a ha S hS hSA hdvd
 
+/-- Shell reduction for the upper bound.  For every `N` there is a dyadic shell
+`[2^j, 2^{j+1})` and a `ShellNonDividing` set `W` inside it (for the identity
+functional, shell parameter `2^j`) retaining a `1/(1+⌊log₂ N⌋)` fraction of
+`F N`:  `F N ≤ (1 + ⌊log₂ N⌋) · |W|`.  This is the pigeonhole step feeding the
+projective theorem at `d = 1`. -/
+theorem exists_shell_reduction (N : ℕ) :
+    ∃ (j : ℕ) (W : Finset ℕ),
+      (∀ a ∈ W, a ∈ Finset.Ico (2 ^ j) (2 ^ (j + 1))) ∧
+      ShellNonDividing (fun a : ℕ => (a : ℤ)) (2 ^ j) W ∧
+      F N ≤ (Nat.log 2 N + 1) * W.card := by
+  classical
+  obtain ⟨A, hAIcc, hnd, hcard⟩ := exists_extremal N
+  obtain ⟨j, hj⟩ := exists_dyadic_shell A hAIcc
+  refine ⟨j, A.filter (fun a => a ∈ Finset.Ico (2 ^ j) (2 ^ (j + 1))), ?_, ?_, ?_⟩
+  · intro a ha
+    exact (Finset.mem_filter.mp ha).2
+  · refine shellNonDividing_of_nonDividing (hnd.mono (Finset.filter_subset _ _)) (2 ^ j) ?_
+    intro a ha
+    have hmem := (Finset.mem_Ico.mp (Finset.mem_filter.mp ha).2)
+    refine ⟨hmem.1, ?_⟩
+    have : a < 2 ^ (j + 1) := hmem.2
+    rw [pow_succ] at this
+    omega
+  · rw [← hcard]; exact hj
+
 end Nondividing
