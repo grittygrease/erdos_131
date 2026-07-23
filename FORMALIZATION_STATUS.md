@@ -15,7 +15,7 @@
 - [x] Section-in-GAP — `section_in_gap` (r<d slab containment, from E2) green
 - [x] Unshifted irreducibility — `UnshiftedIrreducible` predicate + `.self` green (def; consuming lemmas pending)
 - [x] Projective normalization (Phase E) — `intFunctional`/`realFunctional` (+compat), `projNorm`, `realFunctional_projNorm` (λℝ(πv)=1), shell positivity bridge; green
-- [x] Numerology exponents (Phase G data) — `sigma d` with σ₁=1/5, σ₂=1/4, σ₃=1/3, nonneg, <1; green (numerology optimisation lemma pending)
+- [~] Numerology (Phase G) — `sigma d` data (σ₁=1/5, σ₂=1/4, σ₃=1/3, `sigma_pos`≥1/5, `sigma_lt_sigma` strict mono on {d≥1}, <1) + `numerology_base`/`numerology_le_one` (the base inequality `f_{d,e}(0) ≤ 1` for all `1≤d<e`, via reductions `2≤(d-2)(e-2)`, `(e-3)(e-4)≥0`); green. Remaining: antitone-in-ζ + uniform gap `c_*` over finite pairs (full optimisation lemma)
 - [ ] Unshifted preprocessing (accepted moves / stopping / product estimate)
 - [ ] Slab lemmas — slab_count r=d (Fubini/E5 volume); slab_exclusion (r<d assemblable from progression_le+section_in_gap+s→∞; r=d needs slab_count)
 - [x] index_bound PART 1 (full rank) — `index_cardinality_bound` (t^e|P| ≤ 3^e(2|C₀|)^r|B| via lattice_section_box) + `realRank_eq_of_index` (full rank d from irreducibility, exponent-gap contradiction); green. Part 2 (index ≪ γ⁻¹) needs covolume/determinant (deferred)

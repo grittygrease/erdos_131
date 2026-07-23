@@ -124,6 +124,32 @@ theorem numerology_le_one {d e : ℕ} (hd : 1 ≤ d) (hde : d < e) :
   rw [hrw]
   exact div_nonneg (by linarith [hb]) hsd.le
 
+/-- **Numerology inequality at all `ζ ≥ 0`:** `f_{d,e}(ζ) = (σ_e+ζ)(1/(σ_d+ζ) -
+(e-d)) ≤ 1`.  Follows from the `ζ = 0` case since `(σ_e+ζ)(σ_d+ζ) ≥ σ_e σ_d`
+(monotone in `ζ`), which is the manuscript's `f' < 0` content in packaged form. -/
+theorem numerology_le_one_zeta {d e : ℕ} (hd : 1 ≤ d) (hde : d < e)
+    {ζ : ℝ} (hζ : 0 ≤ ζ) :
+    (sigma e + ζ) * (1 / (sigma d + ζ) - ((e : ℝ) - d)) ≤ 1 := by
+  have hsd := sigma_pos d
+  have hse := sigma_pos e
+  have hA : 0 < sigma d + ζ := by linarith
+  have hb := numerology_base hd hde
+  have hde1 : (1 : ℝ) ≤ (e : ℝ) - d := by
+    have : (d : ℝ) + 1 ≤ e := by exact_mod_cast hde
+    linarith
+  have hprod : sigma e * sigma d ≤ (sigma e + ζ) * (sigma d + ζ) := by
+    nlinarith [hζ, hse.le, hsd.le]
+  have hmain : sigma e - sigma d ≤ (sigma e + ζ) * (sigma d + ζ) * ((e : ℝ) - d) :=
+    hb.trans (mul_le_mul_of_nonneg_right hprod (by linarith))
+  rw [← sub_nonneg]
+  have hrw : (1 : ℝ) - (sigma e + ζ) * (1 / (sigma d + ζ) - ((e : ℝ) - d))
+      = ((sigma d + ζ) - (sigma e + ζ)
+          + (sigma e + ζ) * (sigma d + ζ) * ((e : ℝ) - d)) / (sigma d + ζ) := by
+    field_simp
+    ring
+  rw [hrw]
+  exact div_nonneg (by linarith [hmain]) hA.le
+
 /-- Every numerology exponent is nonnegative. -/
 theorem sigma_nonneg (d : ℕ) : 0 ≤ sigma d := by
   unfold sigma
