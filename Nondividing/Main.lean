@@ -3,6 +3,7 @@ import Nondividing.Shell
 import Nondividing.Preprocessing
 import Nondividing.Geometry.LatticeIndex
 import Nondividing.Geometry.ConvexLatticeJohn
+import Nondividing.Projective.Normalization
 import Nondividing.Structure
 import Nondividing.DyadicShell
 
