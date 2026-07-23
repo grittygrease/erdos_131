@@ -193,6 +193,44 @@ theorem progression_counting_core (hP : P.Proper) {t : ℝ} (ht : 1 ≤ t)
           have : (0 : ℝ) ≤ 3 ^ e := by positivity
           exact mul_le_mul_of_nonneg_left h23 this
 
+/-- GAP-valued counting core for the `e ≤ r` case of
+`lem:progression-comparison`.  Here the core set `C₀` lives inside another proper
+GAP `R'` (the rank-`h` progression `Q_H` produced by the convex-lattice John
+lemma), and the subset sums are counted in `R'`'s dilate:
+`t^e |R| ≤ 3^e (2k+1)^h |R'|`. -/
+theorem progression_counting_core_gap {h : ℕ} (hP : P.Proper) {t : ℝ}
+    (ht : 1 ≤ t)
+    (hInj : Set.InjOn P.evalHom (P.dilatedCoeffBox t : Set (Fin e → ℤ)))
+    (R' : GAP d h) (hR' : R'.Proper) {C₀ : Finset (Fin d → ℤ)}
+    (hC₀ : C₀ ⊆ R'.carrier) {k : ℕ} (hk : C₀.card ≤ k) {q : Fin d → ℤ}
+    (hincl : ∀ z ∈ P.dilatedCarrier t, q + z ∈ subsetSums C₀) :
+    t ^ e * (P.carrier.card : ℝ) ≤
+      (3 ^ e * (2 * k + 1) ^ h) * (R'.carrier.card : ℝ) := by
+  classical
+  have h1 := P.scale_card_carrier_le_dilated hP ht hInj
+  have h2 : (P.dilatedCarrier t).card ≤ (subsetSums C₀).card := by
+    apply Finset.card_le_card_of_injOn (fun z => q + z)
+    · intro z hz
+      exact hincl z hz
+    · intro x _ y _ hxy
+      exact add_left_cancel hxy
+  have hsub : subsetSums C₀ ⊆ R'.natDilatedCarrier k := fun v hv =>
+    R'.natDilatedCarrier_mono hk (R'.subsetSums_subset_natDilatedCarrier C₀ hC₀ hv)
+  have h3 : (subsetSums C₀).card ≤ (2 * k + 1) ^ h * R'.carrier.card :=
+    le_trans (Finset.card_le_card hsub) (R'.card_natDilatedCarrier_le_mul hR' k)
+  have h23 : ((P.dilatedCarrier t).card : ℝ) ≤
+      ((2 * k + 1) ^ h : ℝ) * (R'.carrier.card : ℝ) := by
+    calc ((P.dilatedCarrier t).card : ℝ)
+          ≤ (((2 * k + 1) ^ h * R'.carrier.card : ℕ) : ℝ) := by
+            exact_mod_cast le_trans h2 h3
+      _ = ((2 * k + 1) ^ h : ℝ) * (R'.carrier.card : ℝ) := by push_cast; ring
+  calc
+    t ^ e * (P.carrier.card : ℝ)
+        ≤ 3 ^ e * ((P.dilatedCarrier t).card : ℝ) := h1
+    _ ≤ 3 ^ e * (((2 * k + 1) ^ h : ℝ) * (R'.carrier.card : ℝ)) :=
+          mul_le_mul_of_nonneg_left h23 (by positivity)
+    _ = (3 ^ e * (2 * k + 1) ^ h) * (R'.carrier.card : ℝ) := by ring
+
 /-- Assembled `e > r` cardinality inequality of `lem:progression-comparison`:
 `t^e |R| ≤ (3^e k^r) |Q|`.  With the manuscript's choices `t = c·s(C)` and
 `k = |C₀| ≤ s(C)` this is `s^e |R| ≪ s^r |Q|`, i.e. `|R| ≪ s^{-(e-r)} |Q|`. -/
