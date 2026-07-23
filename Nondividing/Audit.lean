@@ -77,3 +77,5 @@ import Nondividing.Main
 #print axioms Nondividing.volume_slab_inter_box_le
 #print axioms Nondividing.exists_width_coordinate
 #print axioms Nondividing.slab_count_full_rank
+-- full slab_count reaches E2 (John placement) + E5 (full-rank count) + core.
+#print axioms Nondividing.slab_count

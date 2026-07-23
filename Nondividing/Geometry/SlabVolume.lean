@@ -248,6 +248,43 @@ noncomputable def slabBody {d : ℕ} (N : Fin d → ℕ) (a : Fin d → ℝ) {c 
     x ∈ slabBody N a hc ↔ x ∈ realBox N ∧ |∑ i, a i * x i| ≤ c :=
   Iff.rfl
 
+/-- Integer membership in the slab body is the integer box-and-slab condition. -/
+theorem realPoint_mem_slabBody_iff {d : ℕ} {N : Fin d → ℕ} {a : Fin d → ℝ}
+    {c : ℝ} (hc : 0 ≤ c) (z : Fin d → ℤ) :
+    External.realPoint z ∈ slabBody N a hc ↔
+      (z ∈ coordinateBox N ∧ |∑ i, a i * (z i : ℝ)| ≤ c) := by
+  rw [mem_slabBody]
+  constructor
+  · rintro ⟨⟨h1, h2⟩, hzslab⟩
+    refine ⟨mem_coordinateBox.mpr fun i => ⟨?_, ?_⟩, hzslab⟩
+    · have hcast : -(N i : ℝ) ≤ (z i : ℝ) := h1 i
+      exact_mod_cast hcast
+    · have hcast : (z i : ℝ) ≤ (N i : ℝ) := h2 i
+      exact_mod_cast hcast
+  · rintro ⟨hzbox, hzslab⟩
+    refine ⟨⟨fun i => ?_, fun i => ?_⟩, hzslab⟩
+    · have := (mem_coordinateBox.mp hzbox i).1
+      show -(N i : ℝ) ≤ (z i : ℝ)
+      exact_mod_cast this
+    · have := (mem_coordinateBox.mp hzbox i).2
+      show (z i : ℝ) ≤ (N i : ℝ)
+      exact_mod_cast this
+
+/-- The slab body is symmetric. -/
+theorem slabBody_neg_mem {d : ℕ} {N : Fin d → ℕ} {a : Fin d → ℝ} {c : ℝ}
+    (hc : 0 ≤ c) {x : Fin d → ℝ} (hx : x ∈ slabBody N a hc) :
+    -x ∈ slabBody N a hc := by
+  obtain ⟨⟨h1, h2⟩, hs⟩ := hx
+  refine ⟨⟨fun i => ?_, fun i => ?_⟩, ?_⟩
+  · show -(N i : ℝ) ≤ (-x) i
+    have := h2 i; simp only [Pi.neg_apply]; linarith
+  · show (-x) i ≤ (N i : ℝ)
+    have := h1 i; simp only [Pi.neg_apply]; linarith
+  · rw [show ∑ i, a i * (-x) i = -(∑ i, a i * x i) from by
+      rw [← Finset.sum_neg_distrib]
+      exact Finset.sum_congr rfl fun i _ => by simp [Pi.neg_apply]]
+    rwa [abs_neg]
+
 end SlabBody
 
 section SlabCount
@@ -345,6 +382,91 @@ theorem slab_count_full_rank (d : ℕ) :
           _ ≤ ((C : ℝ) + 1) * (d * τ) * ((coordinateBox N).card : ℝ) := by
               apply mul_le_mul_of_nonneg_right _ hBnn
               exact mul_le_mul_of_nonneg_right hC1 hdτ
+
+/-- **Slab count** (`lem:slab-count`, both cases).  The integer points `S` of a
+central slab of relative width `τ` in the box lie in a proper symmetric rank-`r`
+GAP `Q` with `|Q| ≤ C|B|` always, and `|Q| ≤ C·dτ·|B|` when `r = d`.  The John
+placement is E2 on the slab body sectioned by `H = span_ℝ S`; the `r = d` count
+is `slab_count_full_rank` (E5 + shear). -/
+theorem slab_count (d : ℕ) :
+    ∃ C : ℝ, 0 < C ∧ ∀ (N : Fin d → ℕ) (a : Fin d → ℝ) (τ : ℝ), 0 ≤ τ →
+      ∀ hw : 0 < ∑ i, |a i| * (N i : ℝ),
+      ∀ (S : Finset (Fin d → ℤ)),
+        (∀ z, z ∈ S ↔ (z ∈ coordinateBox N ∧
+          |∑ i, a i * (z i : ℝ)| ≤ τ * ∑ i, |a i| * (N i : ℝ))) →
+        ∃ (r : ℕ) (Q : GAP d r), Q.Proper ∧ S ⊆ Q.carrier ∧
+          (Q.carrier.card : ℝ) ≤ C * ((coordinateBox N).card : ℝ) ∧
+          (r = d → (Q.carrier.card : ℝ)
+            ≤ C * (d * τ) * ((coordinateBox N).card : ℝ)) := by
+  classical
+  obtain ⟨cJ, hcJ, CJ, hCJ, hE2⟩ := External.discrete_john d
+  obtain ⟨CS, hCS, hcount⟩ := slab_count_full_rank d
+  refine ⟨(CJ : ℝ) * (CS + 1), by positivity, ?_⟩
+  intro N a τ hτ hw S hSmem
+  set w : ℝ := ∑ i, |a i| * (N i : ℝ) with hwdef
+  have hτw : 0 ≤ τ * w := mul_nonneg hτ (le_of_lt hw)
+  set H := External.integerRealSpan S with hHdef
+  set K : Set (Fin d → ℝ) := (slabBody N a hτw : Set (Fin d → ℝ)) ∩ H with hKdef
+  -- E2 hypotheses.
+  have hcompact : IsCompact K :=
+    ((slabBody N a hτw).isCompact').inter_right H.closed_of_finiteDimensional
+  have hconvex : Convex ℝ K := ((slabBody N a hτw).convex').inter H.convex
+  have hsymmK : ∀ x, x ∈ K ↔ -x ∈ K := by
+    intro x
+    constructor
+    · rintro ⟨hb, hH⟩
+      exact ⟨slabBody_neg_mem hτw hb, H.neg_mem hH⟩
+    · rintro ⟨hb, hH⟩
+      have h1 := slabBody_neg_mem hτw hb
+      have h2 := H.neg_mem hH
+      rw [neg_neg] at h1 h2
+      exact ⟨h1, h2⟩
+  have hKH : K ⊆ (H : Set (Fin d → ℝ)) := Set.inter_subset_right
+  have hzK : ∀ z, z ∈ S ↔ External.realPoint z ∈ K := by
+    intro z
+    constructor
+    · intro hz
+      refine ⟨(realPoint_mem_slabBody_iff hτw z).mpr ((hSmem z).mp hz), ?_⟩
+      exact Submodule.subset_span ⟨z, hz, rfl⟩
+    · rintro ⟨hb, _⟩
+      exact (hSmem z).mpr ((realPoint_mem_slabBody_iff hτw z).mp hb)
+  -- E2 John placement.
+  obtain ⟨Q, _hQsteps, hQprop, _hQinner, hQouter, hQcard⟩ :=
+    hE2 (Module.finrank ℝ H) H K S rfl hcompact hconvex hsymmK hKH hzK rfl
+  refine ⟨Module.finrank ℝ H, Q, hQprop, hQouter, ?_, ?_⟩
+  -- Common facts.
+  all_goals
+    have hSbox : S ⊆ coordinateBox N := fun z hz => ((hSmem z).mp hz).1
+    have hSB : (S.card : ℝ) ≤ ((coordinateBox N).card : ℝ) := by
+      exact_mod_cast Finset.card_le_card hSbox
+    have hQS : (Q.carrier.card : ℝ) ≤ (CJ : ℝ) * (S.card : ℝ) := by
+      exact_mod_cast hQcard
+    have hCJ1 : (1 : ℝ) ≤ CS + 1 := by linarith
+  -- Unconditional bound `|Q| ≤ CJ(CS+1)|B|`.
+  · calc (Q.carrier.card : ℝ)
+        ≤ (CJ : ℝ) * (S.card : ℝ) := hQS
+      _ ≤ (CJ : ℝ) * ((coordinateBox N).card : ℝ) :=
+          mul_le_mul_of_nonneg_left hSB (Nat.cast_nonneg _)
+      _ ≤ (CJ : ℝ) * (CS + 1) * ((coordinateBox N).card : ℝ) := by
+          have hBnn : (0 : ℝ) ≤ ((coordinateBox N).card : ℝ) := Nat.cast_nonneg _
+          nlinarith [mul_nonneg (mul_nonneg (Nat.cast_nonneg (α := ℝ) CJ) hCS.le) hBnn]
+  -- Full-rank bound.
+  · intro hr
+    have hHtop : H = ⊤ := by
+      apply Submodule.eq_top_of_finrank_eq
+      rw [hr, Module.finrank_pi ℝ]
+      simp
+    have hspanS : External.integerRealSpan S = ⊤ := by rw [← hHdef]; exact hHtop
+    have hScount : (S.card : ℝ) ≤ CS * (d * τ) * ((coordinateBox N).card : ℝ) :=
+      hcount N a τ hτ hw S hSmem hspanS
+    calc (Q.carrier.card : ℝ)
+        ≤ (CJ : ℝ) * (S.card : ℝ) := hQS
+      _ ≤ (CJ : ℝ) * (CS * (d * τ) * ((coordinateBox N).card : ℝ)) :=
+          mul_le_mul_of_nonneg_left hScount (Nat.cast_nonneg _)
+      _ ≤ (CJ : ℝ) * (CS + 1) * (d * τ) * ((coordinateBox N).card : ℝ) := by
+          have hBnn : (0 : ℝ) ≤ ((coordinateBox N).card : ℝ) := Nat.cast_nonneg _
+          have hdτ : (0 : ℝ) ≤ (d : ℝ) * τ := by positivity
+          nlinarith [Nat.cast_nonneg (α := ℝ) CJ, mul_nonneg hdτ hBnn]
 
 end SlabCount
 
