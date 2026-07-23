@@ -223,6 +223,36 @@ theorem natDilatedCarrier_subset_dilatedCarrier {t : ℝ} {k : ℕ}
   rw [mem_dilatedCarrier]
   exact ⟨n, P.natDilatedCoeffBox_subset_dilatedCoeffBox hk hn, rfl⟩
 
+/-- The origin lies in every dilated carrier (homogeneity). -/
+theorem zero_mem_dilatedCarrier (t : ℝ) : (0 : Fin d → ℤ) ∈ P.dilatedCarrier t := by
+  rw [mem_dilatedCarrier]
+  exact ⟨0, zero_mem_coordinateBox _, map_zero _⟩
+
+/-- The `k`-fold multiple of a carrier point lies in the integer `k`-dilate. -/
+theorem nsmul_mem_natDilatedCarrier {p : Fin d → ℤ} (hp : p ∈ P.carrier)
+    (k : ℕ) : k • p ∈ P.natDilatedCarrier k := by
+  rw [mem_carrier] at hp
+  obtain ⟨n, hn, rfl⟩ := hp
+  rw [coeffBox, mem_coordinateBox] at hn
+  rw [mem_natDilatedCarrier]
+  refine ⟨k • n, ?_, by rw [map_nsmul]⟩
+  rw [natDilatedCoeffBox, mem_coordinateBox]
+  intro i
+  have hi := hn i
+  have hk0 : (0 : ℤ) ≤ (k : ℤ) := Int.natCast_nonneg _
+  simp only [Pi.smul_apply, nsmul_eq_mul]
+  constructor
+  · have : (k : ℤ) * (-(P.radius i : ℤ)) ≤ (k : ℤ) * n i :=
+      mul_le_mul_of_nonneg_left hi.1 hk0
+    push_cast; push_cast at this; linarith
+  · have : (k : ℤ) * n i ≤ (k : ℤ) * (P.radius i : ℤ) :=
+      mul_le_mul_of_nonneg_left hi.2 hk0
+    push_cast; push_cast at this; linarith
+
+/-- Floor half-bound: for `t ≥ 2`, `⌊t⌋₊ ≥ t/2`. -/
+theorem half_le_floor {t : ℝ} (ht : 2 ≤ t) : t / 2 ≤ (⌊t⌋₊ : ℝ) := by
+  linarith [Nat.lt_floor_add_one t]
+
 /-- Hazard: properness of a proper dilate `t·P` (`t ≥ 1`) implies properness of
 `P` itself, since the base coefficient box is a subset of the dilated one and
 injectivity restricts to subsets.  (`lem:progression-comparison`, route §7.4.) -/
