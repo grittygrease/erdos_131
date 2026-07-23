@@ -19,7 +19,7 @@
 - [ ] Unshifted preprocessing (accepted moves / stopping / product estimate)
 - [ ] Slab lemmas — slab_count r=d (Fubini/E5 volume); slab_exclusion (r<d assemblable from progression_le+section_in_gap+s→∞; r=d needs slab_count)
 - [x] index_bound PART 1 (full rank) — `index_cardinality_bound` (t^e|P| ≤ 3^e(2|C₀|)^r|B| via lattice_section_box) + `realRank_eq_of_index` (full rank d from irreducibility, exponent-gap contradiction); green. Part 2 (index ≪ γ⁻¹) needs covolume/determinant (deferred)
-- [x] projective_span PARTS 1, 2 (direction) & 3 — `integerRealSpan_eq_top`/`projective_span_package` (⟨V⟩_ℝ=ℝ^d) + `smul_projNorm_mem_realBox` (X·π(v)∈B_ℝ) + `span_projNorm_eq_top` (π(V) lin spans) + `vectorSpan_projNorm_eq_ker` (aff π(V) direction = ker λℝ, via dim count); green. Remaining: aff π(V)=H_λ as affine subspaces + Ω relative interior (`intrinsicInterior_nonempty`)
+- [x] projective_span — FULLY PROVEN (all parts): part 1 `integerRealSpan_eq_top`/`projective_span_package` (⟨V⟩_ℝ=ℝ^d); part 2 `mem_affineSpan_projNorm_iff` (aff π(V) = H_λ = {λℝ=1}, via `vectorSpan_projNorm_eq_ker` dim count); part 3 `smul_projNorm_mem_realBox` (X·π(v)∈B_ℝ) + `intrinsicInterior_convexHull_projNorm_nonempty` (relative interior, E4 setup). All reach only core axioms
 - [ ] one_sided_filling (E3)
 - [x] Projective duality — FULLY PROVEN: `projective_duality` (a ∈ V is a [1/3,3]-total, 4/(μ|V|)-capped combination of the others when π(V) fails μ-convex position). Via `exists_capped_combination` (Hahn-Banach separation from the capped-simplex hull) + `duality_representation` (arithmetic) + `projNorm_combination`. Reaches only core axioms
 - [ ] Projective convexity / robust zonotope
