@@ -83,3 +83,7 @@ import Nondividing.Main
 #print axioms Nondividing.slab_exclusion_count
 -- full slab_exclusion (explicit constants c*, K): E2+E5+core.
 #print axioms Nondividing.slab_exclusion
+
+-- robust_zonotope infrastructure: zonotope + separation, all core-only.
+#print axioms Nondividing.symZonotope_separation
+#print axioms Nondividing.symZonotope_isCompact

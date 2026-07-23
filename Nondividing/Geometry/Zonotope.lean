@@ -1,4 +1,6 @@
 import Mathlib.Analysis.Convex.Body
+import Mathlib.Analysis.LocallyConvex.Separation
+import Mathlib.Analysis.Convex.Topology
 import Mathlib.Topology.Algebra.Module.FiniteDimension
 import Nondividing.External.DiscreteJohn
 
@@ -103,5 +105,54 @@ theorem symZonotope_support_le {d : ℕ} {C : Finset (Fin d → ℤ)}
     _ = |t v| * |f (External.realPoint v)| := abs_mul _ _
     _ ≤ θ v * |f (External.realPoint v)| :=
         mul_le_mul_of_nonneg_right (ht v hv) (abs_nonneg _)
+
+/-- **Zonotope separation** (`lem:robust-zonotope`, separation step): a point
+outside the symmetric zonotope admits a linear functional `f` with
+`f(y) > ∑_v θ_v·|f(v)|`.  Hahn–Banach separation from the compact convex
+zonotope plus the support-function identity. -/
+theorem symZonotope_separation {d : ℕ} {C : Finset (Fin d → ℤ)}
+    {θ : (Fin d → ℤ) → ℝ} (hθ : ∀ v ∈ C, 0 ≤ θ v) {y : Fin d → ℝ}
+    (hy : y ∉ symZonotope C θ) :
+    ∃ f : (Fin d → ℝ) →ₗ[ℝ] ℝ,
+      (∑ v ∈ C, θ v * |f (External.realPoint v)|) < f y := by
+  classical
+  have hclosed : IsClosed (symZonotope C θ) :=
+    (symZonotope_isCompact C θ hθ).isClosed
+  have hconv : Convex ℝ (symZonotope C θ) := symZonotope_convex C θ
+  obtain ⟨f, u, hfu, huy⟩ :=
+    geometric_hahn_banach_closed_point hconv hclosed hy
+  refine ⟨(f : (Fin d → ℝ) →ₗ[ℝ] ℝ), ?_⟩
+  -- The zonotope contains the reflected coefficient choice achieving the
+  -- support value; measure it against the separation level `u`.
+  set tstar : (Fin d → ℤ) → ℝ :=
+    fun v => if 0 ≤ f (External.realPoint v) then θ v else -(θ v) with htstar
+  have hxstar : (fun j => ∑ v ∈ C, tstar v * (v j : ℝ)) ∈ symZonotope C θ := by
+    refine ⟨tstar, fun v hv => ?_, rfl⟩
+    have hθv := hθ v hv
+    simp only [htstar]
+    by_cases hs : 0 ≤ f (External.realPoint v)
+    · rw [if_pos hs, abs_of_nonneg hθv]
+    · rw [if_neg hs, abs_neg, abs_of_nonneg hθv]
+  have hfx : f (fun j => ∑ v ∈ C, tstar v * (v j : ℝ))
+      = ∑ v ∈ C, θ v * |f (External.realPoint v)| := by
+    rw [show (fun j => ∑ v ∈ C, tstar v * (v j : ℝ))
+        = ∑ v ∈ C, tstar v • External.realPoint v from by
+      funext j
+      rw [Finset.sum_apply]
+      exact Finset.sum_congr rfl fun v _ => by
+        simp [External.realPoint, smul_eq_mul]]
+    rw [map_sum]
+    refine Finset.sum_congr rfl fun v hv => ?_
+    rw [map_smul, smul_eq_mul]
+    simp only [htstar]
+    by_cases hs : 0 ≤ f (External.realPoint v)
+    · rw [if_pos hs, abs_of_nonneg hs]
+    · push_neg at hs
+      rw [if_neg (not_le.mpr hs), abs_of_neg hs]
+      ring
+  have hsupp := hfu _ hxstar
+  rw [hfx] at hsupp
+  calc ∑ v ∈ C, θ v * |f (External.realPoint v)| < u := hsupp
+    _ < f y := huy
 
 end Nondividing
