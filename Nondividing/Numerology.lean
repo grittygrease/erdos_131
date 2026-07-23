@@ -28,6 +28,20 @@ theorem sigma_ge_three {d : ℕ} (hd : 3 ≤ d) : sigma d = ((d : ℝ) - 2) / d 
 theorem sigma_three : sigma 3 = 1 / 3 := by
   rw [sigma_ge_three (le_refl 3)]; norm_num
 
+/-- Every numerology exponent is at least `1/5` (the extremal value `σ₁`). -/
+theorem one_fifth_le_sigma (d : ℕ) : 1 / 5 ≤ sigma d := by
+  unfold sigma
+  split_ifs with h1 h2
+  · norm_num
+  · norm_num
+  · have hd3 : 3 ≤ d := by omega
+    have hd : (3 : ℝ) ≤ (d : ℝ) := by exact_mod_cast hd3
+    rw [le_div_iff₀ (by linarith)]
+    linarith
+
+theorem sigma_pos (d : ℕ) : 0 < sigma d :=
+  lt_of_lt_of_le (by norm_num) (one_fifth_le_sigma d)
+
 /-- Consecutive step: `σ_d < σ_{d+1}` for `d ≥ 1`. -/
 theorem sigma_lt_sigma_succ {d : ℕ} (hd : 1 ≤ d) : sigma d < sigma (d + 1) := by
   match d, hd with
