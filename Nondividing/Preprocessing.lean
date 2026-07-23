@@ -308,6 +308,33 @@ theorem progression_cardinality_bound (hP : P.Proper) {t : ℝ} (ht : 1 ≤ t)
           mul_le_mul_of_nonneg_left hsmul (by positivity)
     _ = (3 ^ e * k ^ d) * ((coordinateBox N).card : ℝ) := by ring
 
+/-- Progression comparison, `e > r` case, stated directly from the E1
+`cfp_structure` outputs: the base properness `hP` is derived internally from the
+dilate properness via `proper_of_dilate`. -/
+theorem progression_comparison_gt {t : ℝ} (ht : 1 ≤ t)
+    (hInj : Set.InjOn P.evalHom (P.dilatedCoeffBox t : Set (Fin e → ℤ)))
+    {N : Fin d → ℕ} {C₀ : Finset (Fin d → ℤ)} (hC₀ : C₀ ⊆ coordinateBox N)
+    {k : ℕ} (hk1 : 1 ≤ k) (hk : C₀.card ≤ k) {q : Fin d → ℤ}
+    (hincl : ∀ z ∈ P.dilatedCarrier t, q + z ∈ subsetSums C₀) :
+    t ^ e * (P.carrier.card : ℝ) ≤
+      (3 ^ e * k ^ d) * ((coordinateBox N).card : ℝ) :=
+  P.progression_cardinality_bound (P.proper_of_dilate ht hInj) ht hInj hC₀ hk1 hk
+    hincl
+
+/-- Progression comparison, `e ≤ r` case, stated directly from the E1
+`cfp_structure` outputs together with the convex-lattice John GAP `Q_H` and its
+cardinality bound. -/
+theorem progression_comparison_le {h : ℕ} {t : ℝ} (ht : 1 ≤ t)
+    (hInj : Set.InjOn P.evalHom (P.dilatedCoeffBox t : Set (Fin e → ℤ)))
+    (R' : GAP d h) (hR' : R'.Proper) {C₀ : Finset (Fin d → ℤ)}
+    (hC₀ : C₀ ⊆ R'.carrier) {k : ℕ} (hk : C₀.card ≤ k) {q : Fin d → ℤ}
+    (hincl : ∀ z ∈ P.dilatedCarrier t, q + z ∈ subsetSums C₀)
+    {Cj : ℕ} {Q : Finset (Fin d → ℤ)} (hJohn : R'.carrier.card ≤ Cj * Q.card) :
+    t ^ e * (P.carrier.card : ℝ) ≤
+      (3 ^ e * (2 * k + 1) ^ h * Cj) * (Q.card : ℝ) :=
+  P.progression_cardinality_bound_le (P.proper_of_dilate ht hInj) ht hInj R' hR'
+    hC₀ hk hincl hJohn
+
 end GAP
 
 end Nondividing

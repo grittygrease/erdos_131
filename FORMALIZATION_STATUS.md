@@ -5,7 +5,7 @@
 - [x] Lower construction — green
 - [x] GAP API — green
 - [x] External interfaces E1–E5 — green
-- [ ] Progression comparison — building blocks started: `card_dilatedCoordinateBox_le` green; next: real-dilation carrier lower bound + E1 core containment chain
+- [~] Progression comparison — both cases assembled from E1 outputs (`progression_comparison_gt`, `progression_comparison_le`) + dilate→base properness (hazard 7.4) green; remaining: structural-package plumbing (fixed `P(C)`,`d(C)`,`s(C)`) to one named lemma
 - [ ] Unshifted preprocessing
 - [ ] Slab lemmas
 - [ ] Filling/index/projective span
