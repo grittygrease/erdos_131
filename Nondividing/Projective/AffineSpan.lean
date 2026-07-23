@@ -1,5 +1,6 @@
 import Nondividing.Projective.Normalization
 import Mathlib.LinearAlgebra.AffineSpace.AffineSubspace.Defs
+import Mathlib.LinearAlgebra.AffineSpace.AffineSubspace.Basic
 import Mathlib.LinearAlgebra.FiniteDimensional.Basic
 import Mathlib.LinearAlgebra.FiniteDimensional.Lemmas
 import Mathlib.LinearAlgebra.Dimension.Constructions
@@ -84,5 +85,31 @@ theorem vectorSpan_projNorm_eq_ker {d : ℕ} (hd : 1 ≤ d) (ℓ : Fin d → ℤ
     omega
   apply Submodule.eq_of_le_of_finrank_le hle
   omega
+
+/-- The affine span of `π(V)` is the affine hyperplane through `π(v₀)` with
+direction `ker λℝ`. -/
+theorem affineSpan_projNorm_eq_mk' {d : ℕ} (hd : 1 ≤ d) (ℓ : Fin d → ℤ)
+    {V : Finset (Fin d → ℤ)} {v₀ : Fin d → ℤ} (hv₀ : v₀ ∈ V)
+    (hpos : ∀ v ∈ V, intFunctional ℓ v ≠ 0)
+    (hspan : Submodule.span ℝ (projNorm ℓ '' (V : Set (Fin d → ℤ))) = ⊤) :
+    affineSpan ℝ (projNorm ℓ '' (V : Set (Fin d → ℤ))) =
+      AffineSubspace.mk' (projNorm ℓ v₀) (LinearMap.ker (realFunctional ℓ)) := by
+  apply AffineSubspace.ext_of_direction_eq
+  · rw [direction_affineSpan, AffineSubspace.direction_mk',
+      vectorSpan_projNorm_eq_ker hd ℓ ⟨v₀, hv₀⟩ hpos hspan]
+  · exact ⟨projNorm ℓ v₀, subset_affineSpan ℝ _ ⟨v₀, hv₀, rfl⟩,
+      AffineSubspace.self_mem_mk' _ _⟩
+
+/-- **`lem:projective-span` part 2 (full):** `aff π(V) = H_λ = {q : λℝ(q) = 1}`. -/
+theorem mem_affineSpan_projNorm_iff {d : ℕ} (hd : 1 ≤ d) (ℓ : Fin d → ℤ)
+    {V : Finset (Fin d → ℤ)} {v₀ : Fin d → ℤ} (hv₀ : v₀ ∈ V)
+    (hpos : ∀ v ∈ V, intFunctional ℓ v ≠ 0)
+    (hspan : Submodule.span ℝ (projNorm ℓ '' (V : Set (Fin d → ℤ))) = ⊤)
+    {q : Fin d → ℝ} :
+    q ∈ affineSpan ℝ (projNorm ℓ '' (V : Set (Fin d → ℤ))) ↔
+      realFunctional ℓ q = 1 := by
+  rw [affineSpan_projNorm_eq_mk' hd ℓ hv₀ hpos hspan, AffineSubspace.mem_mk',
+    LinearMap.mem_ker, vsub_eq_sub, map_sub,
+    realFunctional_projNorm ℓ v₀ (hpos v₀ hv₀), sub_eq_zero]
 
 end Nondividing
