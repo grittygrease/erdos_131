@@ -33,3 +33,5 @@ import Nondividing.Main
 -- lattice_section_box is proved entirely from mathlib (projection existence via
 -- dual separation), so reaches only Lean core axioms.
 #print axioms Nondividing.lattice_section_box
+#print axioms Nondividing.index_cardinality_bound
+#print axioms Nondividing.realRank_eq_of_index
