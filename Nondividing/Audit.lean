@@ -39,3 +39,4 @@ import Nondividing.Main
 #print axioms Nondividing.smul_projNorm_mem_realBox
 #print axioms Nondividing.projective_span_package
 #print axioms Nondividing.duality_representation_from_projective
+#print axioms Nondividing.exists_capped_combination
