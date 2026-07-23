@@ -47,6 +47,42 @@ theorem eventually_one_add_log_le_rpow {δ : ℝ} (hδ : 0 < δ) :
     abs_of_nonneg hxδpos] at hx1
   linarith
 
+/-- Dyadic-log absorption: for any `δ > 0`, eventually `Nat.log 2 N + 1 ≤ N^δ`.
+The exact form the Phase H upper-bound assembly needs to absorb the
+`(⌊log₂ N⌋ + 1)` dyadic-shell factor into the exponent. -/
+theorem eventually_natLog_succ_le_rpow {δ : ℝ} (hδ : 0 < δ) :
+    ∀ᶠ N : ℕ in Filter.atTop, ((Nat.log 2 N : ℝ) + 1) ≤ (N : ℝ) ^ δ := by
+  have hlog2 : (0 : ℝ) < Real.log 2 := Real.log_pos (by norm_num)
+  have hlit : Real.log =o[Filter.atTop] fun x : ℝ => x ^ δ :=
+    isLittleO_log_rpow_atTop hδ
+  have h1 : ∀ᶠ x : ℝ in Filter.atTop,
+      ‖Real.log x‖ ≤ (Real.log 2 / 2) * ‖x ^ δ‖ := hlit.def (by positivity)
+  have h1' : ∀ᶠ N : ℕ in Filter.atTop,
+      ‖Real.log (N : ℝ)‖ ≤ (Real.log 2 / 2) * ‖(N : ℝ) ^ δ‖ :=
+    tendsto_natCast_atTop_atTop.eventually h1
+  have h2 : ∀ᶠ N : ℕ in Filter.atTop, (2 : ℝ) ≤ (N : ℝ) ^ δ :=
+    ((tendsto_rpow_atTop hδ).comp tendsto_natCast_atTop_atTop).eventually_ge_atTop 2
+  have hNlog : ∀ᶠ N : ℕ in Filter.atTop,
+      (Nat.log 2 N : ℝ) ≤ Real.log (N : ℝ) / Real.log 2 := by
+    filter_upwards [Filter.eventually_ge_atTop 1] with N hN
+    have hN0 : N ≠ 0 := by omega
+    have hple : (2 : ℕ) ^ Nat.log 2 N ≤ N := Nat.pow_log_le_self 2 hN0
+    have hle : Real.log ((2 : ℝ) ^ Nat.log 2 N) ≤ Real.log (N : ℝ) := by
+      apply Real.log_le_log (by positivity)
+      exact_mod_cast hple
+    rw [Real.log_pow] at hle
+    rw [le_div_iff₀ hlog2]
+    linarith
+  filter_upwards [h1', h2, hNlog, Filter.eventually_ge_atTop 1] with N hN1 hN2 hN3 hN4
+  have hlogNnn : 0 ≤ Real.log (N : ℝ) := Real.log_nonneg (by exact_mod_cast hN4)
+  have hNδnn : 0 ≤ (N : ℝ) ^ δ := by linarith
+  rw [Real.norm_eq_abs, Real.norm_eq_abs, abs_of_nonneg hlogNnn,
+    abs_of_nonneg hNδnn] at hN1
+  have hstep : Real.log (N : ℝ) / Real.log 2 ≤ (N : ℝ) ^ δ / 2 := by
+    rw [div_le_iff₀ hlog2]
+    nlinarith [hN1]
+  linarith
+
 /-- Natural-argument form: `m / (log m)^n → ∞`. -/
 theorem tendsto_natCast_div_log_pow_atTop (n : ℕ) :
     Filter.Tendsto (fun m : ℕ => (m : ℝ) / (Real.log m) ^ n)
