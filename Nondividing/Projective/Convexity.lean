@@ -118,4 +118,95 @@ theorem duality_representation {d : ℕ} {a : Fin d → ℤ}
     rw [hsumβ]
     nlinarith [hprod, hinv_pos, hga, hga0, hgsum_hi]
 
+/-- **Projective duality modulo separation.**  Given a projective convex
+combination `π(a) = ∑ cᵥ·π(v)` with `0 ≤ cᵥ ≤ (μn)⁻¹`, `∑ cᵥ = 1`, over a shell
+set (so `λa/λv ∈ [1/2,2]`) with `μn ≥ 4`, the integer point `a` is a combination
+of the other points with weights in `[0, 4/μn]` totalling in `[1/3, 3]`.  Only the
+production of the convex combination (Hahn–Banach separation) remains for the
+full `lem:projective-duality`. -/
+theorem duality_representation_from_projective {d : ℕ} {ℓ : Fin d → ℤ}
+    {a : Fin d → ℤ} {V : Finset (Fin d → ℤ)} (haV : a ∈ V) {c : (Fin d → ℤ) → ℝ}
+    {X : ℕ} {μn : ℝ} (hμn : 4 ≤ μn) (hX : 1 ≤ X)
+    (hshell : ∀ v ∈ V, (X : ℤ) ≤ intFunctional ℓ v ∧ intFunctional ℓ v ≤ 2 * X)
+    (hc0 : ∀ v ∈ V, 0 ≤ c v) (hcub : ∀ v ∈ V, c v ≤ (μn)⁻¹)
+    (hcsum : ∑ v ∈ V, c v = 1)
+    (hrepr : projNorm ℓ a = ∑ v ∈ V, c v • projNorm ℓ v) :
+    ∃ β : (Fin d → ℤ) → ℝ,
+      realPoint a = ∑ v ∈ V.erase a, β v • realPoint v ∧
+      (∀ v ∈ V.erase a, 0 ≤ β v ∧ β v ≤ 4 / μn) ∧
+      1 / 3 ≤ ∑ v ∈ V.erase a, β v ∧ ∑ v ∈ V.erase a, β v ≤ 3 := by
+  have hμnpos : 0 < μn := by linarith
+  have hXR : (1 : ℝ) ≤ (X : ℝ) := by exact_mod_cast hX
+  -- positivity and ratio bounds from the shell
+  have hlam_pos : ∀ v ∈ V, 0 < intFunctional ℓ v := by
+    intro v hv
+    have := (hshell v hv).1
+    have : (1 : ℤ) ≤ (X : ℤ) := by exact_mod_cast hX
+    linarith [(hshell v hv).1]
+  have hlam_R : ∀ v ∈ V, 0 < ((intFunctional ℓ v : ℤ) : ℝ) := fun v hv => by
+    exact_mod_cast hlam_pos v hv
+  set g : (Fin d → ℤ) → ℝ :=
+    fun v => c v * ((intFunctional ℓ a : ℝ) / (intFunctional ℓ v : ℝ)) with hg
+  have hratio_lo : ∀ v ∈ V, (1 : ℝ) / 2 ≤
+      (intFunctional ℓ a : ℝ) / (intFunctional ℓ v : ℝ) := by
+    intro v hv
+    rw [le_div_iff₀ (hlam_R v hv)]
+    have h1 : ((X : ℤ) : ℝ) ≤ (intFunctional ℓ a : ℝ) := by exact_mod_cast (hshell a haV).1
+    have h2 : ((intFunctional ℓ v : ℤ) : ℝ) ≤ (2 * X : ℤ) := by exact_mod_cast (hshell v hv).2
+    push_cast at h1 h2 ⊢
+    nlinarith [h1, h2, hXR]
+  have hratio_hi : ∀ v ∈ V,
+      (intFunctional ℓ a : ℝ) / (intFunctional ℓ v : ℝ) ≤ 2 := by
+    intro v hv
+    rw [div_le_iff₀ (hlam_R v hv)]
+    have h1 : (intFunctional ℓ a : ℝ) ≤ (2 * X : ℤ) := by exact_mod_cast (hshell a haV).2
+    have h2 : ((X : ℤ) : ℝ) ≤ (intFunctional ℓ v : ℝ) := by exact_mod_cast (hshell v hv).1
+    push_cast at h1 h2 ⊢
+    nlinarith [h1, h2, hXR]
+  have hgint : realPoint a = ∑ v ∈ V, g v • realPoint v :=
+    projNorm_combination (ne_of_gt (hlam_pos a haV))
+      (fun v hv => ne_of_gt (hlam_pos v hv)) hrepr
+  -- g-bounds
+  have hg0 : ∀ v ∈ V, 0 ≤ g v := fun v hv =>
+    mul_nonneg (hc0 v hv) (div_nonneg (hlam_R a haV).le (hlam_R v hv).le)
+  have hga : g a ≤ 1 / 4 := by
+    have hself : ((intFunctional ℓ a : ℝ) / (intFunctional ℓ a : ℝ)) = 1 :=
+      div_self (ne_of_gt (hlam_R a haV))
+    have : g a = c a := by rw [hg]; simp only [hself, mul_one]
+    have hca : c a ≤ (μn)⁻¹ := hcub a haV
+    have : (μn)⁻¹ ≤ 1 / 4 := by
+      rw [inv_le_iff_one_le_mul₀ hμnpos]; linarith
+    linarith [hcub a haV, ‹g a = c a›]
+  have hgub : ∀ v ∈ V, g v ≤ 2 / μn := by
+    intro v hv
+    have hc := hcub v hv
+    have hr := hratio_hi v hv
+    have : g v = c v * ((intFunctional ℓ a : ℝ) / (intFunctional ℓ v : ℝ)) := rfl
+    rw [this]
+    have hrn : (0 : ℝ) ≤ (intFunctional ℓ a : ℝ) / (intFunctional ℓ v : ℝ) :=
+      div_nonneg (hlam_R a haV).le (hlam_R v hv).le
+    calc c v * _ ≤ (μn)⁻¹ * 2 :=
+          mul_le_mul hc hr hrn (by positivity)
+      _ = 2 / μn := by rw [inv_mul_eq_div]
+  have hgsum_lo : 1 / 2 ≤ ∑ v ∈ V, g v := by
+    calc (1 : ℝ) / 2 = ∑ v ∈ V, c v * (1 / 2) := by rw [← Finset.sum_mul, hcsum]; ring
+      _ ≤ ∑ v ∈ V, g v :=
+          Finset.sum_le_sum fun v hv =>
+            mul_le_mul_of_nonneg_left (hratio_lo v hv) (hc0 v hv)
+  have hgsum_hi : ∑ v ∈ V, g v ≤ 2 := by
+    calc ∑ v ∈ V, g v ≤ ∑ v ∈ V, c v * 2 :=
+          Finset.sum_le_sum fun v hv =>
+            mul_le_mul_of_nonneg_left (hratio_hi v hv) (hc0 v hv)
+      _ = 2 := by rw [← Finset.sum_mul, hcsum]; ring
+  obtain ⟨β, hβrepr, hβbound, hβlo, hβhi⟩ :=
+    duality_representation haV hg0 hga hgub hgsum_lo hgsum_hi hgint
+  refine ⟨β, hβrepr, fun v hv => ⟨(hβbound v hv).1, ?_⟩, hβlo, hβhi⟩
+  have hbv := (hβbound v hv).2
+  have hμne : μn ≠ 0 := ne_of_gt hμnpos
+  have h43 : (4 : ℝ) / 3 * (2 / μn) ≤ 4 / μn := by
+    have hd : (0 : ℝ) < 4 / (3 * μn) := div_pos (by norm_num) (by linarith)
+    have he : 4 / μn - 4 / 3 * (2 / μn) = 4 / (3 * μn) := by field_simp; ring
+    linarith [hd, he]
+  linarith [hbv, h43]
+
 end Nondividing
