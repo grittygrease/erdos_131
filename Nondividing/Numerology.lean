@@ -28,6 +28,29 @@ theorem sigma_ge_three {d : ℕ} (hd : 3 ≤ d) : sigma d = ((d : ℝ) - 2) / d 
 theorem sigma_three : sigma 3 = 1 / 3 := by
   rw [sigma_ge_three (le_refl 3)]; norm_num
 
+/-- Consecutive step: `σ_d < σ_{d+1}` for `d ≥ 1`. -/
+theorem sigma_lt_sigma_succ {d : ℕ} (hd : 1 ≤ d) : sigma d < sigma (d + 1) := by
+  match d, hd with
+  | 1, _ => rw [sigma_one, sigma_two]; norm_num
+  | 2, _ => rw [sigma_two, sigma_three]; norm_num
+  | (n + 3), _ =>
+    rw [sigma_ge_three (by omega), sigma_ge_three (by omega)]
+    have h1 : (0 : ℝ) < (↑(n + 3) : ℝ) := by positivity
+    have h2 : (0 : ℝ) < (↑(n + 3 + 1) : ℝ) := by positivity
+    rw [div_lt_div_iff₀ h1 h2]
+    push_cast
+    nlinarith
+
+/-- `σ` is strictly increasing on `{d ≥ 1}` (so `σ_d < σ_e` for `1 ≤ d < e`),
+the monotonicity feeding the `numerology` optimisation's `f' < 0` step. -/
+theorem sigma_lt_sigma {d e : ℕ} (hd : 1 ≤ d) (hde : d < e) : sigma d < sigma e := by
+  induction e with
+  | zero => omega
+  | succ n ih =>
+    rcases Nat.lt_succ_iff_lt_or_eq.mp hde with h | h
+    · exact (ih h).trans (sigma_lt_sigma_succ (by omega))
+    · subst h; exact sigma_lt_sigma_succ hd
+
 /-- Every numerology exponent is nonnegative. -/
 theorem sigma_nonneg (d : ℕ) : 0 ≤ sigma d := by
   unfold sigma
