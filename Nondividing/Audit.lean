@@ -60,3 +60,7 @@ import Nondividing.Main
 #print axioms Nondividing.filling_assembly
 #print axioms Nondividing.GAP.add_mem_dilatedCarrier
 #print axioms Nondividing.one_sided_filling
+
+-- index_bound part 2 core: [ℤ^d:L] = |det(steps)| is proved from mathlib, core only.
+#print axioms Nondividing.index_range_eq_natAbs_det
+#print axioms Nondividing.GAP.two_pow_mul_prod_radius_le_card

@@ -34,6 +34,16 @@ def evalHom : (Fin e → ℤ) →+ (Fin d → ℤ) where
 @[simp] theorem evalHom_apply (n : Fin e → ℤ) (j : Fin d) :
     P.evalHom n j = ∑ i, n i * P.step i j := rfl
 
+/-- `evalHom` sends the `i`-th standard coefficient vector to the `i`-th step:
+the steps are the columns of the coefficient map. -/
+@[simp] theorem evalHom_single (i : Fin e) :
+    P.evalHom (Pi.single i 1) = P.step i := by
+  funext j
+  rw [evalHom_apply, Finset.sum_eq_single i]
+  · rw [Pi.single_eq_same, one_mul]
+  · intro k _ hk; rw [Pi.single_eq_of_ne hk, zero_mul]
+  · intro h; exact absurd (Finset.mem_univ i) h
+
 noncomputable def carrier : Finset (Fin d → ℤ) := by
   classical
   exact P.coeffBox.image P.evalHom

@@ -8,6 +8,7 @@ import Nondividing.Projective.Convexity
 import Nondividing.Projective.Separation
 import Nondividing.Projective.AffineSpan
 import Nondividing.Geometry.CoordProjection
+import Nondividing.Geometry.IndexDet
 import Nondividing.Numerology
 import Nondividing.QuotientOrder
 import Nondividing.Filling
