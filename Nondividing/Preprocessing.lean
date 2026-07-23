@@ -86,4 +86,26 @@ theorem card_le_dilatedCoordinateBox {r : ℕ} (N : Fin r → ℕ)
           rw [Finset.prod_mul_distrib, Finset.prod_const, Finset.card_univ,
             Fintype.card_fin]
 
+namespace GAP
+
+variable {d e : ℕ} (P : GAP d e)
+
+/-- Real-dilation carrier lower bound: for a proper GAP `P` and a dilation
+`t ≥ 1` whose dilated coefficient box is still evaluated injectively, the dilated
+carrier retains at least a `3^{-e}` fraction of `t^e · |P|`.  This is the
+`s^e |R| ≪ |csR|` step of `lem:progression-comparison`. -/
+theorem scale_card_carrier_le_dilated (hP : P.Proper) {t : ℝ} (ht : 1 ≤ t)
+    (hInj : Set.InjOn P.evalHom (P.dilatedCoeffBox t : Set (Fin e → ℤ))) :
+    t ^ e * (P.carrier.card : ℝ) ≤ 3 ^ e * ((P.dilatedCarrier t).card : ℝ) := by
+  have hcarrier : (P.carrier.card : ℝ) = ((coordinateBox P.radius).card : ℝ) := by
+    rw [P.card_carrier_of_proper hP]; rfl
+  have hdil : ((P.dilatedCarrier t).card : ℝ)
+      = ((coordinateBox (fun i => ⌊t * (P.radius i : ℝ)⌋₊)).card : ℝ) := by
+    rw [P.card_dilatedCarrier_of_injOn t hInj]
+    rfl
+  rw [hcarrier, hdil]
+  exact card_le_dilatedCoordinateBox P.radius (fun i => P.radius_pos i) ht
+
+end GAP
+
 end Nondividing
