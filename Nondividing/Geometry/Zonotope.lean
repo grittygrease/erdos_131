@@ -155,4 +155,114 @@ theorem symZonotope_separation {d : ℕ} {C : Finset (Fin d → ℤ)}
   calc ∑ v ∈ C, θ v * |f (External.realPoint v)| < u := hsupp
     _ < f y := huy
 
+/-- **Robust zonotope, mass-counting core** (`lem:robust-zonotope`).
+If the weights have total mass `≥ m`, each `≤ 1/2`, and every thin central slab
+(relative width controlled by `κ`) holds fewer than `δn/2` points of `C`, then
+the symmetric zonotope `Z⁰` contains the whole box `ε·B_ℝ` as soon as
+`ε ≤ κ(m − δn)`.  Proof: separate a missing point `y` by `f`
+(`symZonotope_separation`), let `ρ = f(y)/(m−δn)`; the slab `{|f| < ρ}` has
+relative width `≤ κ`, so it carries `≤ δn/4` mass, leaving mass `≥ m − δn`
+outside, each contributing `≥ ρ`; total `≥ (m−δn)ρ = f(y)`, contradicting the
+separation. -/
+theorem symZonotope_contains_box_of_slab_bound {d : ℕ}
+    {C : Finset (Fin d → ℤ)} {θ : (Fin d → ℤ) → ℝ} {M : Fin d → ℕ}
+    (hθ0 : ∀ v ∈ C, 0 ≤ θ v) (hθhalf : ∀ v ∈ C, θ v ≤ 1 / 2)
+    {m δn ε κ : ℝ}
+    (hmass : m ≤ ∑ v ∈ C, θ v)
+    (hgap : 0 < m - δn) (hδn : 0 ≤ δn)
+    (hεκ : ε ≤ κ * (m - δn))
+    (hslab : ∀ (f : (Fin d → ℝ) →ₗ[ℝ] ℝ) (ρ : ℝ), 0 < ρ →
+      ρ ≤ κ * (∑ i, |f (Pi.single i (1 : ℝ))| * (M i : ℝ)) →
+      2 * ((C.filter
+        (fun v => |f (External.realPoint v)| < ρ)).card : ℝ) ≤ δn)
+    {y : Fin d → ℝ} (hy : ∀ i, |y i| ≤ ε * (M i : ℝ)) :
+    y ∈ symZonotope C θ := by
+  classical
+  by_contra hy'
+  obtain ⟨f, hsep⟩ := symZonotope_separation hθ0 hy'
+  set z : ℝ := f y with hz
+  set w : ℝ := ∑ i, |f (Pi.single i (1 : ℝ))| * (M i : ℝ) with hw
+  -- `z > 0` since the support sum is nonnegative.
+  have hsum0 : 0 ≤ ∑ v ∈ C, θ v * |f (External.realPoint v)| :=
+    Finset.sum_nonneg fun v hv => mul_nonneg (hθ0 v hv) (abs_nonneg _)
+  have hz0 : 0 < z := lt_of_le_of_lt hsum0 hsep
+  -- `z ≤ ε·w` by expanding `y` along the standard basis.
+  have hzεw : z ≤ ε * w := by
+    have hydecomp : f y = ∑ i, y i * f (Pi.single i (1 : ℝ)) := by
+      conv_lhs => rw [pi_eq_sum_univ' y]
+      rw [map_sum]
+      exact Finset.sum_congr rfl fun i _ => by rw [map_smul, smul_eq_mul]
+    calc z = f y := hz
+      _ ≤ |f y| := le_abs_self _
+      _ = |∑ i, y i * f (Pi.single i (1 : ℝ))| := by rw [hydecomp]
+      _ ≤ ∑ i, |y i * f (Pi.single i (1 : ℝ))| := Finset.abs_sum_le_sum_abs _ _
+      _ = ∑ i, |y i| * |f (Pi.single i (1 : ℝ))| :=
+          Finset.sum_congr rfl fun i _ => abs_mul _ _
+      _ ≤ ∑ i, (ε * (M i : ℝ)) * |f (Pi.single i (1 : ℝ))| :=
+          Finset.sum_le_sum fun i _ =>
+            mul_le_mul_of_nonneg_right (hy i) (abs_nonneg _)
+      _ = ε * w := by
+          rw [hw, Finset.mul_sum]
+          exact Finset.sum_congr rfl fun i _ => by ring
+  -- The slab threshold.
+  set ρ : ℝ := z / (m - δn) with hρ
+  have hρ0 : 0 < ρ := div_pos hz0 hgap
+  have hρκw : ρ ≤ κ * w := by
+    rw [hρ, div_le_iff₀ hgap]
+    calc z ≤ ε * w := hzεw
+      _ ≤ (κ * (m - δn)) * w := by
+          have hw0 : 0 ≤ w := by
+            rw [hw]
+            exact Finset.sum_nonneg fun i _ =>
+              mul_nonneg (abs_nonneg _) (Nat.cast_nonneg _)
+          exact mul_le_mul_of_nonneg_right hεκ hw0
+      _ = κ * w * (m - δn) := by ring
+  have hcard := hslab f ρ hρ0 hρκw
+  -- Split the support sum at the slab.
+  set H : Finset (Fin d → ℤ) :=
+    C.filter (fun v => |f (External.realPoint v)| < ρ) with hH
+  have hsplitθ : ∑ v ∈ C, θ v
+      = (∑ v ∈ H, θ v) + ∑ v ∈ C.filter
+          (fun v => ¬|f (External.realPoint v)| < ρ), θ v := by
+    rw [hH]
+    exact (Finset.sum_filter_add_sum_filter_not C _ _).symm
+  -- Mass on the slab is at most `δn/4 ≤ δn`.
+  have hHmass : ∑ v ∈ H, θ v ≤ δn := by
+    calc ∑ v ∈ H, θ v ≤ ∑ _v ∈ H, (1 : ℝ) / 2 :=
+          Finset.sum_le_sum fun v hv =>
+            hθhalf v (Finset.mem_filter.mp (hH ▸ hv)).1
+      _ = (H.card : ℝ) / 2 := by
+          rw [Finset.sum_const, nsmul_eq_mul]; ring
+      _ ≤ δn := by linarith [hcard]
+  -- Mass outside the slab is at least `m − δn`, each term `≥ ρ`.
+  have houtmass : m - δn ≤ ∑ v ∈ C.filter
+      (fun v => ¬|f (External.realPoint v)| < ρ), θ v := by
+    have := hsplitθ
+    linarith [hmass]
+  have hsupport : (m - δn) * ρ ≤ ∑ v ∈ C, θ v * |f (External.realPoint v)| := by
+    have hterm : ∀ v ∈ C.filter (fun v => ¬|f (External.realPoint v)| < ρ),
+        θ v * ρ ≤ θ v * |f (External.realPoint v)| := by
+      intro v hv
+      obtain ⟨hvC, hvρ⟩ := Finset.mem_filter.mp hv
+      push_neg at hvρ
+      exact mul_le_mul_of_nonneg_left hvρ (hθ0 v hvC)
+    calc (m - δn) * ρ
+        ≤ (∑ v ∈ C.filter (fun v => ¬|f (External.realPoint v)| < ρ), θ v) * ρ :=
+          mul_le_mul_of_nonneg_right houtmass (le_of_lt hρ0)
+      _ = ∑ v ∈ C.filter (fun v => ¬|f (External.realPoint v)| < ρ), θ v * ρ := by
+          rw [Finset.sum_mul]
+      _ ≤ ∑ v ∈ C.filter (fun v => ¬|f (External.realPoint v)| < ρ),
+            θ v * |f (External.realPoint v)| := Finset.sum_le_sum hterm
+      _ ≤ ∑ v ∈ C, θ v * |f (External.realPoint v)| := by
+          apply Finset.sum_le_sum_of_subset_of_nonneg (Finset.filter_subset _ _)
+          intro v hv _
+          exact mul_nonneg (hθ0 v hv) (abs_nonneg _)
+  -- Contradiction: `z ≤ (m−δn)ρ = z` beats the separation.
+  have hfinal : z ≤ ∑ v ∈ C, θ v * |f (External.realPoint v)| := by
+    have : (m - δn) * ρ = z := by
+      rw [hρ]
+      field_simp
+    linarith [hsupport]
+  exact absurd hsep (not_lt_of_ge hfinal)
+
 end Nondividing

@@ -87,3 +87,4 @@ import Nondividing.Main
 -- robust_zonotope infrastructure: zonotope + separation, all core-only.
 #print axioms Nondividing.symZonotope_separation
 #print axioms Nondividing.symZonotope_isCompact
+#print axioms Nondividing.symZonotope_contains_box_of_slab_bound
