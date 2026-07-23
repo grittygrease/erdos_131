@@ -86,6 +86,43 @@ theorem card_le_dilatedCoordinateBox {r : ℕ} (N : Fin r → ℕ)
           rw [Finset.prod_mul_distrib, Finset.prod_const, Finset.card_univ,
             Fintype.card_fin]
 
+/-- Subset sums of at most `k` points drawn from a symmetric coordinate box lie
+in the `k`-fold dilated coordinate box.  This is the `Σ(C₀) ⊆ sQ` step of
+`lem:progression-comparison` (with `k = |C₀| ≤ s`). -/
+theorem subsetSums_subset_coordinateBox {r : ℕ} {M : Fin r → ℕ}
+    {C : Finset (Fin r → ℤ)} (hC : C ⊆ coordinateBox M) {k : ℕ}
+    (hk : C.card ≤ k) :
+    subsetSums C ⊆ coordinateBox (fun i => k * M i) := by
+  intro v hv
+  obtain ⟨S, hSC, rfl⟩ := mem_subsetSums.mp hv
+  rw [mem_coordinateBox]
+  intro i
+  have hbound (a : Fin r → ℤ) (ha : a ∈ S) :
+      -(M i : ℤ) ≤ a i ∧ a i ≤ M i :=
+    (mem_coordinateBox.mp (hC (hSC ha))) i
+  have hcard : (S.card : ℤ) ≤ k := by
+    exact_mod_cast le_trans (Finset.card_le_card hSC) hk
+  have hMnn : (0 : ℤ) ≤ M i := Int.natCast_nonneg _
+  constructor
+  · calc
+      -((k * M i : ℕ) : ℤ) ≤ -((S.card * M i : ℕ) : ℤ) := by
+            have : (S.card * M i : ℤ) ≤ (k * M i : ℤ) :=
+              mul_le_mul_of_nonneg_right hcard hMnn
+            push_cast at this ⊢; linarith
+      _ = ∑ a ∈ S, -(M i : ℤ) := by
+            rw [Finset.sum_const, nsmul_eq_mul]; push_cast; ring
+      _ ≤ ∑ a ∈ S, a i := Finset.sum_le_sum fun a ha => (hbound a ha).1
+      _ = (∑ a ∈ S, a) i := by simp
+  · calc
+      (∑ a ∈ S, a) i = ∑ a ∈ S, a i := by simp
+      _ ≤ ∑ a ∈ S, (M i : ℤ) := Finset.sum_le_sum fun a ha => (hbound a ha).2
+      _ = ((S.card * M i : ℕ) : ℤ) := by
+            rw [Finset.sum_const, nsmul_eq_mul]; push_cast; ring
+      _ ≤ ((k * M i : ℕ) : ℤ) := by
+            have : (S.card * M i : ℤ) ≤ (k * M i : ℤ) :=
+              mul_le_mul_of_nonneg_right hcard hMnn
+            push_cast at this ⊢; linarith
+
 namespace GAP
 
 variable {d e : ℕ} (P : GAP d e)
