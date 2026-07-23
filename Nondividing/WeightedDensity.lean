@@ -113,4 +113,85 @@ theorem exists_constant_subseq {α : Type*} [Finite α] (f : ℕ → α) :
   have hrange := Nat.orderEmbeddingOfSet_range (f ⁻¹' {a})
   exact (Set.ext_iff.mp hrange _).mp (Set.mem_range_self k)
 
+section Perturbation
+
+open Metric
+
+/-- **Half-space ∩ ball is infinite** (perturbation step of
+`lem:weighted-density`): in `ℝ^r`, `r ≥ 1`, a closed half-space containing the
+centre meets every ball in infinitely many points — walk from the centre in a
+direction the functional does not decrease. -/
+theorem halfspace_ball_infinite {r : ℕ} (hr : 1 ≤ r)
+    (ℓ : Module.Dual ℝ (Fin r → ℝ)) (t : ℝ) {x : Fin r → ℝ} (hx : t ≤ ℓ x)
+    {ρ : ℝ} (hρ : 0 < ρ) :
+    ({y : Fin r → ℝ | t ≤ ℓ y} ∩ Metric.ball x ρ).Infinite := by
+  -- A direction `v ≠ 0` with `ℓ v ≥ 0`.
+  set v₀ : Fin r → ℝ := Pi.single ⟨0, hr⟩ 1 with hv₀
+  have hv₀ne : v₀ ≠ 0 := by
+    intro h
+    have := congrFun h ⟨0, hr⟩
+    rw [hv₀, Pi.single_eq_same, Pi.zero_apply] at this
+    exact one_ne_zero this
+  set v : Fin r → ℝ := if 0 ≤ ℓ v₀ then v₀ else -v₀ with hv
+  have hvne : v ≠ 0 := by
+    rw [hv]
+    by_cases h : 0 ≤ ℓ v₀ <;> simp [h, hv₀ne]
+  have hℓv : 0 ≤ ℓ v := by
+    rw [hv]
+    by_cases h : 0 ≤ ℓ v₀
+    · rwa [if_pos h]
+    · rw [if_neg h, map_neg]
+      push_neg at h
+      linarith
+  have hvnorm : 0 < ‖v‖ := norm_pos_iff.mpr hvne
+  -- The injective segment `s ↦ x + s • v`, `s ∈ (0, ρ/‖v‖)`.
+  set f : ℝ → (Fin r → ℝ) := fun s => x + s • v with hf
+  have hfinj : Function.Injective f := by
+    intro s₁ s₂ h
+    have h2 : s₁ • v = s₂ • v := by
+      have h3 : x + s₁ • v = x + s₂ • v := h
+      have := congrArg (fun z => z - x) h3
+      simpa [add_sub_cancel_left] using this
+    have hsv : (s₁ - s₂) • v = 0 := by rw [sub_smul, h2, sub_self]
+    rcases smul_eq_zero.mp hsv with h' | h'
+    · exact sub_eq_zero.mp h'
+    · exact absurd h' hvne
+  have himg : f '' (Set.Ioo 0 (ρ / ‖v‖)) ⊆
+      {y : Fin r → ℝ | t ≤ ℓ y} ∩ Metric.ball x ρ := by
+    rintro _ ⟨s, ⟨hs0, hsρ⟩, rfl⟩
+    constructor
+    · show t ≤ ℓ (x + s • v)
+      rw [map_add, map_smul, smul_eq_mul]
+      nlinarith
+    · rw [Metric.mem_ball, dist_eq_norm]
+      rw [show x + s • v - x = s • v from by abel]
+      rw [norm_smul, Real.norm_eq_abs, abs_of_pos hs0]
+      calc s * ‖v‖ < (ρ / ‖v‖) * ‖v‖ :=
+            mul_lt_mul_of_pos_right hsρ hvnorm
+        _ = ρ := by field_simp
+  exact Set.Infinite.mono himg
+    ((Set.Ioo_infinite (by positivity)).image (hfinj.injOn))
+
+/-- **Ball avoiding finitely many closed sets**: a point outside finitely many
+closed sets has a ball avoiding all of them. -/
+theorem exists_ball_disjoint_closed {X : Type*} [MetricSpace X] {ι : Type*}
+    (s : Finset ι) (F : ι → Set X) (hF : ∀ i ∈ s, IsClosed (F i))
+    (x : X) (hx : ∀ i ∈ s, x ∉ F i) :
+    ∃ δ : ℝ, 0 < δ ∧ ∀ i ∈ s, Metric.ball x δ ∩ F i = ∅ := by
+  classical
+  have hopen : IsOpen (⋂ i ∈ s, (F i)ᶜ) :=
+    isOpen_biInter_finset fun i hi => (hF i hi).isOpen_compl
+  have hxU : x ∈ ⋂ i ∈ s, (F i)ᶜ := by
+    rw [Set.mem_iInter₂]
+    exact fun i hi => hx i hi
+  obtain ⟨δ, hδ0, hδsub⟩ := Metric.isOpen_iff.mp hopen x hxU
+  refine ⟨δ, hδ0, fun i hi => ?_⟩
+  rw [Set.eq_empty_iff_forall_notMem]
+  intro y ⟨hyball, hyF⟩
+  have := hδsub hyball
+  rw [Set.mem_iInter₂] at this
+  exact this i hi hyF
+
+end Perturbation
+
 end Nondividing
