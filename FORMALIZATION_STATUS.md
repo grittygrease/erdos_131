@@ -15,7 +15,7 @@
 - [x] Section-in-GAP — `section_in_gap` (r<d slab containment, from E2) green
 - [x] Unshifted irreducibility — `UnshiftedIrreducible` predicate + `.self` green (def; consuming lemmas pending)
 - [x] Projective normalization (Phase E) — `intFunctional`/`realFunctional` (+compat), `projNorm`, `realFunctional_projNorm` (λℝ(πv)=1), shell positivity bridge; green
-- [~] Numerology (Phase G) — `sigma d` data (σ₁=1/5, σ₂=1/4, σ₃=1/3, `sigma_pos`≥1/5, `sigma_lt_sigma` strict mono on {d≥1}, <1) + `numerology_base`/`numerology_le_one` (the base inequality `f_{d,e}(0) ≤ 1` for all `1≤d<e`, via reductions `2≤(d-2)(e-2)`, `(e-3)(e-4)≥0`); green. Remaining: antitone-in-ζ + uniform gap `c_*` over finite pairs (full optimisation lemma)
+- [x] Numerology (Phase G) — FULLY PROVEN: `numerology` (exact manuscript ∃ε₀,c_* form, `1≤d<e≤D`, `ζ∈[ζ₀,1-σ_d]`, `0<ε<ε₀`) via `numerology_strict_eps` → `numerology_strict` (explicit gap `c_*=ζ₀/5`, `ε₀=ζ₀/(10D)`) → `numerology_base` (`f(0)≤1`). Key simplification: `ζ≤1-σ_d ⟹ σ_d+ζ≤1` gives the uniform gap explicitly, NO compactness/continuity argument. Plus `sigma` data (mono, ≥1/5, <1). Reaches only core axioms
 - [ ] Unshifted preprocessing (accepted moves / stopping / product estimate)
 - [ ] Slab lemmas — slab_count r=d (Fubini/E5 volume); slab_exclusion (r<d assemblable from progression_le+section_in_gap+s→∞; r=d needs slab_count)
 - [x] index_bound PART 1 (full rank) — `index_cardinality_bound` (t^e|P| ≤ 3^e(2|C₀|)^r|B| via lattice_section_box) + `realRank_eq_of_index` (full rank d from irreducibility, exponent-gap contradiction); green. Part 2 (index ≪ γ⁻¹) needs covolume/determinant (deferred)
