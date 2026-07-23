@@ -37,6 +37,27 @@ theorem not_indexedMuConvexPosition_iff {r : ℕ} {ι : Type*} [Fintype ι]
   push_neg
   rfl
 
+/-- Multiplying a projective convex combination `π(a) = ∑ cᵥ·π(v)` by `λ(a)`
+turns it into an integer-point relation `a = ∑ (cᵥ·λa/λv)·v`.  This connects the
+separation output to `duality_representation`. -/
+theorem projNorm_combination {d : ℕ} {ℓ : Fin d → ℤ} {a : Fin d → ℤ}
+    {V : Finset (Fin d → ℤ)} {c : (Fin d → ℤ) → ℝ}
+    (haℓ : intFunctional ℓ a ≠ 0) (hposV : ∀ v ∈ V, intFunctional ℓ v ≠ 0)
+    (hrepr : projNorm ℓ a = ∑ v ∈ V, c v • projNorm ℓ v) :
+    realPoint a = ∑ v ∈ V,
+      (c v * ((intFunctional ℓ a : ℝ) / (intFunctional ℓ v : ℝ))) • realPoint v := by
+  have ha' : ((intFunctional ℓ a : ℤ) : ℝ) ≠ 0 := by exact_mod_cast haℓ
+  have h1 : realPoint a = (intFunctional ℓ a : ℝ) • projNorm ℓ a := by
+    rw [projNorm, smul_inv_smul₀ ha']
+  rw [h1, hrepr, Finset.smul_sum]
+  apply Finset.sum_congr rfl
+  intro v hv
+  have hv' : ((intFunctional ℓ v : ℤ) : ℝ) ≠ 0 := by exact_mod_cast hposV v hv
+  rw [projNorm, smul_smul, smul_smul]
+  congr 1
+  rw [div_eq_mul_inv]
+  ring
+
 /-- **Duality representation** (`lem:projective-duality`, arithmetic core).  From
 a bounded convex combination realising `a` as `∑_{v∈V} gᵥ·v` — where the
 self-weight `g a ≤ 1/4`, all weights are in `[0,G]`, and the total weight lies in
