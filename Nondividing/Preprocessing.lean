@@ -414,4 +414,66 @@ theorem progression_comparison_le {h : ℕ} {t : ℝ} (ht : 1 ≤ t)
 
 end GAP
 
+/-- `lem:gap-contained` (integer/real form).  With the E1 core data, once
+`c·s(C) ≥ 2` every point `p ∈ P(C)` satisfies `c·|pᵢ| ≤ 4·Mᵢ` in each coordinate;
+i.e. `P(C)` is contained in the fixed dilate `(4/c)·B` of the box, independently
+of the scale `s`.  This uses the homogeneous `kp ∈ csP` argument with
+`k = ⌊cs⌋ ≥ cs/2`. -/
+theorem gap_contained {d e : ℕ} (P : GAP d e) {c s : ℝ} (hc : 0 < c) (hs : 0 < s)
+    (hcs2 : 2 ≤ c * s) {M : Fin d → ℕ} {C₀ : Finset (Fin d → ℤ)}
+    (hC₀ : C₀ ⊆ coordinateBox M) (hk0 : (C₀.card : ℝ) ≤ s) {q : Fin d → ℤ}
+    (hincl : ∀ z ∈ P.dilatedCarrier (c * s), q + z ∈ subsetSums C₀) :
+    ∀ p ∈ P.carrier, ∀ i, c * |(p i : ℝ)| ≤ 4 * (M i : ℝ) := by
+  intro p hp i
+  set t := c * s with ht_def
+  have ht0 : (0 : ℝ) ≤ t := by rw [ht_def]; positivity
+  set k := ⌊t⌋₊ with hk_def
+  set K : ℝ := (C₀.card : ℝ) * M i with hK_def
+  have hsub : subsetSums C₀ ⊆ coordinateBox (fun j => C₀.card * M j) :=
+    subsetSums_subset_coordinateBox hC₀ (le_refl _)
+  -- Coordinate bound for a subset-sum point.
+  have hboxbound : ∀ w ∈ subsetSums C₀, |(w i : ℝ)| ≤ K := by
+    intro w hw
+    have hmem := (mem_coordinateBox.mp (hsub hw)) i
+    have hz : |w i| ≤ ((C₀.card * M i : ℕ) : ℤ) := abs_le.mpr hmem
+    have hcast : (|w i| : ℝ) ≤ (((C₀.card * M i : ℕ) : ℤ) : ℝ) := by exact_mod_cast hz
+    rw [hK_def]
+    calc |(w i : ℝ)| = (|w i| : ℝ) := by rw [← Int.cast_abs]
+      _ ≤ (((C₀.card * M i : ℕ) : ℤ) : ℝ) := hcast
+      _ = (C₀.card : ℝ) * (M i : ℝ) := by push_cast; ring
+  -- `q` itself is a subset sum (take `z = 0`).
+  have hq : q ∈ subsetSums C₀ := by
+    have h0 := hincl 0 (P.zero_mem_dilatedCarrier t)
+    rwa [add_zero] at h0
+  have hqbound : |(q i : ℝ)| ≤ K := hboxbound q hq
+  -- `q + k•p` is a subset sum.
+  have hkp : k • p ∈ P.dilatedCarrier t :=
+    P.natDilatedCarrier_subset_dilatedCarrier (Nat.floor_le ht0)
+      (P.nsmul_mem_natDilatedCarrier hp k)
+  have hqkpbound : |((q + k • p) i : ℝ)| ≤ K := hboxbound _ (hincl (k • p) hkp)
+  -- Extract `k·|pᵢ| ≤ 2K`.
+  have e1 : ((q + k • p) i : ℝ) = (q i : ℝ) + (k : ℝ) * (p i : ℝ) := by
+    have hstep : (q + k • p) i = q i + (k : ℤ) * p i := by
+      simp [Pi.add_apply, Pi.smul_apply, nsmul_eq_mul]
+    rw [hstep]; push_cast; ring
+  have habs : |(k : ℝ) * (p i : ℝ)| ≤ K + K := by
+    have hrw : (k : ℝ) * (p i : ℝ) = ((q + k • p) i : ℝ) + (-(q i : ℝ)) := by
+      rw [e1]; ring
+    rw [hrw]
+    refine (abs_add_le _ _).trans ?_
+    rw [abs_neg]
+    exact add_le_add hqkpbound hqbound
+  have hkpi : (k : ℝ) * |(p i : ℝ)| ≤ 2 * K := by
+    rw [abs_mul, abs_of_nonneg (by positivity : (0 : ℝ) ≤ (k : ℝ))] at habs
+    linarith
+  -- `k ≥ t/2`, and `K ≤ s·Mᵢ`, so combine to cancel `s`.
+  have hkhalf : t / 2 ≤ (k : ℝ) := GAP.half_le_floor hcs2
+  have habs0 : (0 : ℝ) ≤ |(p i : ℝ)| := abs_nonneg _
+  have hKs : K ≤ s * M i := by
+    rw [hK_def]; exact mul_le_mul_of_nonneg_right hk0 (Nat.cast_nonneg _)
+  have step : t / 2 * |(p i : ℝ)| ≤ 2 * (s * M i) :=
+    le_trans (mul_le_mul_of_nonneg_right hkhalf habs0) (by linarith [hkpi, hKs])
+  rw [ht_def] at step
+  nlinarith [step, hs, habs0]
+
 end Nondividing
