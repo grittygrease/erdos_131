@@ -143,6 +143,43 @@ theorem scale_card_carrier_le_dilated (hP : P.Proper) {t : ℝ} (ht : 1 ≤ t)
   rw [hcarrier, hdil]
   exact card_le_dilatedCoordinateBox P.radius (fun i => P.radius_pos i) ht
 
+/-- Counting core of `lem:progression-comparison`.  Given a proper rank-`e` GAP
+`R = P` living in `ℤ^r`, a dilation `t = c·s ≥ 1` whose dilated coefficient box
+is evaluated injectively, a core set `C₀` inside a coordinate box `Q` of radii
+`N` with `|C₀| ≤ k`, and a translate `q` realizing `q + tR ⊆ Σ(C₀)`, the whole
+counting chain `t^e |R| ≤ 3^e |Σ(C₀)| ≤ 3^e |kQ|` holds.  Both the `e > r` and
+`e ≤ r` cases of the manuscript feed through this inequality with different
+choices of `Q`. -/
+theorem progression_counting_core (hP : P.Proper) {t : ℝ} (ht : 1 ≤ t)
+    (hInj : Set.InjOn P.evalHom (P.dilatedCoeffBox t : Set (Fin e → ℤ)))
+    {N : Fin d → ℕ} {C₀ : Finset (Fin d → ℤ)} (hC₀ : C₀ ⊆ coordinateBox N)
+    {k : ℕ} (hk : C₀.card ≤ k) {q : Fin d → ℤ}
+    (hincl : ∀ z ∈ P.dilatedCarrier t, q + z ∈ subsetSums C₀) :
+    t ^ e * (P.carrier.card : ℝ) ≤
+      3 ^ e * ((coordinateBox (fun i => k * N i)).card : ℝ) := by
+  classical
+  -- Step 1: `t^e |R| ≤ 3^e |tR|`.
+  have h1 := P.scale_card_carrier_le_dilated hP ht hInj
+  -- Step 2: `|tR| ≤ |Σ(C₀)|` via the injection `z ↦ q + z`.
+  have h2 : (P.dilatedCarrier t).card ≤ (subsetSums C₀).card := by
+    apply Finset.card_le_card_of_injOn (fun z => q + z)
+    · intro z hz
+      exact hincl z hz
+    · intro x _ y _ h
+      exact add_left_cancel h
+  -- Step 3: `Σ(C₀) ⊆ kQ`.
+  have h3 : (subsetSums C₀).card ≤ (coordinateBox (fun i => k * N i)).card :=
+    Finset.card_le_card (subsetSums_subset_coordinateBox hC₀ hk)
+  have h23 : ((P.dilatedCarrier t).card : ℝ) ≤
+      ((coordinateBox (fun i => k * N i)).card : ℝ) := by
+    exact_mod_cast le_trans h2 h3
+  calc
+    t ^ e * (P.carrier.card : ℝ)
+        ≤ 3 ^ e * ((P.dilatedCarrier t).card : ℝ) := h1
+    _ ≤ 3 ^ e * ((coordinateBox (fun i => k * N i)).card : ℝ) := by
+          have : (0 : ℝ) ≤ 3 ^ e := by positivity
+          exact mul_le_mul_of_nonneg_left h23 this
+
 end GAP
 
 end Nondividing
