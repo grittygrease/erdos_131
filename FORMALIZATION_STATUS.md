@@ -12,13 +12,18 @@
 - [x] gap_contained — `gap_contained` (P(C) ⊆ fixed dilate (4/c)·B), hazard 7.4 + homogeneous kp∈csP; green
 - [x] Asymptotic engine — `tendsto_id_div_log_pow_atTop` (s(C)→∞), `tendsto_log_div_log_of_rpow_bounds` (log-ratio squeeze for main_log_limit); green
 - [x] Dyadic shell (Phase H) — `exists_dyadic_shell` (pigeonhole), `shellNonDividing_of_nonDividing` (bridge), `exists_shell_reduction` (F N ≤ (1+log₂N)·|W|, W ShellNonDividing); green
-- [ ] Unshifted preprocessing
-- [ ] Slab lemmas (slab_count needs Fubini/E5; slab_exclusion consumes progression bounds)
-- [ ] one_sided_filling / index_bound / projective_span
+- [x] Section-in-GAP — `section_in_gap` (r<d slab containment, from E2) green
+- [x] Unshifted irreducibility — `UnshiftedIrreducible` predicate + `.self` green (def; consuming lemmas pending)
+- [x] Projective normalization (Phase E) — `intFunctional`/`realFunctional` (+compat), `projNorm`, `realFunctional_projNorm` (λℝ(πv)=1), shell positivity bridge; green
+- [x] Numerology exponents (Phase G data) — `sigma d` with σ₁=1/5, σ₂=1/4, σ₃=1/3, nonneg, <1; green (numerology optimisation lemma pending)
+- [ ] Unshifted preprocessing (accepted moves / stopping / product estimate)
+- [ ] Slab lemmas — slab_count r=d (Fubini/E5 volume); slab_exclusion (r<d assemblable from progression_le+section_in_gap+s→∞; r=d needs slab_count)
+- [ ] one_sided_filling (E3) / index_bound (covolume) / projective_span
 - [ ] Projective duality / convexity / robust zonotope
-- [ ] Weighted density
-- [ ] Cap lifting
-- [ ] Numerology
-- [ ] Projective theorem
-- [ ] Main theorem (upper: dyadic shell [done] → projective thm [pending]; log limit engine [done])
-- [~] Audit — extended to progression_comparison_package/nonempty_package (reach only cfp_structure+core); pending main theorems
+- [ ] Weighted density (indexed, from E4 by perturbation+compactness)
+- [ ] Cap lifting (perspective-cone volume)
+- [ ] Numerology optimisation lemma
+- [ ] Projective theorem (density increment)
+- [x] Main log limit — reduced to `main_upper_eps` alone (`main_log_limit_of_upper`); Phase H pigeonhole + d=1 bridge (`shellNonDividing_dOne`) done
+- [ ] Main upper eps (needs projective theorem at d=1)
+- [~] Audit — verifies progression comparison (E1/E2), section_in_gap (E2), gap_contained + Phase H chain (core only); pending deep theorems
