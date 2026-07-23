@@ -1,4 +1,5 @@
 import Nondividing.External.ConvexDensity
+import Nondividing.External.ConvexGeometry
 import Nondividing.Projective.Convexity
 
 open scoped BigOperators
@@ -286,5 +287,82 @@ theorem exists_perturbed_family {r n : ℕ} (hr : 1 ≤ r)
     exact this
 
 end Perturbation
+
+section BlaschkeLimits
+
+open Metric Filter
+
+/-- Points of the approximating bodies converge into the Blaschke limit:
+if `xₘ ∈ Kₘ`, `xₘ → x₀`, and `Kₘ → L` in the Hausdorff metric, then `x₀ ∈ L`. -/
+theorem mem_of_tendsto_convexBody {d : ℕ}
+    {K : ℕ → ConvexBody (Fin d → ℝ)} {L : ConvexBody (Fin d → ℝ)}
+    (hKL : Tendsto K atTop (nhds L))
+    {x : ℕ → Fin d → ℝ} {x₀ : Fin d → ℝ}
+    (hx : Tendsto x atTop (nhds x₀)) (hmem : ∀ m, x m ∈ K m) :
+    x₀ ∈ L := by
+  have hL : IsClosed (L : Set (Fin d → ℝ)) := L.isCompact'.isClosed
+  show x₀ ∈ (L : Set (Fin d → ℝ))
+  rw [IsClosed.mem_iff_infDist_zero hL L.nonempty']
+  have hbound : ∀ m, infDist x₀ (L : Set (Fin d → ℝ))
+      ≤ dist (x m) x₀ + dist (K m) L := by
+    intro m
+    have h1 : infDist x₀ (L : Set (Fin d → ℝ))
+        ≤ infDist (x m) (L : Set (Fin d → ℝ)) + dist x₀ (x m) :=
+      infDist_le_infDist_add_dist
+    have h2 : infDist (x m) (L : Set (Fin d → ℝ))
+        ≤ hausdorffDist (K m : Set (Fin d → ℝ)) L :=
+      infDist_le_hausdorffDist_of_mem (hmem m) ConvexBody.hausdorffEDist_ne_top
+    have h3 : dist (K m) L = hausdorffDist (K m : Set (Fin d → ℝ)) L := rfl
+    rw [dist_comm x₀ (x m)] at h1
+    rw [h3]
+    linarith
+  have hd1 : Tendsto (fun m => dist (x m) x₀) atTop (nhds 0) :=
+    tendsto_iff_dist_tendsto_zero.mp hx
+  have hd2 : Tendsto (fun m => dist (K m) L) atTop (nhds 0) :=
+    tendsto_iff_dist_tendsto_zero.mp hKL
+  have htend : Tendsto (fun m => dist (x m) x₀ + dist (K m) L) atTop (nhds 0) := by
+    simpa using hd1.add hd2
+  have hle : infDist x₀ (L : Set (Fin d → ℝ)) ≤ 0 :=
+    le_of_tendsto_of_tendsto' tendsto_const_nhds htend hbound
+  linarith [infDist_nonneg (x := x₀) (s := (L : Set (Fin d → ℝ)))]
+
+/-- The Blaschke limit stays inside the shrinking neighbourhoods: if every
+point of `Kₘ` is `εₘ`-close to `Ω` with `εₘ → 0` and `Kₘ → L`, then `L ⊆ Ω`. -/
+theorem tendsto_convexBody_subset {d : ℕ}
+    {K : ℕ → ConvexBody (Fin d → ℝ)} {L : ConvexBody (Fin d → ℝ)}
+    (hKL : Tendsto K atTop (nhds L))
+    {Omega : Set (Fin d → ℝ)} (hΩc : IsClosed Omega) (hΩne : Omega.Nonempty)
+    {ε : ℕ → ℝ} (hε : Tendsto ε atTop (nhds 0))
+    (hsub : ∀ m, ∀ y ∈ K m, infDist y Omega ≤ ε m) :
+    (L : Set (Fin d → ℝ)) ⊆ Omega := by
+  intro x hxL
+  rw [IsClosed.mem_iff_infDist_zero hΩc hΩne]
+  have hbound : ∀ m, infDist x Omega ≤ dist L (K m) + ε m := by
+    intro m
+    have hK : (K m : Set (Fin d → ℝ)).Nonempty := (K m).nonempty'
+    -- `infDist x Ω − ε m` lower-bounds `dist x y` for all `y ∈ K m`.
+    have h3 : infDist x Omega - ε m ≤ infDist x (K m : Set (Fin d → ℝ)) := by
+      rw [le_infDist hK]
+      intro y hy
+      have h4 : infDist x Omega ≤ infDist y Omega + dist x y :=
+        infDist_le_infDist_add_dist
+      have h5 := hsub m y hy
+      linarith
+    have h1 : infDist x (K m : Set (Fin d → ℝ))
+        ≤ hausdorffDist (L : Set (Fin d → ℝ)) (K m) :=
+      infDist_le_hausdorffDist_of_mem hxL ConvexBody.hausdorffEDist_ne_top
+    have h6 : dist L (K m) = hausdorffDist (L : Set (Fin d → ℝ)) (K m) := rfl
+    rw [h6]
+    linarith
+  have hd2 : Tendsto (fun m => dist L (K m)) atTop (nhds 0) := by
+    have := tendsto_iff_dist_tendsto_zero.mp hKL
+    simpa [dist_comm] using this
+  have htend : Tendsto (fun m => dist L (K m) + ε m) atTop (nhds 0) := by
+    simpa using hd2.add hε
+  have hle : infDist x Omega ≤ 0 :=
+    le_of_tendsto_of_tendsto' tendsto_const_nhds htend hbound
+  linarith [infDist_nonneg (x := x) (s := Omega)]
+
+end BlaschkeLimits
 
 end Nondividing
