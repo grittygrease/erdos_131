@@ -5,7 +5,7 @@
 - [x] Lower construction — green
 - [x] GAP API — green
 - [x] External interfaces E1–E5 — green
-- [x] Progression comparison — `progression_comparison_package` (e>r) over fixed `P(C)` green, via structural `Package` (E1→choice) + `s(C)→∞` threshold; audit: reaches only `cfp_structure`+core. (e≤r package form pending the John-GAP span step.) Bricks: `progression_comparison_gt/le`, counting cores, dilate→base properness (7.4)
+- [x] Progression comparison — BOTH cases over fixed `P(C)`: `progression_comparison_package` (e>r) + `progression_comparison_le_package` (e≤r, via `section_in_gap`) green; via structural `Package` (E1→choice) + `s(C)→∞` threshold. Audit: e>r reaches cfp_structure(E1)+core, e≤r reaches discrete_john(E2)+core. Bricks: `progression_comparison_gt/le`, counting cores, dilate→base properness (7.4)
 - [x] Structural package — `Package`/`Eligible`/`StructOut`, `nonempty_package`, `package` green
 - [x] Convex-lattice John — `coordinate_section_john` (from E2) green
 - [x] Lattice-section-box cardinality — `latticeSection_card_le` (given injective coord projection) + `card_le_prod_of_injOn_coordProj` green; remaining: subspace→coordinate-projection existence (linear algebra)
