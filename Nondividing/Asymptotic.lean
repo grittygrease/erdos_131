@@ -89,6 +89,40 @@ theorem tendsto_natCast_div_log_pow_atTop (n : ℕ) :
       Filter.atTop Filter.atTop :=
   (tendsto_id_div_log_pow_atTop n).comp tendsto_natCast_atTop_atTop
 
+/-- `√m / (log m)^2 → ∞`: the growth needed so that the rounding error `C√|C|`
+is eventually dominated by the GAP scale `s(C) = |C|/(log|C|)^2`.  Obtained as
+`√(m / (log m)^4)`. -/
+theorem tendsto_sqrt_natCast_div_log_sq :
+    Filter.Tendsto (fun m : ℕ => Real.sqrt m / (Real.log m) ^ 2)
+      Filter.atTop Filter.atTop := by
+  have hsqrt : Filter.Tendsto
+      (fun m : ℕ => Real.sqrt ((m : ℝ) / (Real.log m) ^ 4)) Filter.atTop Filter.atTop :=
+    Real.tendsto_sqrt_atTop.comp (tendsto_natCast_div_log_pow_atTop 4)
+  refine hsqrt.congr' ?_
+  filter_upwards [Filter.eventually_ge_atTop 1] with m _
+  rw [Real.sqrt_div (Nat.cast_nonneg m),
+    show (Real.log m) ^ 4 = ((Real.log m) ^ 2) ^ 2 by ring, Real.sqrt_sq (sq_nonneg _)]
+
+/-- Rounding-error absorption: for any `C` and any `κ > 0`, eventually
+`C·√m ≤ κ·(m/(log m)^2)`.  In `lem:one-sided-filling` this gives
+`C_d√|C| ≤ (c/2)·s(C)` for large `|C|`. -/
+theorem eventually_mul_sqrt_le_mul_id_div_log_sq {C κ : ℝ} (hκ : 0 < κ) :
+    ∀ᶠ m : ℕ in Filter.atTop,
+      C * Real.sqrt m ≤ κ * ((m : ℝ) / (Real.log m) ^ 2) := by
+  have hge : ∀ᶠ m : ℕ in Filter.atTop,
+      C / κ ≤ Real.sqrt m / (Real.log m) ^ 2 :=
+    tendsto_sqrt_natCast_div_log_sq.eventually_ge_atTop (C / κ)
+  filter_upwards [hge, Filter.eventually_ge_atTop 2] with m hm hm2
+  have hmpos : (0 : ℝ) < m := by exact_mod_cast (by omega : 0 < m)
+  have hsqrtpos : 0 < Real.sqrt m := Real.sqrt_pos.mpr hmpos
+  have hlogpos : 0 < Real.log m := Real.log_pos (by exact_mod_cast hm2)
+  have hLpos : 0 < (Real.log m) ^ 2 := by positivity
+  have hsq : Real.sqrt m * Real.sqrt m = m := Real.mul_self_sqrt (le_of_lt hmpos)
+  rw [div_le_div_iff₀ hκ hLpos] at hm
+  rw [show κ * ((m : ℝ) / (Real.log m) ^ 2) = κ * m / (Real.log m) ^ 2 from
+      (mul_div_assoc κ _ _).symm, le_div_iff₀ hLpos]
+  nlinarith [mul_le_mul_of_nonneg_right hm (le_of_lt hsqrtpos), hsq, hsqrtpos]
+
 theorem eventually_const_mul_rpow_le_rpow_nat
     {a b c : ℝ} (hab : a < b) (hc : 0 ≤ c) :
     ∀ᶠ n : ℕ in Filter.atTop,

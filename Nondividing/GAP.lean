@@ -89,6 +89,37 @@ theorem card_dilatedCarrier_of_injOn (t : ℝ)
   rw [dilatedCarrier, Finset.card_image_iff.mpr]
   exact fun x hx y hy hxy => hP hx hy hxy
 
+/-- Coefficientwise addition in a symmetric GAP: the `a`-dilate plus the
+`b`-dilate lands in the `(a+b)`-dilate.  This is the "coefficientwise addition in
+the symmetric GAP" step of `lem:one-sided-filling` (error `+ t ∈ q + csP`). -/
+theorem add_mem_dilatedCarrier {a b : ℝ} (ha : 0 ≤ a) (hb : 0 ≤ b)
+    {u v : Fin d → ℤ} (hu : u ∈ P.dilatedCarrier a) (hv : v ∈ P.dilatedCarrier b) :
+    u + v ∈ P.dilatedCarrier (a + b) := by
+  obtain ⟨nu, hnu, rfl⟩ := (P.mem_dilatedCarrier).mp hu
+  obtain ⟨nv, hnv, rfl⟩ := (P.mem_dilatedCarrier).mp hv
+  rw [← map_add, P.mem_dilatedCarrier]
+  refine ⟨nu + nv, ?_, rfl⟩
+  rw [dilatedCoeffBox, mem_coordinateBox] at hnu hnv ⊢
+  intro i
+  have hfl : (P.dilatedRadius a i : ℤ) + P.dilatedRadius b i
+      ≤ P.dilatedRadius (a + b) i := by
+    have hnat : P.dilatedRadius a i + P.dilatedRadius b i
+        ≤ P.dilatedRadius (a + b) i := by
+      rw [dilatedRadius, dilatedRadius, dilatedRadius]
+      apply Nat.le_floor
+      push_cast
+      have h1 : (⌊a * (P.radius i : ℝ)⌋₊ : ℝ) ≤ a * P.radius i :=
+        Nat.floor_le (by positivity)
+      have h2 : (⌊b * (P.radius i : ℝ)⌋₊ : ℝ) ≤ b * P.radius i :=
+        Nat.floor_le (by positivity)
+      nlinarith
+    exact_mod_cast hnat
+  have hui := hnu i
+  have hvi := hnv i
+  have hadd : (nu + nv) i = nu i + nv i := rfl
+  rw [hadd]
+  omega
+
 theorem natDilatedCoeffBox_mono {k l : ℕ} (hkl : k ≤ l) :
     P.natDilatedCoeffBox k ⊆ P.natDilatedCoeffBox l := by
   intro n hn
