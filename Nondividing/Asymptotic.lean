@@ -29,6 +29,24 @@ theorem tendsto_id_div_log_pow_atTop (n : ℕ) :
   intro x
   simp only [Pi.inv_apply, inv_div]
 
+/-- Log absorption: for any `δ > 0`, eventually `1 + log x ≤ x^δ`.  The Phase H
+upper-bound assembly uses this to absorb the `1 + log₂ N` dyadic-shell loss into
+the exponent. -/
+theorem eventually_one_add_log_le_rpow {δ : ℝ} (hδ : 0 < δ) :
+    ∀ᶠ x : ℝ in Filter.atTop, 1 + Real.log x ≤ x ^ δ := by
+  have hlit : Real.log =o[Filter.atTop] fun x => x ^ δ :=
+    isLittleO_log_rpow_atTop hδ
+  have h1 : ∀ᶠ x : ℝ in Filter.atTop, ‖Real.log x‖ ≤ (1 / 2) * ‖x ^ δ‖ :=
+    hlit.def (by norm_num)
+  have h2 : ∀ᶠ x : ℝ in Filter.atTop, (2 : ℝ) ≤ x ^ δ :=
+    (tendsto_rpow_atTop hδ).eventually_ge_atTop 2
+  filter_upwards [h1, h2, Filter.eventually_ge_atTop (1 : ℝ)] with x hx1 hx2 hx3
+  have hlogpos : 0 ≤ Real.log x := Real.log_nonneg hx3
+  have hxδpos : 0 ≤ x ^ δ := by linarith
+  rw [Real.norm_eq_abs, Real.norm_eq_abs, abs_of_nonneg hlogpos,
+    abs_of_nonneg hxδpos] at hx1
+  linarith
+
 /-- Natural-argument form: `m / (log m)^n → ∞`. -/
 theorem tendsto_natCast_div_log_pow_atTop (n : ℕ) :
     Filter.Tendsto (fun m : ℕ => (m : ℝ) / (Real.log m) ^ n)
