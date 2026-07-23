@@ -1,4 +1,5 @@
 import Nondividing.Geometry.CoordProjection
+import Nondividing.Geometry.Zonotope
 import Nondividing.External.ZonotopeRounding
 
 open scoped BigOperators
@@ -211,5 +212,39 @@ theorem one_sided_filling {d : ℕ} (P : GAP d d) (hrank : P.realRank = d)
   have herr' : P.evalHom nz - ∑ v ∈ S, v ∈ P.dilatedCarrier (cs / 2) :=
     P.dilatedCarrier_mono hthr herr
   exact filling_assembly P hcs hzt herr' ht hcore hdisj hsub
+
+/-- **Tube inclusion, zonotope form** (`thm:projective-convexity` (†), filling
+half).  For a full-rank GAP with the structural core inclusion, every step
+lattice point `y` whose shift `y − q` lies (as a real point) in the zonotope
+`Z(C̄)` is a subset sum of `C`.  This is `one_sided_filling` with the trivial
+shift `t = q`. -/
+theorem tube_inclusion_of_zonotope {d : ℕ} (P : GAP d d) (hrank : P.realRank = d)
+    {C Cbar C0 : Finset (Fin d → ℤ)} (hC : Cbar ⊆ P.carrier)
+    {q : Fin d → ℤ} {cs : ℝ} (hcs : 0 ≤ cs)
+    (hthr : Real.sqrt (d * (Cbar.card + 1)) * 3 ≤ cs / 2)
+    (hcore : ∀ w ∈ P.dilatedCarrier cs, q + w ∈ subsetSums C0)
+    (hdisj : Disjoint Cbar C0) (hsub : Cbar ∪ C0 ⊆ C)
+    {y : Fin d → ℤ} {ny nq : Fin d → ℤ}
+    (hy : P.evalHom ny = y) (hq : P.evalHom nq = q)
+    (hzon : External.InZonotope Cbar (fun j => ((y - q) j : ℝ))) :
+    y ∈ subsetSums C := by
+  have hz : P.evalHom (ny - nq) = y - q := by rw [map_sub, hy, hq]
+  have hzon' : External.InZonotope Cbar
+      (fun j => ((P.evalHom (ny - nq)) j : ℝ)) := by rwa [hz]
+  have hq0 : q - q ∈ P.dilatedCarrier (cs / 2) := by
+    rw [sub_self]
+    exact P.zero_mem_dilatedCarrier _
+  have := one_sided_filling P hrank hC hcs hthr hcore hdisj hsub hzon' hq0
+  rwa [hz, sub_add_cancel] at this
+
+/-- The one-sided real zonotope membership is exactly E3's `InZonotope`. -/
+theorem realZonotope_iff_inZonotope {d : ℕ} (C : Finset (Fin d → ℤ))
+    (x : Fin d → ℝ) :
+    x ∈ realZonotope C ↔ External.InZonotope C x := by
+  constructor
+  · rintro ⟨t, ht, rfl⟩
+    exact ⟨t, fun a ha => ht a ha, rfl⟩
+  · rintro ⟨t, ht, rfl⟩
+    exact ⟨t, fun a ha => ht a ha, rfl⟩
 
 end Nondividing

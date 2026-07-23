@@ -93,3 +93,8 @@ import Nondividing.Main
 -- robust_zonotope FULL: reaches E1 (package) + E2 + E5 + core.
 #print axioms Nondividing.robust_slab_bound
 #print axioms Nondividing.robust_zonotope
+
+-- THE TUBE INCLUSION (dagger): robust_zonotope + one_sided_filling composed.
+-- Reaches E2+E3+E5+core (parameterized over the package).
+#print axioms Nondividing.tube_inclusion
+#print axioms Nondividing.tube_inclusion_of_zonotope

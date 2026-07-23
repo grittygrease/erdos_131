@@ -1,5 +1,6 @@
 import Nondividing.Structure
 import Nondividing.Geometry.Zonotope
+import Nondividing.Filling
 
 open scoped BigOperators
 
@@ -53,5 +54,48 @@ theorem robust_zonotope {d : ℕ} {β : ℝ} (pkg : Package d β) (hd : 1 ≤ d)
       + (y j - ∑ v ∈ C, θ v * (v j : ℝ))) = y := by
     funext j; ring
   rwa [hy'] at this
+
+/-- **The tube inclusion** (`thm:projective-convexity` (†)).  Composing
+`robust_zonotope` with `one_sided_filling`: under the irreducibility, weight,
+and structural-core hypotheses, every step-lattice point `y` whose shift
+`y − q` is `ε`-close (coordinatewise, relative to the box) to the zonotope
+centre `z̄ = ∑ θ_v·v` is a subset sum of `C`.  This is the exact hypothesis
+shape consumed by `projective_convexity_of_tube`. -/
+theorem tube_inclusion {d : ℕ} {β : ℝ} (pkg : Package d β) (hd : 1 ≤ d) :
+    ∃ cw K : ℝ, 0 < cw ∧ 0 < K ∧
+    ∀ (V Cbar C C0 : Finset (Fin d → ℤ)) (M : Fin d → ℕ)
+      (δ γ m ε cs : ℝ) (θ : (Fin d → ℤ) → ℝ) (P : GAP d d) (q : Fin d → ℤ),
+      -- robust-zonotope block
+      UnshiftedIrreducible pkg δ γ V M → Cbar ⊆ V → 0 < γ → 0 ≤ δ →
+      (∀ D : Finset (Fin d → ℤ), D ⊆ V → δ * (V.card : ℝ) ≤ (D.card : ℝ) →
+        ∃ hE : Eligible β pkg.m₀ D M,
+          1 ≤ External.structureScale D.card ∧
+          1 ≤ pkg.c * External.structureScale D.card ∧
+          K < External.structureScale D.card * γ) →
+      (∀ v ∈ Cbar, 0 ≤ θ v) → (∀ v ∈ Cbar, θ v ≤ 1 / 2) →
+      m ≤ ∑ v ∈ Cbar, θ v →
+      0 < m - 2 * (δ * (V.card : ℝ)) →
+      ε ≤ (cw * γ) * (m - 2 * (δ * (V.card : ℝ))) →
+      -- filling block
+      P.realRank = d → Cbar ⊆ P.carrier → 0 ≤ cs →
+      Real.sqrt (d * (Cbar.card + 1)) * 3 ≤ cs / 2 →
+      (∀ w ∈ P.dilatedCarrier cs, q + w ∈ subsetSums C0) →
+      Disjoint Cbar C0 → Cbar ∪ C0 ⊆ C →
+      -- the point
+      ∀ (y ny nq : Fin d → ℤ), P.evalHom ny = y → P.evalHom nq = q →
+      (∀ i, |(((y - q) i : ℤ) : ℝ) - ∑ v ∈ Cbar, θ v * (v i : ℝ)|
+        ≤ ε * (M i : ℝ)) →
+      y ∈ subsetSums C := by
+  obtain ⟨cw, K, hcw, hK, hrz⟩ := robust_zonotope pkg hd
+  refine ⟨cw, K, hcw, hK, ?_⟩
+  intro V Cbar C C0 M δ γ m ε cs θ P q hirr hCV hγ hδ hsupply hθ0 hθhalf
+    hmass hgap hεκ hrank hCbarP hcs hthr hcore hdisj hsub y ny nq hy hq hclose
+  -- The shifted point lies in the zonotope.
+  have hzon : (fun j => (((y - q) j : ℤ) : ℝ)) ∈ realZonotope Cbar :=
+    hrz V Cbar M δ γ θ m ε hirr hCV hγ hδ hsupply hθ0 hθhalf hmass hgap hεκ
+      _ hclose
+  -- Feed it to the filling.
+  exact tube_inclusion_of_zonotope P hrank hCbarP hcs hthr hcore hdisj hsub
+    hy hq ((realZonotope_iff_inZonotope Cbar _).mp hzon)
 
 end Nondividing
