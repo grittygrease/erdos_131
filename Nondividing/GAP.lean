@@ -304,6 +304,29 @@ theorem scale_card_carrier_le_natDilated (hP : P.Proper) (k : ℕ)
           rw [Finset.prod_mul_distrib]
           simp
 
+/-- Lower bound: `2^e·∏Nᵢ ≤ |P|` for a proper GAP (each `2Nᵢ ≤ 2Nᵢ+1`).  This is
+the `|P| ≍ 2^d∏Nᵢ` comparison of `lem:index-bound` (needed to relate `|P|` to
+the parallelepiped volume `2^d|det M|∏Nᵢ`). -/
+theorem two_pow_mul_prod_radius_le_card (hP : P.Proper) :
+    2 ^ e * ∏ i : Fin e, P.radius i ≤ P.carrier.card := by
+  rw [P.card_carrier_of_proper hP, coeffBox, card_coordinateBox]
+  calc 2 ^ e * ∏ i : Fin e, P.radius i
+      = ∏ i : Fin e, (2 * P.radius i) := by
+        rw [Finset.prod_mul_distrib, Finset.prod_const, Finset.card_univ, Fintype.card_fin]
+    _ ≤ ∏ i : Fin e, (2 * P.radius i + 1) :=
+        Finset.prod_le_prod' fun i _ => by omega
+
+/-- Upper bound: `|P| ≤ 3^e·∏Nᵢ` for a proper GAP (each `2Nᵢ+1 ≤ 3Nᵢ` since
+`Nᵢ ≥ 1`).  The other half of the `|P| ≍ 2^d∏Nᵢ` comparison. -/
+theorem card_le_three_pow_mul_prod_radius (hP : P.Proper) :
+    P.carrier.card ≤ 3 ^ e * ∏ i : Fin e, P.radius i := by
+  rw [P.card_carrier_of_proper hP, coeffBox, card_coordinateBox]
+  calc ∏ i : Fin e, (2 * P.radius i + 1)
+      ≤ ∏ i : Fin e, (3 * P.radius i) :=
+        Finset.prod_le_prod' fun i _ => by nlinarith [P.radius_pos i]
+    _ = 3 ^ e * ∏ i : Fin e, P.radius i := by
+        rw [Finset.prod_mul_distrib, Finset.prod_const, Finset.card_univ, Fintype.card_fin]
+
 end GAP
 
 end Nondividing
