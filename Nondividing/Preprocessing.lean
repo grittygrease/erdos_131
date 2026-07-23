@@ -193,6 +193,30 @@ theorem progression_counting_core (hP : P.Proper) {t : ℝ} (ht : 1 ≤ t)
           have : (0 : ℝ) ≤ 3 ^ e := by positivity
           exact mul_le_mul_of_nonneg_left h23 this
 
+/-- Assembled `e > r` cardinality inequality of `lem:progression-comparison`:
+`t^e |R| ≤ (3^e k^r) |Q|`.  With the manuscript's choices `t = c·s(C)` and
+`k = |C₀| ≤ s(C)` this is `s^e |R| ≪ s^r |Q|`, i.e. `|R| ≪ s^{-(e-r)} |Q|`. -/
+theorem progression_cardinality_bound (hP : P.Proper) {t : ℝ} (ht : 1 ≤ t)
+    (hInj : Set.InjOn P.evalHom (P.dilatedCoeffBox t : Set (Fin e → ℤ)))
+    {N : Fin d → ℕ} {C₀ : Finset (Fin d → ℤ)} (hC₀ : C₀ ⊆ coordinateBox N)
+    {k : ℕ} (hk1 : 1 ≤ k) (hk : C₀.card ≤ k) {q : Fin d → ℤ}
+    (hincl : ∀ z ∈ P.dilatedCarrier t, q + z ∈ subsetSums C₀) :
+    t ^ e * (P.carrier.card : ℝ) ≤
+      (3 ^ e * k ^ d) * ((coordinateBox N).card : ℝ) := by
+  have core := P.progression_counting_core hP ht hInj hC₀ hk hincl
+  have hsmul : ((coordinateBox (fun i => k * N i)).card : ℝ) ≤
+      (k ^ d : ℝ) * ((coordinateBox N).card : ℝ) := by
+    have hnat := card_coordinateBox_smul_le N hk1
+    calc ((coordinateBox (fun i => k * N i)).card : ℝ)
+          ≤ ((k ^ d * (coordinateBox N).card : ℕ) : ℝ) := by exact_mod_cast hnat
+      _ = (k ^ d : ℝ) * ((coordinateBox N).card : ℝ) := by push_cast; ring
+  calc
+    t ^ e * (P.carrier.card : ℝ)
+        ≤ 3 ^ e * ((coordinateBox (fun i => k * N i)).card : ℝ) := core
+    _ ≤ 3 ^ e * ((k ^ d : ℝ) * ((coordinateBox N).card : ℝ)) :=
+          mul_le_mul_of_nonneg_left hsmul (by positivity)
+    _ = (3 ^ e * k ^ d) * ((coordinateBox N).card : ℝ) := by ring
+
 end GAP
 
 end Nondividing
