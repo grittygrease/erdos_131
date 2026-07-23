@@ -1,5 +1,6 @@
 import Nondividing.External.DiscreteJohn
 import Nondividing.Shell
+import Nondividing.Geometry.RealBox
 import Mathlib.Analysis.Normed.Module.Basic
 
 open scoped BigOperators
@@ -78,5 +79,35 @@ theorem realFunctional_projNorm_of_shell {d : ℕ} {a : Fin d → ℤ} {X : ℕ}
     {v : Fin d → ℤ} (hv : v ∈ V) :
     realFunctional a (projNorm a v) = 1 :=
   realFunctional_projNorm a v (ne_of_gt (intFunctional_pos_of_shell hX hV hv))
+
+/-- **Projective support in the box** (`lem:projective-span`, containment).  For
+a shell point `v` (with `X ≤ λv ≤ 2X`, `X ≥ 1`) inside the coordinate box, the
+scaled projective image `X·π(v) = (X/λv)·v` lies in the real box, since
+`X/λv ∈ [1/2,1] ⊆ [0,1]` and the box is convex, symmetric and contains `0`. -/
+theorem smul_projNorm_mem_realBox {d : ℕ} {a : Fin d → ℤ} {X : ℕ} {v : Fin d → ℤ}
+    {M : Fin d → ℕ} (hX : 1 ≤ X)
+    (hlo : (X : ℤ) ≤ intFunctional a v) (hv : v ∈ coordinateBox M) :
+    (X : ℝ) • projNorm a v ∈ realCoordinateBox M := by
+  have hlam_pos : 0 < intFunctional a v := by
+    have : (1 : ℤ) ≤ (X : ℤ) := by exact_mod_cast hX
+    linarith
+  have hlam_R : (0 : ℝ) < (intFunctional a v : ℝ) := by exact_mod_cast hlam_pos
+  have hrw : (X : ℝ) • projNorm a v =
+      ((X : ℝ) / (intFunctional a v : ℝ)) • realPoint v := by
+    rw [projNorm, smul_smul, div_eq_mul_inv]
+  set ρ := (X : ℝ) / (intFunctional a v : ℝ) with hρ
+  have hρ0 : 0 ≤ ρ := by rw [hρ]; positivity
+  have hρ1 : ρ ≤ 1 := by
+    rw [hρ, div_le_one hlam_R]; exact_mod_cast hlo
+  rw [hrw, mem_realCoordinateBox]
+  intro i
+  have hvi := (mem_coordinateBox.mp hv) i
+  have hviR_lo : -(M i : ℝ) ≤ (v i : ℝ) := by exact_mod_cast hvi.1
+  have hviR_hi : (v i : ℝ) ≤ (M i : ℝ) := by exact_mod_cast hvi.2
+  have hMnn : (0 : ℝ) ≤ (M i : ℝ) := Nat.cast_nonneg _
+  simp only [Pi.smul_apply, realPoint, smul_eq_mul]
+  constructor
+  · nlinarith [hρ0, hρ1, hviR_lo, hviR_hi, hMnn]
+  · nlinarith [hρ0, hρ1, hviR_lo, hviR_hi, hMnn]
 
 end Nondividing
