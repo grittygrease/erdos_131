@@ -1,6 +1,7 @@
 import Nondividing.External.CFPStructure
 import Nondividing.Preprocessing
 import Nondividing.Geometry.ConvexLatticeJohn
+import Nondividing.Geometry.CoordProjection
 
 open scoped BigOperators
 
@@ -137,5 +138,37 @@ theorem progression_comparison_le_package {ell : ℕ} {β : ℝ} (pkg : Package 
   obtain ⟨r, Q, hQprop, hC₀Q, hQcard⟩ := hsec o.C₀ M hC₀box
   exact ⟨r, Cj,
     o.P.progression_comparison_le ht o.inj Q hQprop hC₀Q (le_refl _) o.incl hQcard⟩
+
+/-- **Projective span over the package** (`lem:projective-span`, first
+conclusion).  For an irreducible eligible shell set `V` whose fixed progression
+`P(V)` occupies at least a `γ` fraction of the box, once the scale product `s·γ`
+is large the real span of `V` is all of `ℝ^d`. -/
+theorem projective_span_package {d : ℕ} {β : ℝ} (hd : 1 ≤ d) (pkg : Package d β)
+    {V : Finset (Fin d → ℤ)} {M : Fin d → ℕ} (hE : Eligible β pkg.m₀ V M)
+    {γ : ℝ} (hγ : 0 < γ) (he : (pkg.out V M hE).e = d)
+    (hs : 1 ≤ External.structureScale V.card)
+    (hcs : 1 ≤ pkg.c * External.structureScale V.card)
+    (hcard1 : 1 ≤ (pkg.out V M hE).C₀.card)
+    (hPlow : γ * ((coordinateBox M).card : ℝ) ≤
+      ((pkg.out V M hE).P.carrier.card : ℝ))
+    (hthresh : (6 : ℝ) ^ d < pkg.c ^ d *
+      (External.structureScale V.card * γ)) :
+    integerRealSpan V = ⊤ := by
+  set o := pkg.out V M hE with ho
+  have hproper := o.P.proper_of_dilate hcs o.inj
+  have hC₀box : o.C₀ ⊆ coordinateBox M :=
+    (o.C₀_subset.trans o.Chat_subset).trans hE.subset
+  have hC₀V : o.C₀ ⊆ V := o.C₀_subset.trans o.Chat_subset
+  have hBpos : 0 < ((coordinateBox M).card : ℝ) := by
+    have : 0 < (coordinateBox M).card :=
+      Finset.card_pos.mpr ⟨0, zero_mem_coordinateBox M⟩
+    exact_mod_cast this
+  have hde : 1 ≤ o.e := by rw [he]; exact hd
+  have hthresh' : (6 : ℝ) ^ o.e < pkg.c ^ o.e *
+      (External.structureScale V.card * γ) := by rw [he]; exact hthresh
+  have hrank : o.P.realRank = d :=
+    (realRank_eq_of_index hde o.P hproper pkg.c_pos hs hγ hcs o.inj hC₀box hcard1
+      o.C₀_card o.incl hBpos hPlow hthresh').trans he
+  exact integerRealSpan_eq_top o.P hcs hC₀V o.incl hrank
 
 end Nondividing
