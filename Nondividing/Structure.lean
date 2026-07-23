@@ -1,5 +1,6 @@
 import Nondividing.External.CFPStructure
 import Nondividing.Preprocessing
+import Nondividing.Geometry.ConvexLatticeJohn
 
 open scoped BigOperators
 
@@ -93,5 +94,27 @@ theorem progression_comparison_package {ell : ℕ} {β : ℝ} (pkg : Package ell
     (o.C₀_subset.trans o.Chat_subset).trans hE.subset
   exact o.P.progression_comparison_gt ht o.inj hC₀box (le_max_left _ _)
     (le_max_right _ _) o.incl
+
+/-- Progression comparison, `e ≤ r` case, over the fixed package.  The John GAP
+`Q_H` housing the core `C₀` is produced by `section_in_gap` (rank `r ≤ ell`), so
+this closes the manuscript's second alternative
+`|P(C)| ≪ s^{r-e} |Q_H| ≪ |B|` at the level of the raw counting inequality
+`t^e |P(C)| ≤ (3^e (2|C₀|+1)^r Cⱼ) |B|`. -/
+theorem progression_comparison_le_package {ell : ℕ} {β : ℝ} (pkg : Package ell β)
+    {C : Finset (Fin ell → ℤ)} {M : Fin ell → ℕ} (hE : Eligible β pkg.m₀ C M)
+    (ht : 1 ≤ pkg.c * External.structureScale C.card) :
+    ∃ (r Cj : ℕ),
+      (pkg.c * External.structureScale C.card) ^ (pkg.out C M hE).e *
+          ((pkg.out C M hE).P.carrier.card : ℝ) ≤
+        (3 ^ (pkg.out C M hE).e *
+            (2 * (pkg.out C M hE).C₀.card + 1) ^ r * Cj) *
+          ((coordinateBox M).card : ℝ) := by
+  set o := pkg.out C M hE with ho
+  have hC₀box : o.C₀ ⊆ coordinateBox M :=
+    (o.C₀_subset.trans o.Chat_subset).trans hE.subset
+  obtain ⟨Cj, _hCj, hsec⟩ := section_in_gap ell
+  obtain ⟨r, Q, hQprop, hC₀Q, hQcard⟩ := hsec o.C₀ M hC₀box
+  exact ⟨r, Cj,
+    o.P.progression_comparison_le ht o.inj Q hQprop hC₀Q (le_refl _) o.incl hQcard⟩
 
 end Nondividing

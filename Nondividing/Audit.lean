@@ -13,6 +13,8 @@ import Nondividing.Main
 -- `Package`, so it reaches only Lean core axioms; the E1 interface
 -- `cfp_structure` enters exactly where the concrete package is built.
 #print axioms Nondividing.progression_comparison_package
+-- The `e ≤ r` package form invokes the John placement, so it reaches E2 too.
+#print axioms Nondividing.progression_comparison_le_package
 #print axioms Nondividing.nonempty_package
 
 -- Further Phase C/D/H results: gap_contained and the Phase H pigeonhole chain are
