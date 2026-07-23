@@ -98,14 +98,17 @@ projective theorem at `d = 1`. -/
 theorem exists_shell_reduction (N : ℕ) :
     ∃ (j : ℕ) (W : Finset ℕ),
       (∀ a ∈ W, a ∈ Finset.Ico (2 ^ j) (2 ^ (j + 1))) ∧
+      (∀ a ∈ W, a ≤ N) ∧
       ShellNonDividing (fun a : ℕ => (a : ℤ)) (2 ^ j) W ∧
       F N ≤ (Nat.log 2 N + 1) * W.card := by
   classical
   obtain ⟨A, hAIcc, hnd, hcard⟩ := exists_extremal N
   obtain ⟨j, hj⟩ := exists_dyadic_shell A hAIcc
-  refine ⟨j, A.filter (fun a => a ∈ Finset.Ico (2 ^ j) (2 ^ (j + 1))), ?_, ?_, ?_⟩
+  refine ⟨j, A.filter (fun a => a ∈ Finset.Ico (2 ^ j) (2 ^ (j + 1))), ?_, ?_, ?_, ?_⟩
   · intro a ha
     exact (Finset.mem_filter.mp ha).2
+  · intro a ha
+    exact (Finset.mem_Icc.mp (hAIcc (Finset.mem_filter.mp ha).1)).2
   · refine shellNonDividing_of_nonDividing (hnd.mono (Finset.filter_subset _ _)) (2 ^ j) ?_
     intro a ha
     have hmem := (Finset.mem_Ico.mp (Finset.mem_filter.mp ha).2)
