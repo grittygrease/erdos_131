@@ -192,6 +192,99 @@ theorem exists_ball_disjoint_closed {X : Type*} [MetricSpace X] {ι : Type*}
   rw [Set.mem_iInter₂] at this
   exact this i hi hyF
 
+/-- **Distinct selection from infinite sets**: given infinitely many choices at
+every index, an injective selection exists (recursive choice avoiding the
+finitely many previous picks). -/
+theorem exists_injective_selection {X : Type*} :
+    ∀ (n : ℕ) (S : Fin n → Set X), (∀ i, (S i).Infinite) →
+    ∃ q : Fin n → X, Function.Injective q ∧ ∀ i, q i ∈ S i := by
+  intro n
+  induction n with
+  | zero => exact fun S _ => ⟨fun i => absurd i.2 (by omega), fun i => absurd i.2 (by omega),
+      fun i => absurd i.2 (by omega)⟩
+  | succ m ih =>
+    intro S hS
+    obtain ⟨q', hq'inj, hq'mem⟩ := ih (fun i => S i.castSucc)
+      (fun i => hS i.castSucc)
+    -- Pick the last point outside the finite range of `q'`.
+    have hlast : (S (Fin.last m) \ (Set.range q')).Nonempty := by
+      have hfin : (Set.range q').Finite := Set.finite_range q'
+      exact Set.Infinite.nonempty (Set.Infinite.diff (hS (Fin.last m)) hfin)
+    obtain ⟨x, hxS, hxq'⟩ := hlast
+    refine ⟨Fin.snoc q' x, ?_, ?_⟩
+    · intro i j hij
+      rcases Fin.eq_castSucc_or_eq_last i with ⟨i', rfl⟩ | rfl <;>
+        rcases Fin.eq_castSucc_or_eq_last j with ⟨j', rfl⟩ | rfl
+      · rw [Fin.snoc_castSucc, Fin.snoc_castSucc] at hij
+        exact congrArg Fin.castSucc (hq'inj hij)
+      · rw [Fin.snoc_castSucc, Fin.snoc_last] at hij
+        exact absurd (Set.mem_range.mpr ⟨i', hij⟩) hxq'
+      · rw [Fin.snoc_last, Fin.snoc_castSucc] at hij
+        exact absurd (Set.mem_range.mpr ⟨j', hij.symm⟩) hxq'
+      · rfl
+    · intro i
+      rcases Fin.eq_castSucc_or_eq_last i with ⟨i', rfl⟩ | rfl
+      · rw [Fin.snoc_castSucc]
+        exact hq'mem i'
+      · rw [Fin.snoc_last]
+        exact hxS
+
+/-- **The perturbed family exists** (`lem:weighted-density`, perturbation
+step): the points can be moved distances `< ρ` to become pairwise distinct,
+staying in their own witnessing half-spaces and entering no new ones. -/
+theorem exists_perturbed_family {r n : ℕ} (hr : 1 ≤ r)
+    (p : Fin n → (Fin r → ℝ))
+    (ℓ : Fin n → Module.Dual ℝ (Fin r → ℝ)) (t : Fin n → ℝ)
+    (hmem : ∀ j, t j ≤ ℓ j (p j)) {ρ : ℝ} (hρ : 0 < ρ) :
+    ∃ q : Fin n → (Fin r → ℝ), Function.Injective q ∧
+      (∀ i, dist (q i) (p i) < ρ) ∧
+      (∀ i, t i ≤ ℓ i (q i)) ∧
+      (∀ i j, t j ≤ ℓ j (q i) → t j ≤ ℓ j (p i)) := by
+  classical
+  -- Half-spaces are closed.
+  have hclosed : ∀ j : Fin n, IsClosed {y : Fin r → ℝ | t j ≤ ℓ j y} := by
+    intro j
+    have hcont : Continuous (ℓ j) := LinearMap.continuous_of_finiteDimensional _
+    exact isClosed_le continuous_const hcont
+  -- For each `i`, a radius avoiding all half-spaces not containing `p i`.
+  have hδ : ∀ i : Fin n, ∃ δ : ℝ, 0 < δ ∧
+      ∀ j ∈ Finset.univ.filter (fun j => ¬ t j ≤ ℓ j (p i)),
+        Metric.ball (p i) δ ∩ {y : Fin r → ℝ | t j ≤ ℓ j y} = ∅ := by
+    intro i
+    apply exists_ball_disjoint_closed _ _ (fun j _ => hclosed j)
+    intro j hj
+    exact (Finset.mem_filter.mp hj).2
+  choose δ hδ0 hδavoid using hδ
+  -- The infinite choice sets.
+  set S : Fin n → Set (Fin r → ℝ) :=
+    fun i => {y : Fin r → ℝ | t i ≤ ℓ i y} ∩ Metric.ball (p i) (min (δ i) ρ)
+    with hS
+  have hSinf : ∀ i, (S i).Infinite := by
+    intro i
+    exact halfspace_ball_infinite hr (ℓ i) (t i) (hmem i)
+      (lt_min (hδ0 i) hρ)
+  obtain ⟨q, hqinj, hqmem⟩ := exists_injective_selection n S hSinf
+  refine ⟨q, hqinj, ?_, ?_, ?_⟩
+  · intro i
+    have := (hqmem i).2
+    rw [Metric.mem_ball] at this
+    exact lt_of_lt_of_le this (min_le_right _ _)
+  · intro i
+    exact (hqmem i).1
+  · intro i j hqij
+    by_contra hpij
+    have hjbad : j ∈ Finset.univ.filter (fun j => ¬ t j ≤ ℓ j (p i)) :=
+      Finset.mem_filter.mpr ⟨Finset.mem_univ j, hpij⟩
+    have hempty := hδavoid i j hjbad
+    have hqball : q i ∈ Metric.ball (p i) (δ i) := by
+      have := (hqmem i).2
+      rw [Metric.mem_ball] at this ⊢
+      exact lt_of_lt_of_le this (min_le_left _ _)
+    have : q i ∈ Metric.ball (p i) (δ i) ∩ {y : Fin r → ℝ | t j ≤ ℓ j y} :=
+      ⟨hqball, hqij⟩
+    rw [hempty] at this
+    exact this
+
 end Perturbation
 
 end Nondividing
