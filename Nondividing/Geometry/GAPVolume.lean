@@ -1,6 +1,7 @@
 import Mathlib.MeasureTheory.Measure.Lebesgue.EqHaar
 import Mathlib.Analysis.Convex.Hull
 import Nondividing.Geometry.IndexDet
+import Nondividing.Preprocessing
 
 open scoped BigOperators
 open MeasureTheory
@@ -85,5 +86,69 @@ theorem volume_stepMapR_realBox {d : ℕ} (P : GAP d d)
   rw [MeasureTheory.Measure.addHaar_image_linearMap, volume_realBox,
     abs_det_stepMapR P hinj]
   rw [← ENNReal.ofReal_mul (by positivity)]
+
+/-- Coordinates of the step map: `(Mx)ⱼ = ∑ᵢ xᵢ·(qᵢ)ⱼ`. -/
+theorem stepMapR_apply {d : ℕ} (P : GAP d d) (x : Fin d → ℝ) (j : Fin d) :
+    stepMapR P x j = ∑ i, x i * (P.step i j : ℝ) := by
+  rw [stepMapR, Matrix.toLin'_apply]
+  simp only [Matrix.mulVec, dotProduct, stepMatrixR, Matrix.of_apply]
+  exact Finset.sum_congr rfl fun i _ => mul_comm _ _
+
+/-- **Real parallelepiped containment**: under the `gap_contained` hypotheses,
+every real point of `M(realBox)` obeys the same coordinate bound
+`c·|(Mx)ⱼ| ≤ 4Mⱼ` as the integer carrier.  Key trick: the extreme coefficient
+vector `nᵢ = sign((qᵢ)ⱼ)·Nᵢ` is an *integer* point of the coefficient box, its
+image dominates `|(Mx)ⱼ|` coordinatewise, and `gap_contained` bounds it. -/
+theorem stepMapR_realBox_bound {d : ℕ} (P : GAP d d) {c s : ℝ} (hc : 0 < c)
+    (hs : 0 < s) (hcs2 : 2 ≤ c * s) {M : Fin d → ℕ} {C₀ : Finset (Fin d → ℤ)}
+    (hC₀ : C₀ ⊆ coordinateBox M) (hk0 : (C₀.card : ℝ) ≤ s) {q : Fin d → ℤ}
+    (hincl : ∀ z ∈ P.dilatedCarrier (c * s), q + z ∈ subsetSums C₀) :
+    ∀ x ∈ realBox P.radius, ∀ j, c * |stepMapR P x j| ≤ 4 * (M j : ℝ) := by
+  intro x hx j
+  -- The extreme integer coefficient vector for coordinate `j`.
+  set n : Fin d → ℤ := fun i => if 0 ≤ P.step i j then (P.radius i : ℤ)
+    else -(P.radius i : ℤ) with hn
+  have hnbox : n ∈ P.coeffBox := by
+    rw [GAP.coeffBox, mem_coordinateBox]
+    intro i
+    by_cases hsign : 0 ≤ P.step i j <;> simp [hn, hsign]
+  have hncarrier : P.evalHom n ∈ P.carrier :=
+    (GAP.mem_carrier P).mpr ⟨n, hnbox, rfl⟩
+  -- Its `j`-th coordinate is `∑ᵢ Nᵢ|qᵢⱼ| ≥ 0`, dominating `|(Mx)ⱼ|`.
+  have hnval : ((P.evalHom n j : ℤ) : ℝ) = ∑ i, (P.radius i : ℝ) * |(P.step i j : ℝ)| := by
+    rw [GAP.evalHom_apply]
+    push_cast
+    refine Finset.sum_congr rfl fun i _ => ?_
+    by_cases hsign : 0 ≤ P.step i j
+    · rw [hn]; simp only [hsign, if_true]
+      rw [abs_of_nonneg (by exact_mod_cast hsign)]
+      push_cast; ring
+    · rw [hn]; simp only [hsign, if_false]
+      push_neg at hsign
+      rw [abs_of_neg (by exact_mod_cast hsign)]
+      push_cast; ring
+  have hxbound : ∀ i, |x i| ≤ (P.radius i : ℝ) := by
+    intro i
+    obtain ⟨h1, h2⟩ := hx
+    exact abs_le.mpr ⟨h1 i, h2 i⟩
+  have hdom : |stepMapR P x j| ≤ ((P.evalHom n j : ℤ) : ℝ) := by
+    rw [stepMapR_apply, hnval]
+    calc |∑ i, x i * (P.step i j : ℝ)|
+        ≤ ∑ i, |x i * (P.step i j : ℝ)| := Finset.abs_sum_le_sum_abs _ _
+      _ = ∑ i, |x i| * |(P.step i j : ℝ)| := by
+          refine Finset.sum_congr rfl fun i _ => abs_mul _ _
+      _ ≤ ∑ i, (P.radius i : ℝ) * |(P.step i j : ℝ)| :=
+          Finset.sum_le_sum fun i _ =>
+            mul_le_mul_of_nonneg_right (hxbound i) (abs_nonneg _)
+  -- `gap_contained` bounds the integer carrier point.
+  have hgap := gap_contained P hc hs hcs2 hC₀ hk0 hincl (P.evalHom n) hncarrier j
+  have hnonneg : (0 : ℝ) ≤ ((P.evalHom n j : ℤ) : ℝ) := by
+    rw [hnval]
+    exact Finset.sum_nonneg fun i _ =>
+      mul_nonneg (Nat.cast_nonneg _) (abs_nonneg _)
+  calc c * |stepMapR P x j| ≤ c * ((P.evalHom n j : ℤ) : ℝ) :=
+        mul_le_mul_of_nonneg_left hdom (le_of_lt hc)
+    _ = c * |((P.evalHom n j : ℤ) : ℝ)| := by rw [abs_of_nonneg hnonneg]
+    _ ≤ 4 * (M j : ℝ) := hgap
 
 end Nondividing
