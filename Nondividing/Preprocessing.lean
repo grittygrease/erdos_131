@@ -194,6 +194,35 @@ theorem coeffBox_subset_dilatedCoeffBox {t : ℝ} (ht : 1 ≤ t) :
     exact h1.trans (hn i).1
   · exact (hn i).2.trans (by exact_mod_cast hle)
 
+/-- The integer `k`-dilated coefficient box embeds into the real `t`-dilated one
+whenever `k ≤ t`. -/
+theorem natDilatedCoeffBox_subset_dilatedCoeffBox {t : ℝ} {k : ℕ}
+    (hk : (k : ℝ) ≤ t) : P.natDilatedCoeffBox k ⊆ P.dilatedCoeffBox t := by
+  intro n hn
+  rw [natDilatedCoeffBox, mem_coordinateBox] at hn
+  rw [dilatedCoeffBox, mem_coordinateBox]
+  intro i
+  have hle : k * P.radius i ≤ P.dilatedRadius t i := by
+    show k * P.radius i ≤ ⌊t * (P.radius i : ℝ)⌋₊
+    apply Nat.le_floor
+    push_cast
+    exact mul_le_mul_of_nonneg_right hk (Nat.cast_nonneg _)
+  refine ⟨?_, ?_⟩
+  · have h1 : -((P.dilatedRadius t i : ℕ) : ℤ) ≤ -((k * P.radius i : ℕ) : ℤ) := by
+      exact_mod_cast neg_le_neg (by exact_mod_cast hle)
+    exact h1.trans (hn i).1
+  · exact (hn i).2.trans (by exact_mod_cast hle)
+
+/-- Carrier form: the integer `k`-dilate is contained in the real `t`-dilate when
+`k ≤ t`. -/
+theorem natDilatedCarrier_subset_dilatedCarrier {t : ℝ} {k : ℕ}
+    (hk : (k : ℝ) ≤ t) : P.natDilatedCarrier k ⊆ P.dilatedCarrier t := by
+  intro v hv
+  rw [mem_natDilatedCarrier] at hv
+  obtain ⟨n, hn, rfl⟩ := hv
+  rw [mem_dilatedCarrier]
+  exact ⟨n, P.natDilatedCoeffBox_subset_dilatedCoeffBox hk hn, rfl⟩
+
 /-- Hazard: properness of a proper dilate `t·P` (`t ≥ 1`) implies properness of
 `P` itself, since the base coefficient box is a subset of the dilated one and
 injectivity restricts to subsets.  (`lem:progression-comparison`, route §7.4.) -/
