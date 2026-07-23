@@ -1,0 +1,12 @@
+# Normalize line endings to LF in the repository for all text files.
+# Keeps Lean sources byte-identical across the two machines you build on and
+# avoids spurious CRLF/LF diffs. Git still checks out your platform's native
+# endings in the working tree.
+* text=auto eol=lf
+
+# Binary assets — never touch line endings.
+*.pdf binary
+*.png binary
+*.jpg binary
+*.gz binary
+*.zip binary
