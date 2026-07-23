@@ -1,4 +1,5 @@
 import Mathlib.LinearAlgebra.Matrix.SchurComplement
+import Mathlib.Tactic.IntervalCases
 import Nondividing.Geometry.GAPVolume
 
 open scoped BigOperators
@@ -156,4 +157,28 @@ theorem volume_slab_inter_box_le {d : ℕ} (N : Fin d → ℕ) (a : Fin d → �
     _ ≤ volume (Set.Icc (fun k => -(R k)) R) := measure_mono himg
     _ = ENNReal.ofReal ((d * τ) * (2 ^ d * ∏ i, (N i : ℝ))) := hbox
 
+/-- Pigeonhole width coordinate (`lem:slab-count`): if the width
+`w = ∑ᵢ|aᵢ|Nᵢ` is positive, some coordinate has `|a_j|N_j ≥ w/d` (and then
+necessarily `a_j ≠ 0`). -/
+theorem exists_width_coordinate {d : ℕ} (a : Fin d → ℝ) (N : Fin d → ℕ)
+    (hw : 0 < ∑ i, |a i| * (N i : ℝ)) :
+    ∃ j, a j ≠ 0 ∧ (∑ i, |a i| * (N i : ℝ)) ≤ d * (|a j| * (N j : ℝ)) := by
+  have hd : 0 < d := by
+    by_contra hd0
+    push_neg at hd0
+    interval_cases d
+    simp at hw
+  obtain ⟨j, _, hmax⟩ := Finset.exists_max_image Finset.univ
+    (fun i => |a i| * (N i : ℝ)) ⟨⟨0, hd⟩, Finset.mem_univ _⟩
+  have hsum : (∑ i, |a i| * (N i : ℝ)) ≤ d * (|a j| * (N j : ℝ)) := by
+    calc ∑ i, |a i| * (N i : ℝ)
+        ≤ ∑ _i : Fin d, |a j| * (N j : ℝ) :=
+          Finset.sum_le_sum fun i _ => hmax i (Finset.mem_univ i)
+      _ = d * (|a j| * (N j : ℝ)) := by
+          rw [Finset.sum_const, Finset.card_univ, Fintype.card_fin, nsmul_eq_mul]
+  refine ⟨j, ?_, hsum⟩
+  intro haj
+  rw [haj] at hsum
+  simp only [abs_zero, zero_mul, mul_zero] at hsum
+  linarith
 end Nondividing
