@@ -110,6 +110,20 @@ theorem numerology_base {d e : ℕ} (hd : 1 ≤ d) (hde : d < e) :
       div_mul_eq_mul_div, div_le_div_iff_of_pos_right (by positivity)]
     nlinarith [hkey, mul_nonneg (show (0:ℝ) ≤ (e:ℝ) - d by linarith) hkey]
 
+/-- Manuscript form of the base inequality: `f_{d,e}(0) = σ_e·(1/σ_d - (e-d)) ≤ 1`
+for `1 ≤ d < e`. -/
+theorem numerology_le_one {d e : ℕ} (hd : 1 ≤ d) (hde : d < e) :
+    sigma e * (1 / sigma d - ((e : ℝ) - d)) ≤ 1 := by
+  have hsd := sigma_pos d
+  have hb := numerology_base hd hde
+  rw [← sub_nonneg]
+  have hrw : (1 : ℝ) - sigma e * (1 / sigma d - ((e : ℝ) - d))
+      = (sigma d - sigma e + sigma e * sigma d * ((e : ℝ) - d)) / sigma d := by
+    field_simp
+    ring
+  rw [hrw]
+  exact div_nonneg (by linarith [hb]) hsd.le
+
 /-- Every numerology exponent is nonnegative. -/
 theorem sigma_nonneg (d : ℕ) : 0 ≤ sigma d := by
   unfold sigma
