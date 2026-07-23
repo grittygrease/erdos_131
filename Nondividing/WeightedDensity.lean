@@ -2,7 +2,7 @@ import Nondividing.External.ConvexDensity
 import Nondividing.External.ConvexGeometry
 import Nondividing.Projective.Convexity
 
-open scoped BigOperators
+open scoped BigOperators Pointwise
 open MeasureTheory
 
 namespace Nondividing
@@ -362,6 +362,36 @@ theorem tendsto_convexBody_subset {d : ℕ}
   have hle : infDist x Omega ≤ 0 :=
     le_of_tendsto_of_tendsto' tendsto_const_nhds htend hbound
   linarith [infDist_nonneg (x := x) (s := Omega)]
+
+/-- The `ε`-enlargement `Ω + B̄(0,ε)` is within Hausdorff distance `ε` of `Ω`. -/
+theorem hausdorffDist_add_closedBall_le {d : ℕ} {Omega : Set (Fin d → ℝ)}
+    (hΩne : Omega.Nonempty) {ε : ℝ} (hε : 0 ≤ ε) :
+    hausdorffDist (Omega + Metric.closedBall (0 : Fin d → ℝ) ε) Omega ≤ ε := by
+  apply hausdorffDist_le_of_mem_dist hε
+  · rintro x hx
+    rw [Set.mem_add] at hx
+    obtain ⟨a, ha, b, hb, rfl⟩ := hx
+    refine ⟨a, ha, ?_⟩
+    rw [dist_eq_norm, add_sub_cancel_left]
+    simpa [dist_eq_norm] using Metric.mem_closedBall.mp hb
+  · intro y hy
+    refine ⟨y, ?_, by simpa using hε⟩
+    rw [Set.mem_add]
+    exact ⟨y, hy, 0, Metric.mem_closedBall_self hε, add_zero y⟩
+
+/-- The closure of a convex set has the same volume (its frontier is null). -/
+theorem volume_closure_of_convex {d : ℕ} {s : Set (Fin d → ℝ)}
+    (hs : Convex ℝ s) : volume (closure s) = volume s := by
+  apply le_antisymm
+  · have hsub : closure s ⊆ s ∪ frontier s := by
+      intro x hx
+      by_cases hxs : x ∈ s
+      · exact Or.inl hxs
+      · refine Or.inr ⟨hx, fun hint => hxs (interior_subset hint)⟩
+    calc volume (closure s) ≤ volume (s ∪ frontier s) := measure_mono hsub
+      _ ≤ volume s + volume (frontier s) := measure_union_le _ _
+      _ = volume s := by rw [hs.addHaar_frontier volume, add_zero]
+  · exact measure_mono subset_closure
 
 end BlaschkeLimits
 
