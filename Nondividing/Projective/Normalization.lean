@@ -110,6 +110,15 @@ theorem smul_projNorm_mem_realBox {d : ℕ} {a : Fin d → ℤ} {X : ℕ} {v : F
   · nlinarith [hρ0, hρ1, hviR_lo, hviR_hi, hMnn]
   · nlinarith [hρ0, hρ1, hviR_lo, hviR_hi, hMnn]
 
+/-- Shell-level box containment: every projective image `X·π(v)` of a shell set
+`V ⊆ B` lies in the real box `B_ℝ`. -/
+theorem smul_projNorm_mem_realBox_of_shell {d : ℕ} {a : Fin d → ℤ} {X : ℕ}
+    {V : Finset (Fin d → ℤ)} {M : Fin d → ℕ} (hX : 1 ≤ X)
+    (hV : ShellNonDividing (fun v => (intFunctional a v : ℤ)) X V)
+    (hVM : V ⊆ coordinateBox M) {v : Fin d → ℤ} (hv : v ∈ V) :
+    (X : ℝ) • projNorm a v ∈ realCoordinateBox M :=
+  smul_projNorm_mem_realBox hX (hV.1 v hv).1 (hVM hv)
+
 /-- If the shell set `V` spans `ℝ^d` and its functional is nonvanishing on `V`,
 then the projective images `π(V)` linearly span `ℝ^d` (as `v = λ(v)·π(v)`).  This
 underlies the full affine span `aff π(V) = H_λ`. -/
