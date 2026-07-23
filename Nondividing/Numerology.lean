@@ -17,6 +17,11 @@ dimension range — is separate.
 noncomputable def sigma (d : ℕ) : ℝ :=
   if d ≤ 1 then 1 / 5 else if d = 2 then 1 / 4 else ((d : ℝ) - 2) / d
 
+/-!
+Additional `thm:projective-main` preamble facts (`sigma_dimension_cap`,
+`box_exponent_of_excess`) appear at the end of this file.
+-/
+
 @[simp] theorem sigma_one : sigma 1 = 1 / 5 := by simp [sigma]
 
 @[simp] theorem sigma_two : sigma 2 = 1 / 4 := by norm_num [sigma]
@@ -268,5 +273,50 @@ theorem numerology {D : ℕ} (hD : 2 ≤ D) {ζ₀ : ℝ} (hζ₀ : 0 < ζ₀) :
   calc ε * ((e : ℝ) - d) ≤ (ζ₀ / (10 * D)) * D :=
         mul_le_mul hεlt.le hedD hed0 (by positivity)
     _ = ζ₀ / 10 := by field_simp
+
+/-- **Dimension cap** (`thm:projective-main` preamble): any noncontradictory
+stage has `σ_d + ζ₀ ≤ 1`, which forces `d ≤ 2/ζ₀` — so the ambient dimension
+along the iteration is bounded by `D₀ = ⌊2/ζ₀⌋`. -/
+theorem sigma_dimension_cap {ζ₀ : ℝ} (hζ : 0 < ζ₀) {d : ℕ} (hd : 1 ≤ d)
+    (h : sigma d + ζ₀ ≤ 1) : (d : ℝ) ≤ 2 / ζ₀ := by
+  rw [le_div_iff₀ hζ]
+  match d, hd with
+  | 1, _ =>
+    rw [sigma_one] at h
+    norm_num
+    nlinarith
+  | 2, _ =>
+    rw [sigma_two] at h
+    push_cast
+    nlinarith
+  | (n + 3), _ =>
+    rw [sigma_ge_three (by omega)] at h
+    have hd0 : (0 : ℝ) < ((n + 3 : ℕ) : ℝ) := by positivity
+    rw [div_add' _ _ _ (ne_of_gt hd0), div_le_one hd0] at h
+    nlinarith
+
+/-- **Polynomial-box exponent** (`thm:projective-main` preamble): the excess
+`|B|^{σ_d+ζ₀} < |A|` with `|A| ≤ |B|` gives `|B| < |A|^{β_*}`,
+`β_* = (σ₁+ζ₀)⁻¹`, a single exponent valid at every stage. -/
+theorem box_exponent_of_excess {ζ₀ A B : ℝ} (hζ : 0 < ζ₀) (hζ1 : ζ₀ ≤ 4 / 5)
+    {d : ℕ} (hB1 : 1 ≤ B)
+    (hexcess : Real.rpow B (sigma d + ζ₀) < A) (hAB : A ≤ B) :
+    B < Real.rpow A (1 / (1 / 5 + ζ₀)) := by
+  have hσ : 1 / 5 + ζ₀ ≤ sigma d + ζ₀ := by linarith [one_fifth_le_sigma d]
+  have hB0 : (0 : ℝ) < B := lt_of_lt_of_le one_pos hB1
+  have h1 : Real.rpow B (1 / 5 + ζ₀) ≤ Real.rpow B (sigma d + ζ₀) :=
+    Real.rpow_le_rpow_of_exponent_le hB1 hσ
+  have h2 : Real.rpow B (1 / 5 + ζ₀) < A := lt_of_le_of_lt h1 hexcess
+  have hexp : 0 < 1 / 5 + ζ₀ := by linarith
+  have hA0 : (0 : ℝ) < A := lt_of_le_of_lt (Real.rpow_nonneg hB0.le _) h2
+  -- Raise both sides to `1/(1/5+ζ₀)`.
+  have h3 : Real.rpow (Real.rpow B (1 / 5 + ζ₀)) (1 / (1 / 5 + ζ₀))
+      < Real.rpow A (1 / (1 / 5 + ζ₀)) := by
+    apply Real.rpow_lt_rpow (Real.rpow_nonneg hB0.le _) h2
+    positivity
+  have hconv : ∀ x y : ℝ, Real.rpow x y = x ^ y := fun _ _ => rfl
+  simp only [hconv] at h3 ⊢
+  rwa [← Real.rpow_mul hB0.le, mul_one_div, div_self (ne_of_gt hexp),
+    Real.rpow_one] at h3
 
 end Nondividing
