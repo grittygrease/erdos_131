@@ -44,3 +44,11 @@ import Nondividing.Main
 #print axioms Nondividing.mem_affineSpan_projNorm_iff
 #print axioms Nondividing.intrinsicInterior_convexHull_projNorm_nonempty
 #print axioms Nondividing.numerology
+
+-- Phase E projective-convexity endgame + Phase H capstone: both parameterized
+-- over the deep inputs (tube inclusion / projective theorem), so core axioms only.
+#print axioms Nondividing.shellNonDividing_no_positive_multiple
+#print axioms Nondividing.exists_positive_nsmul_mem
+#print axioms Nondividing.projective_convexity_of_tube
+#print axioms Nondividing.realEval_injective
+#print axioms Nondividing.main_upper_eps_of_projective

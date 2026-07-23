@@ -29,5 +29,5 @@
 - [ ] Numerology optimisation lemma
 - [ ] Projective theorem (density increment)
 - [x] Main log limit — reduced to `main_upper_eps` alone (`main_log_limit_of_upper`); Phase H pigeonhole + d=1 bridge (`shellNonDividing_dOne`) done
-- [ ] Main upper eps (needs projective theorem at d=1)
+- [x] **Main upper eps — REDUCED TO PROJECTIVE THEOREM**: `main_upper_eps_of_projective` (F N ≤ N^{1/5+ε} GIVEN the d=1 projective bound |W|≤X^{1/5+ε/2} for dense shells). Case split dense (apply)/sparse (|W|≤X^{1/5})/small (X<X₀); log factor absorbed via `eventually_natLog_succ_le_rpow`+`eventually_one_add_log_le_rpow`. Core axioms only. **⟹ whole main theorem now reduces to the d=1 projective theorem** (via `main_log_limit_of_upper ∘ main_upper_eps_of_projective`)
 - [~] Audit — verifies progression comparison (E1/E2), section_in_gap (E2), gap_contained + Phase H chain (core only); pending deep theorems
