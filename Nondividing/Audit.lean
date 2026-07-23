@@ -41,3 +41,5 @@ import Nondividing.Main
 #print axioms Nondividing.duality_representation_from_projective
 #print axioms Nondividing.exists_capped_combination
 #print axioms Nondividing.projective_duality
+#print axioms Nondividing.mem_affineSpan_projNorm_iff
+#print axioms Nondividing.intrinsicInterior_convexHull_projNorm_nonempty
