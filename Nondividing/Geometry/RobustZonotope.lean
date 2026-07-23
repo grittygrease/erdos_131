@@ -98,4 +98,32 @@ theorem tube_inclusion {d : ℕ} {β : ℝ} (pkg : Package d β) (hd : 1 ≤ d) 
   exact tube_inclusion_of_zonotope P hrank hCbarP hcs hthr hcore hdisj hsub
     hy hq ((realZonotope_iff_inZonotope Cbar _).mp hzon)
 
+/-- **Tube shape bridge**: if `y − Ta` lies in the integer box `k·M` and the
+centre satisfies `|((Ta−q)ᵢ) − z̄ᵢ| ≤ ε₂Mᵢ`, then `y − q` is `(k+ε₂)`-close to
+`z̄` — converting `projective_convexity_of_tube`'s coordinateBox tube into
+`tube_inclusion`'s ε-closeness. -/
+theorem tube_closeness_of_box {d : ℕ} {y Ta q : Fin d → ℤ}
+    {zbar : Fin d → ℝ} {M : Fin d → ℕ} {k : ℕ} {ε₂ : ℝ}
+    (hbox : y - Ta ∈ coordinateBox (fun i => k * M i))
+    (h2 : ∀ i, |(((Ta - q) i : ℤ) : ℝ) - zbar i| ≤ ε₂ * (M i : ℝ)) :
+    ∀ i, |(((y - q) i : ℤ) : ℝ) - zbar i| ≤ ((k : ℝ) + ε₂) * (M i : ℝ) := by
+  intro i
+  have h1 := (mem_coordinateBox.mp hbox) i
+  have h1R : |(((y - Ta) i : ℤ) : ℝ)| ≤ (k : ℝ) * (M i : ℝ) := by
+    have : |(y - Ta) i| ≤ ((k * M i : ℕ) : ℤ) := abs_le.mpr h1
+    calc |(((y - Ta) i : ℤ) : ℝ)| = ((|(y - Ta) i| : ℤ) : ℝ) := by
+          rw [Int.cast_abs]
+      _ ≤ (((k * M i : ℕ) : ℤ) : ℝ) := by exact_mod_cast this
+      _ = (k : ℝ) * (M i : ℝ) := by push_cast; ring
+  have hsplit : (((y - q) i : ℤ) : ℝ) - zbar i
+      = (((y - Ta) i : ℤ) : ℝ) + ((((Ta - q) i : ℤ) : ℝ) - zbar i) := by
+    push_cast [Pi.sub_apply]
+    ring
+  rw [hsplit]
+  calc |(((y - Ta) i : ℤ) : ℝ) + ((((Ta - q) i : ℤ) : ℝ) - zbar i)|
+      ≤ |(((y - Ta) i : ℤ) : ℝ)| + |(((Ta - q) i : ℤ) : ℝ) - zbar i| :=
+        abs_add_le _ _
+    _ ≤ (k : ℝ) * (M i : ℝ) + ε₂ * (M i : ℝ) := add_le_add h1R (h2 i)
+    _ = ((k : ℝ) + ε₂) * (M i : ℝ) := by ring
+
 end Nondividing
