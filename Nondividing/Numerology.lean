@@ -1,4 +1,5 @@
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
+import Mathlib.Tactic.IntervalCases
 
 namespace Nondividing
 
@@ -64,6 +65,50 @@ theorem sigma_lt_sigma {d e : ℕ} (hd : 1 ≤ d) (hde : d < e) : sigma d < sigm
     rcases Nat.lt_succ_iff_lt_or_eq.mp hde with h | h
     · exact (ih h).trans (sigma_lt_sigma_succ (by omega))
     · subst h; exact sigma_lt_sigma_succ hd
+
+/-- **Numerology base inequality** (`lem:numerology` at `ζ = 0`, equivalent form).
+`σ_e - σ_d ≤ σ_e·σ_d·(e-d)` for `1 ≤ d < e`.  Equivalent to `f_{d,e}(0) ≤ 1`, this
+reduces to the clean quadratic facts `2 ≤ (d-2)(e-2)` (d,e ≥ 3) and
+`(e-3)(e-4) ≥ 0` (small `d`). -/
+theorem numerology_base {d e : ℕ} (hd : 1 ≤ d) (hde : d < e) :
+    sigma e - sigma d ≤ sigma e * sigma d * ((e : ℝ) - d) := by
+  have hdeR : (d : ℝ) + 1 ≤ e := by exact_mod_cast hde
+  rcases Nat.lt_or_ge d 3 with hd2 | hd3
+  · -- d ∈ {1, 2}: handle small e explicitly, general e ≥ 5 by the quadratic
+    rcases Nat.lt_or_ge e 5 with he5 | he5
+    · interval_cases d <;> interval_cases e <;>
+        simp only [sigma_one, sigma_two, sigma_three,
+          sigma_ge_three (show 3 ≤ 4 by norm_num)] <;> push_cast <;> norm_num
+    · have he0 : (0 : ℝ) < e := by positivity
+      have heR : (5 : ℝ) ≤ e := by exact_mod_cast he5
+      have hquad : (0 : ℝ) ≤ ((e : ℝ) - 3) * ((e : ℝ) - 4) :=
+        mul_nonneg (by linarith) (by linarith)
+      interval_cases d
+      · rw [sigma_one, sigma_ge_three (by omega),
+          div_sub_div _ _ (ne_of_gt he0) (by norm_num), div_mul_div_comm,
+          div_mul_eq_mul_div, div_le_div_iff_of_pos_right (by positivity)]
+        push_cast
+        nlinarith [heR, hquad]
+      · rw [sigma_two, sigma_ge_three (by omega),
+          div_sub_div _ _ (ne_of_gt he0) (by norm_num), div_mul_div_comm,
+          div_mul_eq_mul_div, div_le_div_iff_of_pos_right (by positivity)]
+        push_cast
+        nlinarith [heR, hquad]
+  · -- d ≥ 3: reduces to `2 ≤ (d-2)(e-2)`
+    have he3 : 3 ≤ e := by omega
+    have hd0 : (0 : ℝ) < d := by positivity
+    have he0 : (0 : ℝ) < e := by positivity
+    have hdR : (3 : ℝ) ≤ d := by exact_mod_cast hd3
+    have hkey : (0 : ℝ) ≤ ((e : ℝ) - 2) * ((d : ℝ) - 2) - 2 := by
+      nlinarith [hdeR, hdR,
+        mul_nonneg (show (0:ℝ) ≤ (e:ℝ) - d - 1 by linarith)
+          (show (0:ℝ) ≤ (d:ℝ) - 2 by linarith),
+        mul_nonneg (show (0:ℝ) ≤ (d:ℝ) by linarith)
+          (show (0:ℝ) ≤ (d:ℝ) - 3 by linarith)]
+    rw [sigma_ge_three hd3, sigma_ge_three he3,
+      div_sub_div _ _ (ne_of_gt he0) (ne_of_gt hd0), div_mul_div_comm,
+      div_mul_eq_mul_div, div_le_div_iff_of_pos_right (by positivity)]
+    nlinarith [hkey, mul_nonneg (show (0:ℝ) ≤ (e:ℝ) - d by linarith) hkey]
 
 /-- Every numerology exponent is nonnegative. -/
 theorem sigma_nonneg (d : ℕ) : 0 ≤ sigma d := by
