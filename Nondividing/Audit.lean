@@ -64,3 +64,10 @@ import Nondividing.Main
 -- index_bound part 2 core: [ℤ^d:L] = |det(steps)| is proved from mathlib, core only.
 #print axioms Nondividing.index_range_eq_natAbs_det
 #print axioms Nondividing.GAP.two_pow_mul_prod_radius_le_card
+
+-- index_bound part 2 FULL: the Haar-volume comparison chain, all core only.
+#print axioms Nondividing.abs_det_stepMapR
+#print axioms Nondividing.volume_stepMapR_realBox
+#print axioms Nondividing.stepMapR_realBox_bound
+#print axioms Nondividing.index_mul_le_volume_bound
+#print axioms Nondividing.index_bound_part2

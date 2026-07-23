@@ -190,4 +190,71 @@ theorem index_mul_le_volume_bound {d : ℕ} (P : GAP d d)
   have hrhs : (0 : ℝ) ≤ (8 / c) ^ d * ∏ j, (M j : ℝ) := by positivity
   exact (ENNReal.ofReal_le_ofReal_iff hrhs).mp hvol
 
-end Nondividing
+/-- **Index bound, part 2** (`lem:index-bound`): under the `gap_contained`
+hypotheses, a proper full-rank GAP with `|P| ≥ γ|B|` has step-lattice index
+`[ℤ^d:L] ≤ (12/c)^d·γ⁻¹`.  Chain: `|P| ≤ 3^d∏Nᵢ`, so
+`index·|P| ≤ (3/2)^d·(index·2^d∏Nᵢ) ≤ (3/2)^d(8/c)^d∏Mⱼ ≤ (12/c)^d|B|`,
+then divide by `|P| ≥ γ|B| > 0`. -/
+theorem index_bound_part2 {d : ℕ} (P : GAP d d) (hP : P.Proper)
+    (hinj : Function.Injective P.evalHom) {c s : ℝ} (hc : 0 < c) (hc8 : c ≤ 8)
+    (hs : 0 < s) (hcs2 : 2 ≤ c * s) {M : Fin d → ℕ} {C₀ : Finset (Fin d → ℤ)}
+    (hC₀ : C₀ ⊆ coordinateBox M) (hk0 : (C₀.card : ℝ) ≤ s) {q : Fin d → ℤ}
+    (hincl : ∀ z ∈ P.dilatedCarrier (c * s), q + z ∈ subsetSums C₀)
+    {γ : ℝ} (hγ : 0 < γ)
+    (hlarge : γ * ((coordinateBox M).card : ℝ) ≤ P.carrier.card)
+    (hBpos : 0 < ((coordinateBox M).card : ℝ)) :
+    ((LinearMap.range P.evalHom.toIntLinearMap).toAddSubgroup.index : ℝ)
+      ≤ (12 / c) ^ d * γ⁻¹ := by
+  set idx : ℝ :=
+    ((LinearMap.range P.evalHom.toIntLinearMap).toAddSubgroup.index : ℝ) with hidx
+  have hidx0 : 0 ≤ idx := Nat.cast_nonneg _
+  -- Cardinality of the box `|B| = ∏(2Mⱼ+1) ≥ ∏Mⱼ`.
+  have hMB : (∏ j, (M j : ℝ)) ≤ ((coordinateBox M).card : ℝ) := by
+    rw [card_coordinateBox]
+    push_cast
+    exact Finset.prod_le_prod (fun j _ => Nat.cast_nonneg _)
+      (fun j _ => by push_cast; linarith [Nat.cast_nonneg (α := ℝ) (M j)])
+  -- `|P| ≤ 3^d·∏Nᵢ`.
+  have hPcard : (P.carrier.card : ℝ) ≤ 3 ^ d * ∏ i, (P.radius i : ℝ) := by
+    have := P.card_le_three_pow_mul_prod_radius hP
+    calc (P.carrier.card : ℝ) ≤ ((3 ^ d * ∏ i, P.radius i : ℕ) : ℝ) := by
+          exact_mod_cast this
+      _ = 3 ^ d * ∏ i, (P.radius i : ℝ) := by push_cast; ring
+  -- The volume comparison.
+  have hvol := index_mul_le_volume_bound P hinj hc hs hcs2 hC₀ hk0 hincl
+  -- Assemble: `idx·|P| ≤ (12/c)^d·|B|`.
+  have hprod0 : (0 : ℝ) ≤ ∏ i, (P.radius i : ℝ) :=
+    Finset.prod_nonneg fun i _ => Nat.cast_nonneg _
+  have hmain : idx * (P.carrier.card : ℝ)
+      ≤ (12 / c) ^ d * ((coordinateBox M).card : ℝ) := by
+    calc idx * (P.carrier.card : ℝ)
+        ≤ idx * (3 ^ d * ∏ i, (P.radius i : ℝ)) :=
+          mul_le_mul_of_nonneg_left hPcard hidx0
+      _ = (3 / 2 : ℝ) ^ d * (idx * (2 ^ d * ∏ i, (P.radius i : ℝ))) := by
+          rw [show ((3 : ℝ) / 2) ^ d * (idx * (2 ^ d * ∏ i, (P.radius i : ℝ)))
+              = idx * (((3 / 2 : ℝ) ^ d * 2 ^ d) * ∏ i, (P.radius i : ℝ)) by ring,
+            ← mul_pow]
+          norm_num
+      _ ≤ (3 / 2 : ℝ) ^ d * ((8 / c) ^ d * ∏ j, (M j : ℝ)) :=
+          mul_le_mul_of_nonneg_left hvol (by positivity)
+      _ = (12 / c) ^ d * ∏ j, (M j : ℝ) := by
+          rw [show ((3 : ℝ) / 2) ^ d * ((8 / c) ^ d * ∏ j, (M j : ℝ))
+              = ((3 / 2 : ℝ) * (8 / c)) ^ d * ∏ j, (M j : ℝ) by rw [mul_pow]; ring]
+          congr 2
+          ring
+      _ ≤ (12 / c) ^ d * ((coordinateBox M).card : ℝ) :=
+          mul_le_mul_of_nonneg_left hMB (by positivity)
+  -- Divide by `|P| ≥ γ|B| > 0`.
+  have hPpos : (0 : ℝ) < P.carrier.card := lt_of_lt_of_le (by positivity) hlarge
+  have hstep : idx * (γ * ((coordinateBox M).card : ℝ))
+      ≤ (12 / c) ^ d * ((coordinateBox M).card : ℝ) :=
+    le_trans (mul_le_mul_of_nonneg_left hlarge hidx0) hmain
+  have h1 : idx * γ ≤ (12 / c) ^ d := by
+    have hassoc : (idx * γ) * ((coordinateBox M).card : ℝ)
+        ≤ (12 / c) ^ d * ((coordinateBox M).card : ℝ) := by
+      rw [mul_assoc]; exact hstep
+    exact le_of_mul_le_mul_right hassoc hBpos
+  rw [show (12 / c : ℝ) ^ d * γ⁻¹ = ((12 / c) ^ d) / γ from
+      (div_eq_mul_inv _ _).symm,
+    le_div_iff₀ hγ]
+  exact h1
