@@ -114,3 +114,8 @@ import Nondividing.Main
 
 -- weighted_density injective case: reaches exactly E4 + core.
 #print axioms Nondividing.weighted_density_injective
+
+-- weighted_density machinery: perturbation core-only; step reaches E4.
+#print axioms Nondividing.exists_perturbed_family
+#print axioms Nondividing.mem_of_tendsto_convexBody
+#print axioms Nondividing.weighted_density_step

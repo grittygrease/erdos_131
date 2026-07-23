@@ -395,4 +395,123 @@ theorem volume_closure_of_convex {d : ℕ} {s : Set (Fin d → ℝ)}
 
 end BlaschkeLimits
 
+section WeightedStep
+
+open Metric Classical in
+/-- **Weighted density, single-scale step** (`lem:weighted-density`): at any
+enlargement scale `ρ > 0`, perturbation + the injective case give
+`η ∈ [μ, μ^τ]`, a *compact convex* cap `K ⊆ Ω + B̄(0,ρ)` with
+`vol K ≤ η·vol(Ω+B̄ρ)`, and a perturbed family `q` (each `qᵢ` within `ρ` of
+`pᵢ`) with `#{i : qᵢ ∈ K} ≥ η^{κ+ε}·n`.  The Blaschke limit `ρ → 0` of these
+caps yields the full lemma. -/
+theorem weighted_density_step (r : ℕ) (hr : 1 ≤ r) (eps : ℝ) (heps : 0 < eps) :
+    ∃ tau μ₀ : ℝ, 0 < tau ∧ tau < 1 ∧ 0 < μ₀ ∧
+      ∀ μ : ℝ, 0 < μ → μ < μ₀ → ∃ n₀ : ℕ,
+      ∀ (n : ℕ) (p : Fin n → (Fin r → ℝ)) (Omega : Set (Fin r → ℝ)),
+        n₀ ≤ n → 1 ≤ n →
+        IsCompact Omega → Convex ℝ Omega → (interior Omega).Nonempty →
+        (∀ i, p i ∈ Omega) → IndexedMuConvexPosition μ p →
+        ∀ ρ : ℝ, 0 < ρ →
+        ∃ eta : ℝ, μ ≤ eta ∧ eta ≤ Real.rpow μ tau ∧
+        ∃ K : ConvexBody (Fin r → ℝ),
+          (∀ y ∈ K, infDist y Omega ≤ ρ) ∧
+          volume (K : Set (Fin r → ℝ)) ≤ ENNReal.ofReal eta *
+            volume (Omega + Metric.closedBall (0 : Fin r → ℝ) ρ) ∧
+        ∃ q : Fin n → (Fin r → ℝ),
+          (∀ i, dist (q i) (p i) < ρ) ∧
+          (eta ^ (((r : ℝ) - 1) / ((r : ℝ) + 1) + eps)) * n ≤
+            ((Finset.univ.filter (fun i => q i ∈ (K : Set (Fin r → ℝ)))).card : ℝ) := by
+  classical
+  obtain ⟨tau, μ₀, htau0, htau1, hμ₀, hinj⟩ :=
+    weighted_density_injective r hr eps heps
+  refine ⟨tau, μ₀, htau0, htau1, hμ₀, ?_⟩
+  intro μ hμ hμμ₀
+  obtain ⟨n₀, hn₀⟩ := hinj μ hμ hμμ₀
+  refine ⟨n₀, ?_⟩
+  intro n p Omega hn hn1 hcomp hconv hint hpΩ hpos ρ hρ
+  -- Fix the witnessing half-spaces and perturb.
+  choose ℓ t hmem hcount using hpos
+  obtain ⟨q, hqinj, hqdist, hqown, hqrefl⟩ :=
+    exists_perturbed_family hr p ℓ t hmem hρ
+  -- The enlarged body.
+  set Ω' : Set (Fin r → ℝ) := Omega + Metric.closedBall (0 : Fin r → ℝ) ρ
+    with hΩ'
+  have hΩ'comp : IsCompact Ω' :=
+    hcomp.add (isCompact_closedBall _ _)
+  have hΩ'conv : Convex ℝ Ω' :=
+    hconv.add (convex_closedBall _ _)
+  have hΩsub : Omega ⊆ Ω' := by
+    intro x hx
+    rw [hΩ', Set.mem_add]
+    exact ⟨x, hx, 0, Metric.mem_closedBall_self hρ.le, add_zero x⟩
+  have hΩ'int : (interior Ω').Nonempty :=
+    hint.mono (interior_mono hΩsub)
+  have hqΩ' : ∀ i, q i ∈ Ω' := by
+    intro i
+    rw [hΩ', Set.mem_add]
+    exact ⟨p i, hpΩ i, q i - p i, by
+      rw [Metric.mem_closedBall, dist_eq_norm, sub_zero, ← dist_eq_norm]
+      exact le_of_lt (hqdist i), by abel⟩
+  -- Perturbed family is in indexed μ-convex position.
+  have hqpos : IndexedMuConvexPosition μ q := by
+    intro j
+    refine ⟨ℓ j, t j, hqown j, ?_⟩
+    calc ((Finset.univ.filter fun k => t j ≤ (ℓ j) (q k)).card : ℝ)
+        ≤ ((Finset.univ.filter fun k => t j ≤ (ℓ j) (p k)).card : ℝ) := by
+          have hsub : (Finset.univ.filter fun k => t j ≤ (ℓ j) (q k))
+              ⊆ (Finset.univ.filter fun k => t j ≤ (ℓ j) (p k)) := by
+            intro k hk
+            rw [Finset.mem_filter] at hk ⊢
+            exact ⟨hk.1, hqrefl k j hk.2⟩
+          exact_mod_cast Finset.card_le_card hsub
+      _ ≤ μ * Fintype.card (Fin n) := hcount j
+  -- Injective case at the enlarged body.
+  obtain ⟨eta, hηlo, hηhi, Omega'', hmeas, hconv'', hsub'', hvol'', hcount''⟩ :=
+    hn₀ n q Ω' hn hqinj hΩ'comp hΩ'conv hΩ'int hqΩ' hqpos
+  -- Package the closure as a convex body.
+  have hη0 : 0 < eta := lt_of_lt_of_le hμ hηlo
+  have hcount0 : (0 : ℝ) <
+      ((Finset.univ.filter (fun i => q i ∈ Omega'')).card : ℝ) := by
+    have hpow : (0 : ℝ) < eta ^ (((r : ℝ) - 1) / ((r : ℝ) + 1) + eps) := by
+      positivity
+    have hn1' : (1 : ℝ) ≤ (n : ℝ) := by exact_mod_cast hn1
+    nlinarith [hcount'']
+  have hnonempty : Omega''.Nonempty := by
+    have hcard : 0 < (Finset.univ.filter (fun i => q i ∈ Omega'')).card := by
+      exact_mod_cast hcount0
+    obtain ⟨i, hi⟩ := Finset.card_pos.mp hcard
+    exact ⟨q i, (Finset.mem_filter.mp hi).2⟩
+  have hbdd : IsCompact (closure Omega'') := by
+    apply hΩ'comp.closure_of_subset hsub''
+  set K : ConvexBody (Fin r → ℝ) :=
+    ⟨closure Omega'', hconv''.closure, hbdd, hnonempty.closure⟩ with hK
+  refine ⟨eta, hηlo, hηhi, K, ?_, ?_, q, hqdist, ?_⟩
+  · -- `K ⊆ Ω + B̄ρ` in the `infDist` form.
+    intro y hy
+    have hyΩ' : y ∈ Ω' := by
+      have hcl : closure Omega'' ⊆ Ω' :=
+        closure_minimal hsub'' hΩ'comp.isClosed
+      exact hcl hy
+    rw [hΩ', Set.mem_add] at hyΩ'
+    obtain ⟨a, ha, b, hb, rfl⟩ := hyΩ'
+    calc infDist (a + b) Omega ≤ dist (a + b) a := infDist_le_dist_of_mem ha
+      _ = ‖b‖ := by rw [dist_eq_norm, add_sub_cancel_left]
+      _ ≤ ρ := by
+          have := Metric.mem_closedBall.mp hb
+          rwa [dist_eq_norm, sub_zero] at this
+  · -- Volume of the closure equals that of `Ω''`.
+    show volume (closure Omega'') ≤ _
+    rw [volume_closure_of_convex hconv'']
+    exact hvol''
+  · -- Count only grows under closure.
+    refine le_trans hcount'' ?_
+    have hsubf : (Finset.univ.filter (fun i => q i ∈ Omega''))
+        ⊆ (Finset.univ.filter (fun i => q i ∈ (K : Set (Fin r → ℝ)))) := by
+      intro i hi
+      rw [Finset.mem_filter] at hi ⊢
+      exact ⟨hi.1, subset_closure hi.2⟩
+    exact_mod_cast Finset.card_le_card hsubf
+
+end WeightedStep
+
 end Nondividing
