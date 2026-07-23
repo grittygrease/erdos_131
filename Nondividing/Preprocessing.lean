@@ -86,6 +86,19 @@ theorem card_le_dilatedCoordinateBox {r : ℕ} (N : Fin r → ℕ)
           rw [Finset.prod_mul_distrib, Finset.prod_const, Finset.card_univ,
             Fintype.card_fin]
 
+/-- Integer dilation of a symmetric coordinate box by a factor `k ≥ 1` increases
+the cardinality by at most `k^r`.  (`|kQ| ≤ k^r |Q|`.) -/
+theorem card_coordinateBox_smul_le {r : ℕ} (N : Fin r → ℕ) {k : ℕ} (hk : 1 ≤ k) :
+    (coordinateBox (fun i => k * N i)).card ≤ k ^ r * (coordinateBox N).card := by
+  rw [card_coordinateBox, card_coordinateBox]
+  calc
+    ∏ i : Fin r, (2 * (k * N i) + 1)
+        ≤ ∏ i : Fin r, (k * (2 * N i + 1)) :=
+          Finset.prod_le_prod' fun i _ => by nlinarith [hk]
+    _ = k ^ r * ∏ i : Fin r, (2 * N i + 1) := by
+          rw [Finset.prod_mul_distrib, Finset.prod_const, Finset.card_univ,
+            Fintype.card_fin]
+
 /-- Subset sums of at most `k` points drawn from a symmetric coordinate box lie
 in the `k`-fold dilated coordinate box.  This is the `Σ(C₀) ⊆ sQ` step of
 `lem:progression-comparison` (with `k = |C₀| ≤ s`). -/
