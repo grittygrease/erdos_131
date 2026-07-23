@@ -62,6 +62,41 @@ theorem ShellNonDividing.map
     rw [← hmap] at hdvd
     simpa [Finset.sum_map, hval] using hdvd
 
+/-- **Projective-convexity final contradiction** (`thm:projective-convexity`).
+If a shell set `V` (for an integer-linear functional `ℓ`) contains `a`, and a
+*positive* integer multiple `m₀·a` is a subset sum of `V \ {a}`, then shell
+non-dividing is violated: applying `ℓ` gives `m₀·ℓ(a) = ∑ ℓ(v)`, so `ℓ(a)`
+divides a nonempty sum of the other shell values. -/
+theorem shellNonDividing_no_positive_multiple {d : ℕ} (ℓ : (Fin d → ℤ) →+ ℤ)
+    {X : ℕ} {V : Finset (Fin d → ℤ)} (hX : 1 ≤ X)
+    (hV : ShellNonDividing (fun v => ℓ v) X V) {a : Fin d → ℤ} (haV : a ∈ V)
+    {m₀ : ℕ} (hm₀ : 1 ≤ m₀) (hmem : (m₀ • a) ∈ subsetSums (V.erase a)) : False := by
+  classical
+  obtain ⟨S, hSV, hSsum⟩ := mem_subsetSums.mp hmem
+  -- `ℓ(a) > 0` from the shell condition
+  have hla : 0 < ℓ a := by
+    have h1 : (X : ℤ) ≤ ℓ a := (hV.1 a haV).1
+    have h2 : (1 : ℤ) ≤ (X : ℤ) := by exact_mod_cast hX
+    linarith
+  -- `m₀·ℓ(a) = ∑_{v∈S} ℓ(v)`
+  have hlm : (m₀ : ℤ) * ℓ a = ∑ v ∈ S, ℓ v := by
+    have : ℓ (m₀ • a) = ∑ v ∈ S, ℓ v := by rw [← hSsum, map_sum]
+    rwa [map_nsmul, nsmul_eq_mul] at this
+  -- `S` is nonempty (else `m₀·a = 0`, forcing `a = 0`, contradicting `ℓ(a) > 0`)
+  have hSne : S.Nonempty := by
+    rcases S.eq_empty_or_nonempty with hS | hS
+    · subst hS
+      rw [Finset.sum_empty] at hSsum
+      have ha0 : a = 0 := by
+        rcases smul_eq_zero.mp hSsum.symm with h | h
+        · exact absurd h (by omega)
+        · exact h
+      rw [ha0, map_zero] at hla
+      exact absurd hla (lt_irrefl 0)
+    · exact hS
+  -- `ℓ(a) ∣ ∑ ℓ(v)`, contradicting shell non-dividing
+  exact hV.2 a haV S hSne hSV ⟨(m₀ : ℤ), by rw [← hlm]; ring⟩
+
 namespace GAP
 
 variable {d e : ℕ} (P : GAP d e)
