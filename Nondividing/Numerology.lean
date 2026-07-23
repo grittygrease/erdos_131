@@ -241,4 +241,32 @@ theorem numerology_strict_eps {d e : ℕ} (hd : 1 ≤ d) (hde : d < e) {ζ ζ₀
       _ = 1 / 5 * ζ₀ := by ring
   linarith [hbase, hincr]
 
+/-- **The numerology lemma** (`lem:numerology`), exact packaged form.  Fixing the
+dimension bound `D ≥ 2` and `ζ₀ > 0`, there are explicit `ε₀, c_* > 0` such that
+for all `1 ≤ d < e ≤ D`, `ζ ∈ [ζ₀, 1-σ_d]`, `0 < ε < ε₀`, the perturbed
+numerology functional is `≤ 1 - c_*`.  The constants are `ε₀ = ζ₀/(10D)`,
+`c_* = ζ₀/5` — no compactness/continuity argument required. -/
+theorem numerology {D : ℕ} (hD : 2 ≤ D) {ζ₀ : ℝ} (hζ₀ : 0 < ζ₀) :
+    ∃ ε₀ c : ℝ, 0 < ε₀ ∧ 0 < c ∧
+      ∀ (d e : ℕ), 1 ≤ d → d < e → e ≤ D →
+        ∀ ζ : ℝ, ζ₀ ≤ ζ → ζ ≤ 1 - sigma d →
+          ∀ ε : ℝ, 0 < ε → ε < ε₀ →
+            (sigma e + ζ) * (1 / (sigma d + ζ) - (1 - ε) * ((e : ℝ) - d))
+              ≤ 1 - c := by
+  have hDR : (0 : ℝ) < (D : ℝ) := by
+    have : 0 < D := by omega
+    exact_mod_cast this
+  refine ⟨ζ₀ / (10 * D), 1 / 5 * ζ₀, by positivity, by positivity, ?_⟩
+  intro d e hd hde heD ζ hζlo hζhi ε hεpos hεlt
+  refine numerology_strict_eps hd hde hζ₀ hζlo hζhi hεpos.le ?_
+  have hd1 : (1 : ℝ) ≤ d := by exact_mod_cast hd
+  have heDR : (e : ℝ) ≤ D := by exact_mod_cast heD
+  have hedD : (e : ℝ) - d ≤ D := by linarith
+  have hed0 : (0 : ℝ) ≤ (e : ℝ) - d := by
+    have : (d : ℝ) + 1 ≤ e := by exact_mod_cast hde
+    linarith
+  calc ε * ((e : ℝ) - d) ≤ (ζ₀ / (10 * D)) * D :=
+        mul_le_mul hεlt.le hedD hed0 (by positivity)
+    _ = ζ₀ / 10 := by field_simp
+
 end Nondividing
