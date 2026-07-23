@@ -40,3 +40,4 @@ import Nondividing.Main
 #print axioms Nondividing.projective_span_package
 #print axioms Nondividing.duality_representation_from_projective
 #print axioms Nondividing.exists_capped_combination
+#print axioms Nondividing.projective_duality
