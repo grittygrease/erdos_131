@@ -89,6 +89,26 @@ theorem card_dilatedCarrier_of_injOn (t : ℝ)
   rw [dilatedCarrier, Finset.card_image_iff.mpr]
   exact fun x hx y hy hxy => hP hx hy hxy
 
+theorem dilatedRadius_mono {a b : ℝ} (hab : a ≤ b) (i : Fin e) :
+    P.dilatedRadius a i ≤ P.dilatedRadius b i := by
+  rw [dilatedRadius, dilatedRadius]
+  exact Nat.floor_mono (mul_le_mul_of_nonneg_right hab (Nat.cast_nonneg _))
+
+/-- The real-scale dilate is monotone: `a ≤ b ⟹ aP ⊆ bP`.  Used to place the
+`3√(d(|C̄|+1))`-rounding error inside the `(cs/2)`-dilate. -/
+theorem dilatedCarrier_mono {a b : ℝ} (hab : a ≤ b) :
+    P.dilatedCarrier a ⊆ P.dilatedCarrier b := by
+  intro v hv
+  rw [mem_dilatedCarrier] at hv ⊢
+  obtain ⟨n, hn, rfl⟩ := hv
+  refine ⟨n, ?_, rfl⟩
+  rw [dilatedCoeffBox, mem_coordinateBox] at hn ⊢
+  intro i
+  have h := hn i
+  have hmono : (P.dilatedRadius a i : ℤ) ≤ P.dilatedRadius b i := by
+    exact_mod_cast P.dilatedRadius_mono hab i
+  omega
+
 /-- Coefficientwise addition in a symmetric GAP: the `a`-dilate plus the
 `b`-dilate lands in the `(a+b)`-dilate.  This is the "coefficientwise addition in
 the symmetric GAP" step of `lem:one-sided-filling` (error `+ t ∈ q + csP`). -/

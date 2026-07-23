@@ -185,4 +185,31 @@ theorem filling_assembly {d e : ℕ} (P : GAP d e)
   rw [heq2] at hunion
   exact subsetSums_mono hsub hunion
 
+/-- **Rounding with a homogeneous core** (`lem:one-sided-filling`).
+Let `P` be a full-rank GAP with `C̄ ⊆ P.carrier`, let `C₀` be disjoint from `C̄`
+with `C̄ ∪ C₀ ⊆ C`, and suppose the structural core inclusion
+`q + (cs)·P ⊆ Σ(C₀)` holds, with the rounding radius `3√(d(|C̄|+1))` at most
+`cs/2`.  Then every step-lattice point `z = ψ⁻¹(nz)` whose real image lies in the
+zonotope `Z(C̄)`, shifted by any `t ∈ q + (cs/2)·P`, is a subset sum of `C`:
+\[ L∩(Z(C̄)+q+\tfrac{cs}{2}P) ⊆ Σ(C). \]
+This is the full lemma; the only external input is the E3 rounding used inside
+`zonotope_rounding_carrier`. -/
+theorem one_sided_filling {d : ℕ} (P : GAP d d) (hrank : P.realRank = d)
+    {C Cbar C0 : Finset (Fin d → ℤ)} (hC : Cbar ⊆ P.carrier)
+    {q : Fin d → ℤ} {cs : ℝ} (hcs : 0 ≤ cs)
+    (hthr : Real.sqrt (d * (Cbar.card + 1)) * 3 ≤ cs / 2)
+    (hcore : ∀ w ∈ P.dilatedCarrier cs, q + w ∈ subsetSums C0)
+    (hdisj : Disjoint Cbar C0) (hsub : Cbar ∪ C0 ⊆ C)
+    {nz : Fin d → ℤ}
+    (hzon : External.InZonotope Cbar (fun j => ((P.evalHom nz) j : ℝ)))
+    {t : Fin d → ℤ} (ht : t - q ∈ P.dilatedCarrier (cs / 2)) :
+    P.evalHom nz + t ∈ subsetSums C := by
+  obtain ⟨S, hSsub, herr⟩ :=
+    zonotope_rounding_carrier P hrank Cbar hC (nw := nz) rfl hzon
+  have hzt : (∑ v ∈ S, v) ∈ subsetSums Cbar :=
+    mem_subsetSums.mpr ⟨S, hSsub, rfl⟩
+  have herr' : P.evalHom nz - ∑ v ∈ S, v ∈ P.dilatedCarrier (cs / 2) :=
+    P.dilatedCarrier_mono hthr herr
+  exact filling_assembly P hcs hzt herr' ht hcore hdisj hsub
+
 end Nondividing
