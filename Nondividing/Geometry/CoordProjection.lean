@@ -106,6 +106,30 @@ theorem exists_coordProjR_injOn :
       (Module.forall_dual_apply_eq_zero_iff ℝ _).mp hall
     exact congrArg (Subtype.val) hx0
 
+/-- The real rank of a dilated GAP carrier is at most the rank of its step
+vectors: every carrier point is an integer combination of the steps. -/
+theorem finrank_integerRealSpan_dilatedCarrier_le_realRank {d e : ℕ} (P : GAP d e)
+    (t : ℝ) :
+    Module.finrank ℝ (integerRealSpan (P.dilatedCarrier t)) ≤ P.realRank := by
+  classical
+  have hsub : integerRealSpan (P.dilatedCarrier t) ≤
+      Submodule.span ℝ
+        (Set.range fun i : Fin e => (fun j : Fin d => (P.step i j : ℝ))) := by
+    rw [integerRealSpan, Submodule.span_le]
+    rintro _ ⟨w, hw, rfl⟩
+    obtain ⟨n, _hn, rfl⟩ := (P.mem_dilatedCarrier).mp (Finset.mem_coe.mp hw)
+    have heq : realPoint (P.evalHom n) =
+        ∑ i, (n i : ℝ) • (fun j : Fin d => (P.step i j : ℝ)) := by
+      funext j
+      simp only [realPoint, GAP.evalHom_apply, Finset.sum_apply, Pi.smul_apply,
+        smul_eq_mul]
+      push_cast
+      rfl
+    rw [SetLike.mem_coe, heq]
+    exact Submodule.sum_mem _ fun i _ =>
+      Submodule.smul_mem _ _ (Submodule.subset_span ⟨i, rfl⟩)
+  exact Submodule.finrank_mono hsub
+
 /-- `realPoint` is injective. -/
 theorem realPoint_injective {d : ℕ} : Function.Injective (realPoint (d := d)) := by
   intro z w h
