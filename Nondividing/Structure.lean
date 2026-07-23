@@ -2,6 +2,7 @@ import Nondividing.External.CFPStructure
 import Nondividing.Preprocessing
 import Nondividing.Geometry.ConvexLatticeJohn
 import Nondividing.Geometry.CoordProjection
+import Nondividing.Geometry.SlabVolume
 
 open scoped BigOperators
 
@@ -170,5 +171,81 @@ theorem projective_span_package {d : ℕ} {β : ℝ} (hd : 1 ≤ d) (pkg : Packa
     (realRank_eq_of_index hde o.P hproper pkg.c_pos hs hγ hcs o.inj hC₀box hcard1
       o.C₀_card o.incl hBpos hPlow hthresh').trans he
   exact integerRealSpan_eq_top o.P hcs hC₀V o.incl hrank
+
+/-- **Slab exclusion, counting dichotomy** (`lem:slab-exclusion`).  For an
+eligible slab subset `D` (all its points in the central slab of relative width
+`τ`) whose package data has full displayed dimension and progression occupying
+a `γ`-fraction of the box, the counting chain through the slab GAP gives
+`t^d·γ|B| ≤ 3^d(2|C₀|+1)^r·C·(dτ or 1)·|B|` with `r ≤ d` and the `dτ` factor
+exactly when `r = d`.  Downstream, `r < d` contradicts `s·γ → ∞` and `r = d`
+forces `τ ≫ γ` — together the manuscript's exclusion. -/
+theorem slab_exclusion_count {d : ℕ} {β : ℝ} (pkg : Package d β) :
+    ∃ C : ℝ, 0 < C ∧
+    ∀ (D : Finset (Fin d → ℤ)) (M : Fin d → ℕ) (hE : Eligible β pkg.m₀ D M)
+      (a : Fin d → ℝ) (τ γ : ℝ), 0 ≤ τ → (0 < ∑ i, |a i| * (M i : ℝ)) →
+      1 ≤ pkg.c * External.structureScale D.card →
+      (pkg.out D M hE).e = d →
+      γ * ((coordinateBox M).card : ℝ) ≤ ((pkg.out D M hE).P.carrier.card : ℝ) →
+      (∀ z ∈ D, |∑ i, a i * (z i : ℝ)| ≤ τ * ∑ i, |a i| * (M i : ℝ)) →
+      ∃ r, r ≤ d ∧
+        (pkg.c * External.structureScale D.card) ^ d *
+            (γ * ((coordinateBox M).card : ℝ)) ≤
+          3 ^ d * (2 * (pkg.out D M hE).C₀.card + 1) ^ r * C *
+            ((if r = d then (d : ℝ) * τ else 1) *
+              ((coordinateBox M).card : ℝ)) := by
+  classical
+  obtain ⟨Cs, hCs, hslab⟩ := slab_count d
+  refine ⟨Cs, hCs, ?_⟩
+  intro D M hE a τ γ hτ hw ht he hPlow hDslab
+  set o := pkg.out D M hE with ho
+  set t : ℝ := pkg.c * External.structureScale D.card with htdef
+  -- The integer slab point set.
+  set S : Finset (Fin d → ℤ) := (coordinateBox M).filter
+    (fun z => |∑ i, a i * (z i : ℝ)| ≤ τ * ∑ i, |a i| * (M i : ℝ)) with hSdef
+  have hSmem : ∀ z, z ∈ S ↔ (z ∈ coordinateBox M ∧
+      |∑ i, a i * (z i : ℝ)| ≤ τ * ∑ i, |a i| * (M i : ℝ)) := by
+    intro z; rw [hSdef, Finset.mem_filter]
+  obtain ⟨r, Q, hrd, hQprop, hSQ, hQall, hQfull⟩ := hslab M a τ hτ hw S hSmem
+  -- The core sits inside the slab GAP.
+  have hDS : D ⊆ S := by
+    intro z hz
+    exact (hSmem z).mpr ⟨hE.subset hz, hDslab z hz⟩
+  have hC₀Q : o.C₀ ⊆ Q.carrier :=
+    ((o.C₀_subset.trans o.Chat_subset).trans hDS).trans hSQ
+  -- Counting chain through the slab GAP (`Cj = 1`).
+  have hcount := o.P.progression_comparison_le (t := t) ht o.inj Q hQprop hC₀Q
+    (le_refl o.C₀.card) o.incl (Cj := 1) (Q := Q.carrier)
+    (by omega : Q.carrier.card ≤ 1 * Q.carrier.card)
+  have hte : t ^ o.e = t ^ d := by rw [he]
+  have h3e : (3 : ℝ) ^ o.e = 3 ^ d := by rw [he]
+  rw [hte, h3e] at hcount
+  refine ⟨r, hrd, ?_⟩
+  have htpow : (0 : ℝ) ≤ t ^ d := by positivity
+  have hkpow : (0 : ℝ) ≤ (3 : ℝ) ^ d * (2 * o.C₀.card + 1) ^ r := by positivity
+  calc t ^ d * (γ * ((coordinateBox M).card : ℝ))
+      ≤ t ^ d * ((o.P.carrier.card : ℝ)) :=
+        mul_le_mul_of_nonneg_left hPlow htpow
+    _ ≤ (3 ^ d * (2 * o.C₀.card + 1) ^ r * ((1 : ℕ) : ℝ)) * (Q.carrier.card : ℝ) :=
+        hcount
+    _ = (3 ^ d * (2 * o.C₀.card + 1) ^ r) * (Q.carrier.card : ℝ) := by
+        push_cast; ring
+    _ ≤ 3 ^ d * (2 * o.C₀.card + 1) ^ r * Cs *
+          ((if r = d then (d : ℝ) * τ else 1) * ((coordinateBox M).card : ℝ)) := by
+        by_cases hr : r = d
+        · rw [if_pos hr]
+          have := hQfull hr
+          calc (3 ^ d * (2 * o.C₀.card + 1) ^ r : ℝ) * (Q.carrier.card : ℝ)
+              ≤ (3 ^ d * (2 * o.C₀.card + 1) ^ r) *
+                  (Cs * (d * τ) * ((coordinateBox M).card : ℝ)) :=
+                mul_le_mul_of_nonneg_left this hkpow
+            _ = 3 ^ d * (2 * o.C₀.card + 1) ^ r * Cs *
+                  ((d : ℝ) * τ * ((coordinateBox M).card : ℝ)) := by ring
+        · rw [if_neg hr]
+          calc (3 ^ d * (2 * o.C₀.card + 1) ^ r : ℝ) * (Q.carrier.card : ℝ)
+              ≤ (3 ^ d * (2 * o.C₀.card + 1) ^ r) *
+                  (Cs * ((coordinateBox M).card : ℝ)) :=
+                mul_le_mul_of_nonneg_left hQall hkpow
+            _ = 3 ^ d * (2 * o.C₀.card + 1) ^ r * Cs *
+                  (1 * ((coordinateBox M).card : ℝ)) := by ring
 
 end Nondividing

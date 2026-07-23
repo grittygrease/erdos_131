@@ -79,3 +79,5 @@ import Nondividing.Main
 #print axioms Nondividing.slab_count_full_rank
 -- full slab_count reaches E2 (John placement) + E5 (full-rank count) + core.
 #print axioms Nondividing.slab_count
+-- slab_exclusion counting dichotomy over the package: E2+E5+core.
+#print axioms Nondividing.slab_exclusion_count

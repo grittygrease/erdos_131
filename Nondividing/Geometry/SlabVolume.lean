@@ -394,7 +394,7 @@ theorem slab_count (d : ℕ) :
       ∀ (S : Finset (Fin d → ℤ)),
         (∀ z, z ∈ S ↔ (z ∈ coordinateBox N ∧
           |∑ i, a i * (z i : ℝ)| ≤ τ * ∑ i, |a i| * (N i : ℝ))) →
-        ∃ (r : ℕ) (Q : GAP d r), Q.Proper ∧ S ⊆ Q.carrier ∧
+        ∃ (r : ℕ) (Q : GAP d r), r ≤ d ∧ Q.Proper ∧ S ⊆ Q.carrier ∧
           (Q.carrier.card : ℝ) ≤ C * ((coordinateBox N).card : ℝ) ∧
           (r = d → (Q.carrier.card : ℝ)
             ≤ C * (d * τ) * ((coordinateBox N).card : ℝ)) := by
@@ -433,7 +433,10 @@ theorem slab_count (d : ℕ) :
   -- E2 John placement.
   obtain ⟨Q, _hQsteps, hQprop, _hQinner, hQouter, hQcard⟩ :=
     hE2 (Module.finrank ℝ H) H K S rfl hcompact hconvex hsymmK hKH hzK rfl
-  refine ⟨Module.finrank ℝ H, Q, hQprop, hQouter, ?_, ?_⟩
+  have hrle : Module.finrank ℝ H ≤ d := by
+    have := Submodule.finrank_le H
+    rwa [Module.finrank_pi ℝ, Fintype.card_fin] at this
+  refine ⟨Module.finrank ℝ H, Q, hrle, hQprop, hQouter, ?_, ?_⟩
   -- Common facts.
   all_goals
     have hSbox : S ⊆ coordinateBox N := fun z hz => ((hSmem z).mp hz).1
