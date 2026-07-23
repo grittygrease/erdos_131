@@ -168,6 +168,30 @@ theorem realStep_mem_integerRealSpan {d e : ℕ} (P : GAP d e) {c s : ℝ}
   rw [hdiff]
   exact Submodule.sub_mem _ h2 h1
 
+/-- **Full-dimensional support** (`lem:projective-span`, first conclusion).  If
+the step lattice of `P(V)` has full rank `d`, then the real span of the shell set
+`V` is all of `ℝ^d`. -/
+theorem integerRealSpan_eq_top {d e : ℕ} (P : GAP d e) {c s : ℝ}
+    (hcs : 1 ≤ c * s) {V C₀ : Finset (Fin d → ℤ)} (hC₀V : C₀ ⊆ V) {q : Fin d → ℤ}
+    (hincl : ∀ z ∈ P.dilatedCarrier (c * s), q + z ∈ subsetSums C₀)
+    (hrank : P.realRank = d) :
+    integerRealSpan V = ⊤ := by
+  have hsteps : Submodule.span ℝ
+      (Set.range fun i : Fin e => (fun j : Fin d => (P.step i j : ℝ)))
+        ≤ integerRealSpan V := by
+    rw [Submodule.span_le]
+    rintro _ ⟨i, rfl⟩
+    exact realStep_mem_integerRealSpan P hcs hC₀V hincl i
+  have h1 : P.realRank ≤ Module.finrank ℝ (integerRealSpan V) :=
+    Submodule.finrank_mono hsteps
+  rw [hrank] at h1
+  have h2 : Module.finrank ℝ (integerRealSpan V) ≤ d := by
+    have h := Submodule.finrank_le (integerRealSpan V)
+    rwa [Module.finrank_pi, Fintype.card_fin] at h
+  apply Submodule.eq_top_of_finrank_eq
+  rw [Module.finrank_pi, Fintype.card_fin]
+  omega
+
 /-- The step rank never exceeds the displayed dimension. -/
 theorem realRank_le {d e : ℕ} (P : GAP d e) : P.realRank ≤ e := by
   have h := finrank_range_le_card (R := ℝ)
