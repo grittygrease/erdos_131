@@ -110,4 +110,19 @@ theorem smul_projNorm_mem_realBox {d : ℕ} {a : Fin d → ℤ} {X : ℕ} {v : F
   · nlinarith [hρ0, hρ1, hviR_lo, hviR_hi, hMnn]
   · nlinarith [hρ0, hρ1, hviR_lo, hviR_hi, hMnn]
 
+/-- If the shell set `V` spans `ℝ^d` and its functional is nonvanishing on `V`,
+then the projective images `π(V)` linearly span `ℝ^d` (as `v = λ(v)·π(v)`).  This
+underlies the full affine span `aff π(V) = H_λ`. -/
+theorem span_projNorm_eq_top {d : ℕ} (a : Fin d → ℤ) {V : Finset (Fin d → ℤ)}
+    (hspan : integerRealSpan V = ⊤)
+    (hpos : ∀ v ∈ V, intFunctional a v ≠ 0) :
+    Submodule.span ℝ (projNorm a '' (V : Set (Fin d → ℤ))) = ⊤ := by
+  rw [eq_top_iff, ← hspan, integerRealSpan, Submodule.span_le]
+  rintro _ ⟨v, hv, rfl⟩
+  have hne : ((intFunctional a v : ℤ) : ℝ) ≠ 0 := by exact_mod_cast hpos v hv
+  have hrw : realPoint v = (intFunctional a v : ℝ) • projNorm a v := by
+    rw [projNorm, smul_inv_smul₀ hne]
+  rw [SetLike.mem_coe, hrw]
+  exact Submodule.smul_mem _ _ (Submodule.subset_span ⟨v, hv, rfl⟩)
+
 end Nondividing
