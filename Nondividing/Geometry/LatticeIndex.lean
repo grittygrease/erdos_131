@@ -77,4 +77,46 @@ theorem prod_proj_le_card_coordinateBox {d : ℕ} (M : Fin d → ℕ)
   intro i _ _
   exact Nat.le_add_left 1 (2 * M i)
 
+/-- Real dilation of the `I`-face box grows at most like `t^{|I|}`. -/
+theorem prod_dilated_proj_le {d : ℕ} (M : Fin d → ℕ) (I : Finset (Fin d))
+    {t : ℝ} (ht : 1 ≤ t) :
+    ∏ i ∈ I, (2 * (⌊t * (M i : ℝ)⌋₊ : ℝ) + 1) ≤
+      t ^ I.card * ∏ i ∈ I, (2 * (M i : ℝ) + 1) := by
+  calc
+    ∏ i ∈ I, (2 * (⌊t * (M i : ℝ)⌋₊ : ℝ) + 1)
+        ≤ ∏ i ∈ I, (t * (2 * (M i : ℝ) + 1)) :=
+          Finset.prod_le_prod (fun i _ => by positivity)
+            (fun i _ => two_floor_mul_add_one_le ht)
+    _ = t ^ I.card * ∏ i ∈ I, (2 * (M i : ℝ) + 1) := by
+          rw [Finset.prod_mul_distrib, Finset.prod_const]
+
+/-- Assembled cardinality inequality of `lem:lattice-section-box`: a set of
+integer points in a `t`-dilated symmetric coordinate box whose projection onto a
+size-`r` coordinate subset `I` is injective has `|A| ≤ t^r |B|`.  The manuscript
+supplies such an `I` from the `r`-dimensional subspace `H`; that projection
+existence is the only remaining ingredient. -/
+theorem latticeSection_card_le {d r : ℕ} {M : Fin d → ℕ} {t : ℝ} (ht : 1 ≤ t)
+    {A : Finset (Fin d → ℤ)}
+    (hA : A ⊆ coordinateBox (fun i => ⌊t * (M i : ℝ)⌋₊))
+    (I : Finset (Fin d)) (hIcard : I.card = r)
+    (hinj : Set.InjOn (coordProj I) (A : Set (Fin d → ℤ))) :
+    (A.card : ℝ) ≤ t ^ r * ((coordinateBox M).card : ℝ) := by
+  have htpos : (0 : ℝ) ≤ t := le_trans zero_le_one ht
+  have hstep1 : (A.card : ℝ) ≤ ∏ i ∈ I, (2 * (⌊t * (M i : ℝ)⌋₊ : ℝ) + 1) := by
+    have hnat := card_le_prod_of_injOn_coordProj hA I hinj
+    calc (A.card : ℝ) ≤ ((∏ i ∈ I, (2 * ⌊t * (M i : ℝ)⌋₊ + 1) : ℕ) : ℝ) := by
+            exact_mod_cast hnat
+      _ = ∏ i ∈ I, (2 * (⌊t * (M i : ℝ)⌋₊ : ℝ) + 1) := by push_cast; ring
+  have hstep3 : ∏ i ∈ I, (2 * (M i : ℝ) + 1) ≤ ((coordinateBox M).card : ℝ) := by
+    have hnat := prod_proj_le_card_coordinateBox M I
+    calc ∏ i ∈ I, (2 * (M i : ℝ) + 1)
+          = ((∏ i ∈ I, (2 * M i + 1) : ℕ) : ℝ) := by push_cast; ring
+      _ ≤ ((coordinateBox M).card : ℝ) := by exact_mod_cast hnat
+  calc
+    (A.card : ℝ) ≤ ∏ i ∈ I, (2 * (⌊t * (M i : ℝ)⌋₊ : ℝ) + 1) := hstep1
+    _ ≤ t ^ I.card * ∏ i ∈ I, (2 * (M i : ℝ) + 1) := prod_dilated_proj_le M I ht
+    _ = t ^ r * ∏ i ∈ I, (2 * (M i : ℝ) + 1) := by rw [hIcard]
+    _ ≤ t ^ r * ((coordinateBox M).card : ℝ) :=
+          mul_le_mul_of_nonneg_left hstep3 (by positivity)
+
 end Nondividing
