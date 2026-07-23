@@ -12,6 +12,7 @@ import Nondividing.Geometry.IndexDet
 import Nondividing.Geometry.GAPVolume
 import Nondividing.Geometry.SlabVolume
 import Nondividing.Geometry.Zonotope
+import Nondividing.Geometry.RobustZonotope
 import Nondividing.Numerology
 import Nondividing.QuotientOrder
 import Nondividing.Filling

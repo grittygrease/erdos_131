@@ -376,4 +376,78 @@ theorem slab_exclusion {d : ℕ} {β : ℝ} (pkg : Package d β) (hd : 1 ≤ d) 
         _ ≤ 9 ^ d * C := h2
     exact absurd hK (not_lt_of_ge hsγK)
 
+/-- **Slab bound for the robust zonotope** (`lem:robust-zonotope`, call-site
+glue).  From `slab_exclusion`, every thin central slab (functional `f`,
+threshold `ρ ≤ (c_w·γ)·w(f)`) holds at most `δ|V|` points of any `C ⊆ V` —
+in the doubled form `2·card ≤ 2·δ|V|` consumed by
+`symZonotope_contains_box_of_slab_bound` (with `δn := 2δ|V|`).  The caller
+supplies eligibility and scale thresholds for large subsets. -/
+theorem robust_slab_bound {d : ℕ} {β : ℝ} (pkg : Package d β) (hd : 1 ≤ d) :
+    ∃ cw K : ℝ, 0 < cw ∧ 0 < K ∧
+    ∀ (V C : Finset (Fin d → ℤ)) (M : Fin d → ℕ) (δ γ : ℝ),
+      UnshiftedIrreducible pkg δ γ V M → C ⊆ V → 0 < γ →
+      (∀ D : Finset (Fin d → ℤ), D ⊆ V → δ * (V.card : ℝ) ≤ (D.card : ℝ) →
+        ∃ hE : Eligible β pkg.m₀ D M,
+          1 ≤ External.structureScale D.card ∧
+          1 ≤ pkg.c * External.structureScale D.card ∧
+          K < External.structureScale D.card * γ) →
+      ∀ (f : (Fin d → ℝ) →ₗ[ℝ] ℝ) (ρ : ℝ), 0 < ρ →
+        ρ ≤ (cw * γ) * (∑ i, |f (Pi.single i (1 : ℝ))| * (M i : ℝ)) →
+        2 * ((C.filter (fun v => |f (External.realPoint v)| < ρ)).card : ℝ)
+          ≤ 2 * (δ * (V.card : ℝ)) := by
+  classical
+  obtain ⟨cstar, K, hcstar, hK, hexcl⟩ := slab_exclusion pkg hd
+  refine ⟨cstar / 2, K, by positivity, hK, ?_⟩
+  intro V C M δ γ hirr hCV hγ hsupply f ρ hρ0 hρw
+  by_contra hcon
+  push_neg at hcon
+  set D' : Finset (Fin d → ℤ) :=
+    C.filter (fun v => |f (External.realPoint v)| < ρ) with hD'
+  have hcard : δ * (V.card : ℝ) ≤ (D'.card : ℝ) := by
+    linarith
+  have hD'V : D' ⊆ V := (Finset.filter_subset _ _).trans hCV
+  obtain ⟨hE, hs1, hcs1, hKs⟩ := hsupply D' hD'V hcard
+  set a : Fin d → ℝ := fun i => f (Pi.single i (1 : ℝ)) with ha
+  set w : ℝ := ∑ i, |a i| * (M i : ℝ) with hw
+  -- Positive width (else the threshold bound kills `ρ > 0`).
+  have hw0 : 0 < w := by
+    rcases lt_or_ge 0 w with h | h
+    · exact h
+    · exfalso
+      have hwnn : 0 ≤ w := by
+        rw [hw]
+        exact Finset.sum_nonneg fun i _ =>
+          mul_nonneg (abs_nonneg _) (Nat.cast_nonneg _)
+      have hweq : w = 0 := le_antisymm h hwnn
+      rw [hweq, mul_zero] at hρw
+      linarith
+  -- The relative width.
+  set τ : ℝ := ρ / w with hτ
+  have hτ0 : 0 ≤ τ := le_of_lt (div_pos hρ0 hw0)
+  have hτlt : τ < cstar * γ := by
+    rw [hτ, div_lt_iff₀ hw0]
+    calc ρ ≤ (cstar / 2 * γ) * w := hρw
+      _ < (cstar * γ) * w := by nlinarith
+  -- The functional identity `f(z) = ∑ aᵢzᵢ` on integer points.
+  have hfz : ∀ z : Fin d → ℤ,
+      f (External.realPoint z) = ∑ i, a i * (z i : ℝ) := by
+    intro z
+    have hdecomp : External.realPoint z
+        = ∑ i, ((z i : ℝ)) • Pi.single (M := fun _ => ℝ) i 1 :=
+      pi_eq_sum_univ' _
+    rw [hdecomp, map_sum]
+    exact Finset.sum_congr rfl fun i _ => by
+      rw [map_smul, smul_eq_mul, ha]; ring
+  -- Every point of `D'` lies in the `τ`-slab.
+  have hDslab : ∀ z ∈ D', |∑ i, a i * (z i : ℝ)| ≤ τ * ∑ i, |a i| * (M i : ℝ) := by
+    intro z hz
+    have hzρ : |f (External.realPoint z)| < ρ := (Finset.mem_filter.mp hz).2
+    rw [← hfz z, ← hw]
+    have : τ * w = ρ := by rw [hτ]; field_simp
+    rw [this]
+    exact le_of_lt hzρ
+  have hwidth : 0 < ∑ i, |a i| * (M i : ℝ) := by rw [← hw]; exact hw0
+  exact hexcl V D' M hE a τ δ γ hirr hD'V hcard hγ hτ0 hwidth hs1 hcs1
+    hDslab hKs hτlt
+
 end Nondividing

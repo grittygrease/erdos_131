@@ -89,3 +89,7 @@ import Nondividing.Main
 #print axioms Nondividing.symZonotope_isCompact
 #print axioms Nondividing.symZonotope_contains_box_of_slab_bound
 #print axioms Nondividing.centre_add_symZonotope_subset_realZonotope
+
+-- robust_zonotope FULL: reaches E1 (package) + E2 + E5 + core.
+#print axioms Nondividing.robust_slab_bound
+#print axioms Nondividing.robust_zonotope
