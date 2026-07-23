@@ -1,5 +1,6 @@
 import Mathlib.LinearAlgebra.Matrix.SchurComplement
 import Mathlib.Tactic.IntervalCases
+import Mathlib.Analysis.Convex.Body
 import Nondividing.Geometry.GAPVolume
 
 open scoped BigOperators
@@ -181,4 +182,71 @@ theorem exists_width_coordinate {d : ℕ} (a : Fin d → ℝ) (N : Fin d → ℕ
   rw [haj] at hsum
   simp only [abs_zero, zero_mul, mul_zero] at hsum
   linarith
+section SlabBody
+
+open MeasureTheory
+
+/-- The box-slab intersection as a convex body (for E5). -/
+noncomputable def slabBody {d : ℕ} (N : Fin d → ℕ) (a : Fin d → ℝ) {c : ℝ}
+    (hc : 0 ≤ c) : ConvexBody (Fin d → ℝ) where
+  carrier := {x : Fin d → ℝ | x ∈ realBox N ∧ |∑ i, a i * x i| ≤ c}
+  convex' := by
+    intro x hx y hy s t hs ht hst
+    obtain ⟨⟨hx1, hx2⟩, hxs⟩ := hx
+    obtain ⟨⟨hy1, hy2⟩, hys⟩ := hy
+    refine ⟨⟨fun i => ?_, fun i => ?_⟩, ?_⟩
+    · have := add_le_add (mul_le_mul_of_nonneg_left (hx1 i) hs)
+        (mul_le_mul_of_nonneg_left (hy1 i) ht)
+      calc -(N i : ℝ) = s * -(N i : ℝ) + t * -(N i : ℝ) := by
+            rw [← add_mul, hst]; ring
+        _ ≤ s * x i + t * y i := add_le_add
+            (mul_le_mul_of_nonneg_left (hx1 i) hs)
+            (mul_le_mul_of_nonneg_left (hy1 i) ht)
+        _ = (s • x + t • y) i := by
+            simp [Pi.add_apply, Pi.smul_apply, smul_eq_mul]
+    · calc (s • x + t • y) i = s * x i + t * y i := by
+            simp [Pi.add_apply, Pi.smul_apply, smul_eq_mul]
+        _ ≤ s * (N i : ℝ) + t * (N i : ℝ) := add_le_add
+            (mul_le_mul_of_nonneg_left (hx2 i) hs)
+            (mul_le_mul_of_nonneg_left (hy2 i) ht)
+        _ = (N i : ℝ) := by rw [← add_mul, hst, one_mul]
+    · have hsum : ∑ i, a i * (s • x + t • y) i
+          = s * (∑ i, a i * x i) + t * (∑ i, a i * y i) := by
+        rw [Finset.mul_sum, Finset.mul_sum, ← Finset.sum_add_distrib]
+        refine Finset.sum_congr rfl fun i _ => ?_
+        simp only [Pi.add_apply, Pi.smul_apply, smul_eq_mul]
+        ring
+      rw [hsum]
+      calc |s * (∑ i, a i * x i) + t * (∑ i, a i * y i)|
+          ≤ |s * (∑ i, a i * x i)| + |t * (∑ i, a i * y i)| := abs_add_le _ _
+        _ = s * |∑ i, a i * x i| + t * |∑ i, a i * y i| := by
+            rw [abs_mul, abs_mul, abs_of_nonneg hs, abs_of_nonneg ht]
+        _ ≤ s * c + t * c := add_le_add
+            (mul_le_mul_of_nonneg_left hxs hs)
+            (mul_le_mul_of_nonneg_left hys ht)
+        _ = c := by rw [← add_mul, hst, one_mul]
+  isCompact' := by
+    have hclosed : IsClosed {x : Fin d → ℝ | x ∈ realBox N ∧ |∑ i, a i * x i| ≤ c} := by
+      have h1 : IsClosed (realBox N) := isClosed_Icc
+      have hcont : Continuous (fun x : Fin d → ℝ => |∑ i, a i * x i|) := by
+        exact (continuous_finsetSum _ fun i _ =>
+          (continuous_const.mul (continuous_apply i))).abs
+      have h2 : IsClosed {x : Fin d → ℝ | |∑ i, a i * x i| ≤ c} :=
+        isClosed_le hcont continuous_const
+      exact (h1.inter h2)
+    exact (isCompact_Icc).of_isClosed_subset hclosed
+      (fun x hx => hx.1)
+  nonempty' := by
+    refine ⟨0, ⟨⟨fun i => ?_, fun i => ?_⟩, ?_⟩⟩
+    · simp
+    · simp
+    · simp [hc]
+
+@[simp] theorem mem_slabBody {d : ℕ} {N : Fin d → ℕ} {a : Fin d → ℝ} {c : ℝ}
+    (hc : 0 ≤ c) (x : Fin d → ℝ) :
+    x ∈ slabBody N a hc ↔ x ∈ realBox N ∧ |∑ i, a i * x i| ≤ c :=
+  Iff.rfl
+
+end SlabBody
+
 end Nondividing
