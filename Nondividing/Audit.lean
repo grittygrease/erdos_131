@@ -37,3 +37,5 @@ import Nondividing.Main
 #print axioms Nondividing.realRank_eq_of_index
 #print axioms Nondividing.integerRealSpan_eq_top
 #print axioms Nondividing.smul_projNorm_mem_realBox
+#print axioms Nondividing.projective_span_package
+#print axioms Nondividing.duality_representation_from_projective
