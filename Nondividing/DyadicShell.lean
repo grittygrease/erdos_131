@@ -115,4 +115,27 @@ theorem exists_shell_reduction (N : ℕ) :
     omega
   · rw [← hcard]; exact hj
 
+/-- The `d = 1` embedding `ℕ ↪ (Fin 1 → ℤ)`, `a ↦ (fun _ => a)`. -/
+def dOneEmbedding : ℕ ↪ (Fin 1 → ℤ) where
+  toFun a := fun _ => (a : ℤ)
+  inj' := by
+    intro a b h
+    have h0 : (a : ℤ) = (b : ℤ) := congrFun h 0
+    exact_mod_cast h0
+
+/-- The `d = 1` shell functional `λ(v) = v 0`. -/
+def dOneFunctional : (Fin 1 → ℤ) →+ ℤ where
+  toFun v := v 0
+  map_zero' := rfl
+  map_add' _ _ := rfl
+
+/-- Transport a shell-non-dividing set of naturals to the `d = 1` projective
+setting `(Fin 1 → ℤ, λ(v) = v 0)`, the exact input shape of the projective
+theorem for the upper bound. -/
+theorem shellNonDividing_dOne {W : Finset ℕ} {X : ℕ}
+    (hW : ShellNonDividing (fun a : ℕ => (a : ℤ)) X W) :
+    ShellNonDividing (fun v : Fin 1 → ℤ => dOneFunctional v) X
+      (W.map dOneEmbedding) :=
+  hW.map dOneEmbedding (fun _ => rfl)
+
 end Nondividing
