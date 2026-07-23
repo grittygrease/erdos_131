@@ -151,4 +151,43 @@ theorem stepMapR_realBox_bound {d : ℕ} (P : GAP d d) {c s : ℝ} (hc : 0 < c)
     _ = c * |((P.evalHom n j : ℤ) : ℝ)| := by rw [abs_of_nonneg hnonneg]
     _ ≤ 4 * (M j : ℝ) := hgap
 
+/-- **Volume comparison**: under the `gap_contained` hypotheses, the
+parallelepiped volume identity plus containment in the `(4/c)`-dilated box gives
+`[ℤ^d:L]·2^d·∏Nᵢ ≤ (8/c)^d·∏Mⱼ`. -/
+theorem index_mul_le_volume_bound {d : ℕ} (P : GAP d d)
+    (hinj : Function.Injective P.evalHom) {c s : ℝ} (hc : 0 < c)
+    (hs : 0 < s) (hcs2 : 2 ≤ c * s) {M : Fin d → ℕ} {C₀ : Finset (Fin d → ℤ)}
+    (hC₀ : C₀ ⊆ coordinateBox M) (hk0 : (C₀.card : ℝ) ≤ s) {q : Fin d → ℤ}
+    (hincl : ∀ z ∈ P.dilatedCarrier (c * s), q + z ∈ subsetSums C₀) :
+    ((LinearMap.range P.evalHom.toIntLinearMap).toAddSubgroup.index : ℝ)
+        * (2 ^ d * ∏ i, (P.radius i : ℝ))
+      ≤ (8 / c) ^ d * ∏ j, (M j : ℝ) := by
+  -- The image is inside the real box with radii `(4/c)·Mⱼ`.
+  have himg : stepMapR P '' realBox P.radius ⊆
+      Set.Icc (fun j => -((4 / c) * (M j : ℝ))) (fun j => (4 / c) * (M j : ℝ)) := by
+    rintro _ ⟨x, hx, rfl⟩
+    have hb := stepMapR_realBox_bound P hc hs hcs2 hC₀ hk0 hincl x hx
+    constructor <;> intro j <;>
+      [ have := (abs_le.mp ((le_div_iff₀' hc).mpr (hb j))).1;
+        have := (abs_le.mp ((le_div_iff₀' hc).mpr (hb j))).2 ] <;>
+      · rw [show (4 : ℝ) * (M j : ℝ) / c = (4 / c) * (M j : ℝ) by ring] at this
+        simpa using this
+  -- Compare volumes.
+  have hvol := measure_mono (μ := (volume : MeasureTheory.Measure (Fin d → ℝ))) himg
+  rw [volume_stepMapR_realBox P hinj] at hvol
+  have hIccVol : volume (Set.Icc (fun j => -((4 / c) * (M j : ℝ)))
+      (fun j => (4 / c) * (M j : ℝ)))
+      = ENNReal.ofReal ((8 / c) ^ d * ∏ j, (M j : ℝ)) := by
+    rw [Real.volume_Icc_pi]
+    rw [show (∏ j : Fin d, ENNReal.ofReal ((4 / c) * (M j : ℝ) - -((4 / c) * (M j : ℝ))))
+          = ∏ j : Fin d, ENNReal.ofReal ((8 / c) * (M j : ℝ)) from by
+        refine Finset.prod_congr rfl fun j _ => ?_
+        congr 1; ring]
+    rw [← ENNReal.ofReal_prod_of_nonneg (fun j _ => by positivity)]
+    congr 1
+    rw [Finset.prod_mul_distrib, Finset.prod_const, Finset.card_univ, Fintype.card_fin]
+  rw [hIccVol] at hvol
+  have hrhs : (0 : ℝ) ≤ (8 / c) ^ d * ∏ j, (M j : ℝ) := by positivity
+  exact (ENNReal.ofReal_le_ofReal_iff hrhs).mp hvol
+
 end Nondividing
