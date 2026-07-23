@@ -1,4 +1,5 @@
 import Nondividing.Basic
+import Nondividing.Shell
 import Mathlib.Data.Nat.Log
 import Mathlib.Data.Finset.Max
 import Mathlib.Algebra.Group.Action.Defs
@@ -68,5 +69,25 @@ theorem exists_dyadic_shell {N : ℕ} (A : Finset ℕ) (hA : A ⊆ Finset.Icc 1 
           Finset.sum_le_card_nsmul _ _ _ hmax
     _ = (K + 1) * (A.filter (fun a => Nat.log 2 a = j₀)).card := by
           rw [Finset.card_range, smul_eq_mul]
+
+/-- Bridge to the shell setting: a non-dividing set all of whose elements lie in
+`[X, 2X]` is `ShellNonDividing` for the identity functional `a ↦ (a : ℤ)` with
+shell parameter `X`.  This is the `d = 1`, `λ(t) = t` input to the projective
+theorem. -/
+theorem shellNonDividing_of_nonDividing {A : Finset ℕ} (hA : NonDividing A)
+    (X : ℕ) (hshell : ∀ a ∈ A, X ≤ a ∧ a ≤ 2 * X) :
+    ShellNonDividing (fun a : ℕ => (a : ℤ)) X A := by
+  refine ⟨?_, ?_⟩
+  · intro a ha
+    obtain ⟨h1, h2⟩ := hshell a ha
+    refine ⟨?_, ?_⟩
+    · show (X : ℤ) ≤ (a : ℤ); exact_mod_cast h1
+    · show (a : ℤ) ≤ 2 * (X : ℤ); push_cast; exact_mod_cast h2
+  · intro a ha S hS hSA hdvd
+    -- transport the divisibility back to `ℕ`
+    have hcast : ∑ v ∈ S, ((v : ℕ) : ℤ) = ((∑ v ∈ S, v : ℕ) : ℤ) := by
+      rw [Nat.cast_sum]
+    rw [hcast, Int.natCast_dvd_natCast] at hdvd
+    exact hA a ha S hS hSA hdvd
 
 end Nondividing
