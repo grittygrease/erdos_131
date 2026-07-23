@@ -14,3 +14,11 @@ import Nondividing.Main
 -- `cfp_structure` enters exactly where the concrete package is built.
 #print axioms Nondividing.progression_comparison_package
 #print axioms Nondividing.nonempty_package
+
+-- Further Phase C/D/H results: gap_contained and the Phase H pigeonhole chain are
+-- either parameterized over external data or purely elementary, so they reach
+-- only Lean core axioms.
+#print axioms Nondividing.gap_contained
+#print axioms Nondividing.exists_shell_reduction
+#print axioms Nondividing.shellNonDividing_dOne
+#print axioms Nondividing.main_log_limit_of_upper
