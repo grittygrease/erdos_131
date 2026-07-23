@@ -111,3 +111,6 @@ import Nondividing.Main
 #print axioms Nondividing.sigma_dimension_cap
 #print axioms Nondividing.box_exponent_of_excess
 #print axioms Nondividing.exists_sigma_gap
+
+-- weighted_density injective case: reaches exactly E4 + core.
+#print axioms Nondividing.weighted_density_injective
