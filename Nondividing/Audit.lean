@@ -57,3 +57,5 @@ import Nondividing.Main
 -- interface `zonotope_rounding` plus Lean core axioms.
 #print axioms Nondividing.zonotope_rounding_carrier
 #print axioms Nondividing.evalHom_injective
+#print axioms Nondividing.filling_assembly
+#print axioms Nondividing.GAP.add_mem_dilatedCarrier

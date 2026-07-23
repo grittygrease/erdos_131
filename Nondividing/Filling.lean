@@ -159,4 +159,30 @@ theorem zonotope_rounding_carrier {d e : ℕ} (P : GAP d e) (hrank : P.realRank 
       exact_mod_cast hfloor
     omega
 
+/-- **One-sided-filling assembly** (`lem:one-sided-filling`, combinatorial core).
+Given a subset sum `z̃` of `C̄`, a rounding error `z − z̃` and a shift `t − q`
+each in the `(cs/2)`-dilate of `P`, and the structural core inclusion
+`q + (cs)·P ⊆ Σ(C₀)`, the point `z + t` is a subset sum of `C`.  The two halves
+add coefficientwise into the full `cs`-dilate, the core turns it into a subset
+sum of `C₀`, and disjointness of `C̄`, `C₀` glues the two subset sums. -/
+theorem filling_assembly {d e : ℕ} (P : GAP d e)
+    {C Cbar C0 : Finset (Fin d → ℤ)} {q z zt t : Fin d → ℤ} {cs : ℝ} (hcs : 0 ≤ cs)
+    (hzt : zt ∈ subsetSums Cbar)
+    (herr : z - zt ∈ P.dilatedCarrier (cs / 2))
+    (hshift : t - q ∈ P.dilatedCarrier (cs / 2))
+    (hcore : ∀ w ∈ P.dilatedCarrier cs, q + w ∈ subsetSums C0)
+    (hdisj : Disjoint Cbar C0) (hsub : Cbar ∪ C0 ⊆ C) :
+    z + t ∈ subsetSums C := by
+  have hadd : (z - zt) + (t - q) ∈ P.dilatedCarrier (cs / 2 + cs / 2) :=
+    P.add_mem_dilatedCarrier (by linarith) (by linarith) herr hshift
+  rw [show cs / 2 + cs / 2 = cs by ring] at hadd
+  have hcore' : q + ((z - zt) + (t - q)) ∈ subsetSums C0 := hcore _ hadd
+  have heq1 : q + ((z - zt) + (t - q)) = (z - zt) + t := by abel
+  rw [heq1] at hcore'
+  have hunion : zt + ((z - zt) + t) ∈ subsetSums (Cbar ∪ C0) :=
+    add_mem_subsetSums_union hdisj hzt hcore'
+  have heq2 : zt + ((z - zt) + t) = z + t := by abel
+  rw [heq2] at hunion
+  exact subsetSums_mono hsub hunion
+
 end Nondividing
