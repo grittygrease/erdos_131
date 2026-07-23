@@ -10,6 +10,7 @@ import Nondividing.Projective.AffineSpan
 import Nondividing.Geometry.CoordProjection
 import Nondividing.Numerology
 import Nondividing.QuotientOrder
+import Nondividing.Filling
 import Nondividing.Structure
 import Nondividing.DyadicShell
 

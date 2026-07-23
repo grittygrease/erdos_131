@@ -1,0 +1,162 @@
+import Nondividing.Geometry.CoordProjection
+import Nondividing.External.ZonotopeRounding
+
+open scoped BigOperators
+
+namespace Nondividing
+
+/-!
+# One-sided filling around a zonotope (Phase D, `lem:one-sided-filling`)
+
+The manuscript rounds a lattice point of the zonotope `Z(C̄)` to a subset sum
+using the Conlon–Fox–Pham rounding lemma (E3) *in coefficient space*: for a
+full-rank GAP the steps are a ℤ-basis, so the coefficient map ψ is a bijection
+onto the step lattice, and all boxes transfer coordinatewise.
+-/
+
+/-- Cast compatibility: the real linear combination of the cast steps at cast
+integer coefficients is the cast of `evalHom`. -/
+theorem realEval_intCast {d e : ℕ} (P : GAP d e) (n : Fin e → ℤ) :
+    (Fintype.linearCombination ℝ
+        (fun i : Fin e => (fun j : Fin d => (P.step i j : ℝ))))
+      (fun i => (n i : ℝ)) = fun j => ((P.evalHom n j : ℤ) : ℝ) := by
+  funext j
+  simp only [Fintype.linearCombination_apply, Finset.sum_apply, Pi.smul_apply,
+    smul_eq_mul, GAP.evalHom_apply]
+  push_cast
+  rfl
+
+/-- **ψ-transferred zonotope rounding** (core of `lem:one-sided-filling`).
+Let `P` be a full-rank GAP, `C̄ ⊆ P.carrier`, and let `w` be a point of the
+step lattice whose real image lies in the zonotope `Z(C̄)`.  Then some subset
+sum of `C̄` approximates `w` with error in the `3√(e(|C̄|+1))`-dilate of `P`:
+the E3 rounding applied in coefficient space, pulled back through ψ. -/
+theorem zonotope_rounding_carrier {d e : ℕ} (P : GAP d e) (hrank : P.realRank = e)
+    (Cbar : Finset (Fin d → ℤ)) (hC : Cbar ⊆ P.carrier)
+    {w : Fin d → ℤ} {nw : Fin e → ℤ} (hnw : P.evalHom nw = w)
+    (hz : External.InZonotope Cbar (fun j => (w j : ℝ))) :
+    ∃ S : Finset (Fin d → ℤ), S ⊆ Cbar ∧
+      w - ∑ v ∈ S, v ∈
+        P.dilatedCarrier (Real.sqrt (e * (Cbar.card + 1)) * 3) := by
+  classical
+  set t : ℝ := Real.sqrt (e * (Cbar.card + 1)) * 3 with ht
+  -- Choose coefficient vectors for the elements of `C̄`.
+  have hchoice : ∀ c : {x // x ∈ Cbar}, ∃ n ∈ P.coeffBox, P.evalHom n = c.1 :=
+    fun c => (GAP.mem_carrier P).mp (hC c.2)
+  choose κ hκbox hκeval using hchoice
+  have hκinj : Function.Injective κ := by
+    intro c c' hcc'
+    have : c.1 = c'.1 := by rw [← hκeval c, ← hκeval c', hcc']
+    exact Subtype.ext this
+  set A : Finset (Fin e → ℤ) := Cbar.attach.image κ with hA
+  have hAsub : A ⊆ coordinateBox P.radius := by
+    intro a ha
+    obtain ⟨c, _, rfl⟩ := Finset.mem_image.mp ha
+    exact hκbox c
+  have hAcard : A.card = Cbar.card := by
+    rw [hA, Finset.card_image_of_injective _ hκinj, Finset.card_attach]
+  -- The zonotope weights transfer through ψ.
+  obtain ⟨tt, htt01, httz⟩ := hz
+  set t' : (Fin e → ℤ) → ℝ := fun n => tt (P.evalHom n) with ht'
+  set ζ : Fin e → ℝ := fun i => ∑ a ∈ A, t' a * (a i : ℝ) with hζ
+  have hζzon : External.InZonotope A ζ := by
+    refine ⟨t', fun a ha => ?_, rfl⟩
+    obtain ⟨c, _, rfl⟩ := Finset.mem_image.mp ha
+    have : t' (κ c) = tt c.1 := by simp only [ht', hκeval c]
+    rw [this]
+    exact htt01 c.1 c.2
+  -- Sums over `A` identify with sums over `C̄`.
+  have hsumA : ∀ g : (Fin d → ℤ) → ℝ,
+      ∑ a ∈ A, t' a * g (P.evalHom a) = ∑ c ∈ Cbar, tt c * g c := by
+    intro g
+    rw [hA, Finset.sum_image (fun x _ y _ h => hκinj h)]
+    rw [← Finset.sum_attach Cbar (fun c => tt c * g c)]
+    refine Finset.sum_congr rfl fun c _ => ?_
+    simp only [ht', hκeval c]
+  -- `ζ` is the (real) coefficient vector of `w`, hence integral: `ζ = cast nw`.
+  have hζw : ζ = fun i => (nw i : ℝ) := by
+    apply realEval_injective P hrank
+    rw [realEval_intCast P nw, hnw]
+    funext j
+    simp only [Fintype.linearCombination_apply, Finset.sum_apply, Pi.smul_apply,
+      smul_eq_mul, hζ]
+    have hswap : ∑ i, (∑ a ∈ A, t' a * (a i : ℝ)) * (P.step i j : ℝ)
+        = ∑ a ∈ A, t' a * ((P.evalHom a j : ℤ) : ℝ) := by
+      calc ∑ i, (∑ a ∈ A, t' a * (a i : ℝ)) * (P.step i j : ℝ)
+          = ∑ i, ∑ a ∈ A, t' a * (a i : ℝ) * (P.step i j : ℝ) :=
+            Finset.sum_congr rfl fun i _ => Finset.sum_mul _ _ _
+        _ = ∑ a ∈ A, ∑ i, t' a * (a i : ℝ) * (P.step i j : ℝ) :=
+            Finset.sum_comm
+        _ = ∑ a ∈ A, t' a * ((P.evalHom a j : ℤ) : ℝ) := by
+            refine Finset.sum_congr rfl fun a _ => ?_
+            rw [GAP.evalHom_apply]
+            push_cast
+            rw [Finset.mul_sum]
+            refine Finset.sum_congr rfl fun i _ => ?_
+            ring
+    rw [hswap, hsumA (fun c => ((c j : ℤ) : ℝ))]
+    have := congrFun httz j
+    simpa using this.symm
+  -- Apply E3 in coefficient space.
+  obtain ⟨S', hS'A, hS'err⟩ := External.zonotope_rounding A P.radius hAsub hζzon
+  -- Pull the subset back through ψ.
+  refine ⟨S'.image P.evalHom, ?_, ?_⟩
+  · intro v hv
+    obtain ⟨a, haS', rfl⟩ := Finset.mem_image.mp hv
+    obtain ⟨c, _, rfl⟩ := Finset.mem_image.mp (hS'A haS')
+    rw [hκeval c]; exact c.2
+  · -- The error vector has coefficient vector `m = nw − ∑_{a∈S'} a`.
+    have hinj : Function.Injective P.evalHom := evalHom_injective P hrank
+    have hsumS : ∑ v ∈ S'.image P.evalHom, v = P.evalHom (∑ a ∈ S', a) := by
+      rw [Finset.sum_image (fun x _ y _ h => hinj h), map_sum]
+    set m : Fin e → ℤ := nw - ∑ a ∈ S', a with hm
+    have hwm : w - ∑ v ∈ S'.image P.evalHom, v = P.evalHom m := by
+      rw [hsumS, hm, map_sub, hnw]
+    rw [hwm]
+    rw [GAP.mem_dilatedCarrier]
+    refine ⟨m, ?_, rfl⟩
+    rw [GAP.dilatedCoeffBox, mem_coordinateBox]
+    intro i
+    -- Coordinatewise bound from E3, made integral.
+    have herr := hS'err i
+    have hζi : ζ i = (nw i : ℝ) := congrFun hζw i
+    have hmi : ((m i : ℤ) : ℝ) = ζ i - ∑ a ∈ S', (a i : ℝ) := by
+      rw [hζi, hm]
+      push_cast
+      simp [Finset.sum_apply]
+    have hcard : ((A ∪ {0}).card : ℝ) ≤ (Cbar.card : ℝ) + 1 := by
+      have h1 : (A ∪ {0}).card ≤ A.card + 1 := by
+        calc (A ∪ {0}).card ≤ A.card + ({0} : Finset (Fin e → ℤ)).card :=
+              Finset.card_union_le _ _
+          _ = A.card + 1 := by rw [Finset.card_singleton]
+      rw [← hAcard]
+      exact_mod_cast h1
+    have hrad1 : (1 : ℝ) ≤ (P.radius i : ℝ) := by
+      exact_mod_cast P.radius_pos i
+    have hsqrt_le : Real.sqrt (e * (A ∪ {0}).card) ≤
+        Real.sqrt (e * (Cbar.card + 1)) := by
+      apply Real.sqrt_le_sqrt
+      have : ((A ∪ {0}).card : ℝ) ≤ (Cbar.card : ℝ) + 1 := hcard
+      nlinarith [Nat.cast_nonneg (α := ℝ) e]
+    have hsqrt0 : 0 ≤ Real.sqrt (e * (Cbar.card + 1)) := Real.sqrt_nonneg _
+    have hbound : |(m i : ℝ)| ≤ t * (P.radius i : ℝ) := by
+      rw [hmi]
+      calc |ζ i - ∑ a ∈ S', (a i : ℝ)|
+          ≤ Real.sqrt (e * (A ∪ {0}).card) * (2 * P.radius i + 1) := by
+            simpa using herr
+        _ ≤ Real.sqrt (e * (Cbar.card + 1)) * (3 * P.radius i) := by
+            apply mul_le_mul hsqrt_le (by linarith) (by linarith) hsqrt0
+        _ = t * (P.radius i : ℝ) := by rw [ht]; ring
+    -- Integer bound: `|m i| ≤ ⌊t·radius i⌋₊`.
+    have hnatabs : ((m i).natAbs : ℝ) = |(m i : ℝ)| := by
+      rw [Nat.cast_natAbs, Int.cast_abs]
+    have hfloor : (m i).natAbs ≤ P.dilatedRadius t i := by
+      rw [GAP.dilatedRadius]
+      apply Nat.le_floor
+      rw [hnatabs]
+      exact hbound
+    have h2 : ((m i).natAbs : ℤ) ≤ (P.dilatedRadius t i : ℤ) := by
+      exact_mod_cast hfloor
+    omega
+
+end Nondividing

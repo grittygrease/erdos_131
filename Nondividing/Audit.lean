@@ -52,3 +52,8 @@ import Nondividing.Main
 #print axioms Nondividing.projective_convexity_of_tube
 #print axioms Nondividing.realEval_injective
 #print axioms Nondividing.main_upper_eps_of_projective
+
+-- One-sided filling core: the ψ-transferred rounding reaches exactly the E3
+-- interface `zonotope_rounding` plus Lean core axioms.
+#print axioms Nondividing.zonotope_rounding_carrier
+#print axioms Nondividing.evalHom_injective
