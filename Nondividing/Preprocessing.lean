@@ -414,6 +414,32 @@ theorem progression_comparison_le {h : ℕ} {t : ℝ} (ht : 1 ≤ t)
 
 end GAP
 
+/-- Integer core containment: `csP ⊆ 2|C₀|·B` in the lattice.  Every point of the
+dilated carrier differs from the translate `q` (itself a subset sum) by a subset
+sum, so its coordinates are bounded by `2|C₀|·Mᵢ`.  This is the integer form of
+`eq:index-core-containment` feeding `lem:index-bound`. -/
+theorem dilatedCarrier_subset_coordinateBox {d e : ℕ} (P : GAP d e) {t : ℝ}
+    {M : Fin d → ℕ} {C₀ : Finset (Fin d → ℤ)} (hC₀ : C₀ ⊆ coordinateBox M)
+    {q : Fin d → ℤ} (hincl : ∀ z ∈ P.dilatedCarrier t, q + z ∈ subsetSums C₀) :
+    P.dilatedCarrier t ⊆ coordinateBox (fun i => 2 * C₀.card * M i) := by
+  intro z hz
+  have hsub : subsetSums C₀ ⊆ coordinateBox (fun j => C₀.card * M j) :=
+    subsetSums_subset_coordinateBox hC₀ (le_refl _)
+  have hq : q ∈ coordinateBox (fun j => C₀.card * M j) := by
+    apply hsub
+    have := hincl 0 (P.zero_mem_dilatedCarrier t); rwa [add_zero] at this
+  have hqz : q + z ∈ coordinateBox (fun j => C₀.card * M j) := hsub (hincl z hz)
+  rw [mem_coordinateBox] at hq hqz ⊢
+  intro i
+  have hqi := hq i
+  have hqzi := hqz i
+  have hadd : (q + z) i = q i + z i := rfl
+  rw [hadd] at hqzi
+  have e1 : ((2 * C₀.card * M i : ℕ) : ℤ) = 2 * ((C₀.card * M i : ℕ) : ℤ) := by
+    push_cast; ring
+  rw [e1]
+  omega
+
 /-- `lem:gap-contained` (integer/real form).  With the E1 core data, once
 `c·s(C) ≥ 2` every point `p ∈ P(C)` satisfies `c·|pᵢ| ≤ 4·Mᵢ` in each coordinate;
 i.e. `P(C)` is contained in the fixed dilate `(4/c)·B` of the box, independently
