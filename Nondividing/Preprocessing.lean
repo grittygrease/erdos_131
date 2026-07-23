@@ -1,5 +1,8 @@
 import Nondividing.GAP
+import Nondividing.Asymptotic
+import Nondividing.External.CFPStructure
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
+import Mathlib.Order.Filter.AtTopBot.Archimedean
 
 open scoped BigOperators
 
@@ -15,6 +18,21 @@ box, which underlies the `e > r` counting chain in
 `lem:progression-comparison`:
 `|sQ| ≪_r s^r |Q|` for a coordinate GAP `Q` of rank `r` and dilation `s ≥ 1`.
 -/
+
+/-- The structural scale `s(m) = m/(log m)^2` tends to infinity. -/
+theorem tendsto_structureScale_atTop :
+    Filter.Tendsto External.structureScale Filter.atTop Filter.atTop := by
+  refine (tendsto_natCast_div_log_pow_atTop 2).congr (fun m => ?_)
+  rfl
+
+/-- For any positive constant `c`, the dilation factor `c · s(m)` used by the
+progression-comparison and preprocessing thresholds is eventually `≥ 1`. -/
+theorem eventually_one_le_mul_structureScale {c : ℝ} (hc : 0 < c) :
+    ∀ᶠ m : ℕ in Filter.atTop, 1 ≤ c * External.structureScale m := by
+  have h : Filter.Tendsto (fun m : ℕ => c * External.structureScale m)
+      Filter.atTop Filter.atTop :=
+    Filter.Tendsto.const_mul_atTop' hc tendsto_structureScale_atTop
+  exact Filter.tendsto_atTop.1 h 1
 
 /-- Per-factor bound for a real dilation of a coordinate interval: when the
 dilation `t` is at least one, the dilated interval radius grows by a factor at
