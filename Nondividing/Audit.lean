@@ -81,3 +81,5 @@ import Nondividing.Main
 #print axioms Nondividing.slab_count
 -- slab_exclusion counting dichotomy over the package: E2+E5+core.
 #print axioms Nondividing.slab_exclusion_count
+-- full slab_exclusion (explicit constants c*, K): E2+E5+core.
+#print axioms Nondividing.slab_exclusion

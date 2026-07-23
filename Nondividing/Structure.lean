@@ -248,4 +248,132 @@ theorem slab_exclusion_count {d : ℕ} {β : ℝ} (pkg : Package d β) :
             _ = 3 ^ d * (2 * o.C₀.card + 1) ^ r * Cs *
                   (1 * ((coordinateBox M).card : ℝ)) := by ring
 
+/-- **Slab exclusion** (`lem:slab-exclusion`, full form with explicit
+constants).  Relative to a structural package, there are `c* > 0` and `K > 0`
+such that: whenever `(V,B)` is unshiftedly `(δ,γ)`-irreducible, `D ⊆ V` is an
+eligible subset of size `≥ δ|V|` lying in a central slab of relative width
+`τ < c*·γ`, and the scale satisfies `s(D)·γ > K` (the `s·γ → ∞` regime),
+a contradiction follows.  Hence such a slab contains fewer than `δ|V|` points
+of `V`. -/
+theorem slab_exclusion {d : ℕ} {β : ℝ} (pkg : Package d β) (hd : 1 ≤ d) :
+    ∃ (cstar K : ℝ), 0 < cstar ∧ 0 < K ∧
+    ∀ (V D : Finset (Fin d → ℤ)) (M : Fin d → ℕ) (hE : Eligible β pkg.m₀ D M)
+      (a : Fin d → ℝ) (τ δ γ : ℝ),
+      UnshiftedIrreducible pkg δ γ V M →
+      D ⊆ V → δ * (V.card : ℝ) ≤ (D.card : ℝ) →
+      0 < γ → 0 ≤ τ → (0 < ∑ i, |a i| * (M i : ℝ)) →
+      1 ≤ External.structureScale D.card →
+      1 ≤ pkg.c * External.structureScale D.card →
+      (∀ z ∈ D, |∑ i, a i * (z i : ℝ)| ≤ τ * ∑ i, |a i| * (M i : ℝ)) →
+      K < External.structureScale D.card * γ →
+      τ < cstar * γ →
+      False := by
+  classical
+  obtain ⟨C, hC, hdich⟩ := slab_exclusion_count pkg
+  have hcpos := pkg.c_pos
+  refine ⟨pkg.c ^ d / (9 ^ d * C * d), 9 ^ d * C / pkg.c ^ d,
+    by positivity, by positivity, ?_⟩
+  intro V D M hE a τ δ γ hirr hDV hDcard hγ hτ hw hs1 ht hDslab hK hτγ
+  -- Irreducibility applied to `D`.
+  obtain ⟨he, hPlow⟩ := hirr D hDV hDcard hE
+  -- The counting dichotomy.
+  obtain ⟨r, hrd, hineq⟩ := hdich D M hE a τ γ hτ hw ht he hPlow hDslab
+  set s : ℝ := External.structureScale D.card with hsdef
+  set o := pkg.out D M hE with ho
+  have hBpos : (0 : ℝ) < ((coordinateBox M).card : ℝ) := by
+    have : 0 < (coordinateBox M).card :=
+      Finset.card_pos.mpr ⟨0, zero_mem_coordinateBox M⟩
+    exact_mod_cast this
+  -- `2|C₀|+1 ≤ 3s`.
+  have hk3s : (2 * (o.C₀.card : ℝ) + 1) ≤ 3 * s := by
+    have := o.C₀_card
+    rw [← hsdef] at this
+    linarith
+  have hspos : (0 : ℝ) < s := lt_of_lt_of_le one_pos hs1
+  have hkpos : (0 : ℝ) ≤ 2 * (o.C₀.card : ℝ) + 1 := by positivity
+  -- `(2|C₀|+1)^r ≤ 3^r·s^r`.
+  have hkpow : (2 * (o.C₀.card : ℝ) + 1) ^ r ≤ (3 * s) ^ r :=
+    pow_le_pow_left₀ (by positivity) hk3s r
+  by_cases hr : r = d
+  · -- Full-rank case: forces `τ ≥ c*·γ`.
+    rw [if_pos hr] at hineq
+    rw [hr] at hkpow hineq
+    -- Enlarge the `(2|C₀|+1)^d` factor.
+    have h1 : (pkg.c * s) ^ d * (γ * ((coordinateBox M).card : ℝ))
+        ≤ 3 ^ d * (3 * s) ^ d * C *
+            ((d : ℝ) * τ * ((coordinateBox M).card : ℝ)) := by
+      refine hineq.trans ?_
+      apply mul_le_mul_of_nonneg_right _ (by positivity)
+      apply mul_le_mul_of_nonneg_right _ (le_of_lt hC)
+      exact mul_le_mul_of_nonneg_left hkpow (by positivity)
+    -- Cancel `s^d` and `|B|`: `c^d·γ ≤ 9^d·C·d·τ`.
+    have h2 : pkg.c ^ d * γ ≤ 9 ^ d * C * ((d : ℝ) * τ) := by
+      have h1' : pkg.c ^ d * γ * (s ^ d * ((coordinateBox M).card : ℝ))
+          ≤ 9 ^ d * C * ((d : ℝ) * τ) * (s ^ d * ((coordinateBox M).card : ℝ)) := by
+        calc pkg.c ^ d * γ * (s ^ d * ((coordinateBox M).card : ℝ))
+            = (pkg.c * s) ^ d * (γ * ((coordinateBox M).card : ℝ)) := by
+              rw [mul_pow]; ring
+          _ ≤ 3 ^ d * (3 * s) ^ d * C *
+              ((d : ℝ) * τ * ((coordinateBox M).card : ℝ)) := h1
+          _ = 9 ^ d * C * ((d : ℝ) * τ) * (s ^ d * ((coordinateBox M).card : ℝ)) := by
+              rw [mul_pow, show (9 : ℝ) ^ d = 3 ^ d * 3 ^ d from by
+                rw [← mul_pow]; norm_num]
+              ring
+      exact le_of_mul_le_mul_right h1' (by positivity)
+    -- Contradiction with `τ < c*·γ`.
+    have hdpos : (0 : ℝ) < (d : ℝ) := by exact_mod_cast lt_of_lt_of_le one_pos hd
+    have hτlow : pkg.c ^ d / (9 ^ d * C * d) * γ ≤ τ := by
+      rw [div_mul_eq_mul_div, div_le_iff₀ (by positivity)]
+      calc pkg.c ^ d * γ ≤ 9 ^ d * C * ((d : ℝ) * τ) := h2
+        _ = τ * (9 ^ d * C * d) := by ring
+    exact absurd hτγ (not_lt_of_ge hτlow)
+  · -- Deficient-rank case: forces `s·γ ≤ K`.
+    rw [if_neg hr] at hineq
+    have hrd1 : r ≤ d - 1 := by omega
+    -- `(3s)^r ≤ 3^d·s^{d-1}`.
+    have hsr : (3 * s) ^ r ≤ 3 ^ d * s ^ (d - 1) := by
+      rw [mul_pow]
+      apply mul_le_mul
+      · exact pow_le_pow_right₀ (by norm_num) hrd
+      · exact pow_le_pow_right₀ hs1 hrd1
+      · positivity
+      · positivity
+    have h1 : (pkg.c * s) ^ d * (γ * ((coordinateBox M).card : ℝ))
+        ≤ 3 ^ d * (3 ^ d * s ^ (d - 1)) * C * ((coordinateBox M).card : ℝ) := by
+      refine hineq.trans ?_
+      calc 3 ^ d * (2 * (o.C₀.card : ℝ) + 1) ^ r * C *
+            (1 * ((coordinateBox M).card : ℝ))
+          ≤ 3 ^ d * ((3 * s) ^ r) * C * (1 * ((coordinateBox M).card : ℝ)) := by
+            apply mul_le_mul_of_nonneg_right _ (by positivity)
+            apply mul_le_mul_of_nonneg_right _ (le_of_lt hC)
+            exact mul_le_mul_of_nonneg_left hkpow (by positivity)
+        _ ≤ 3 ^ d * (3 ^ d * s ^ (d - 1)) * C * ((coordinateBox M).card : ℝ) := by
+            rw [one_mul]
+            apply mul_le_mul_of_nonneg_right _ (le_of_lt hBpos)
+            apply mul_le_mul_of_nonneg_right _ (le_of_lt hC)
+            exact mul_le_mul_of_nonneg_left hsr (by positivity)
+    -- Cancel `s^{d-1}` and `|B|`: `c^d·(sγ) ≤ 9^d·C`.
+    have hsplit : s ^ d = s ^ (d - 1) * s := by
+      rw [← pow_succ]
+      congr 1
+      omega
+    have h2 : pkg.c ^ d * (s * γ) ≤ 9 ^ d * C := by
+      have h1' : pkg.c ^ d * (s * γ) * (s ^ (d - 1) * ((coordinateBox M).card : ℝ))
+          ≤ 9 ^ d * C * (s ^ (d - 1) * ((coordinateBox M).card : ℝ)) := by
+        calc pkg.c ^ d * (s * γ) * (s ^ (d - 1) * ((coordinateBox M).card : ℝ))
+            = (pkg.c * s) ^ d * (γ * ((coordinateBox M).card : ℝ)) := by
+              rw [mul_pow, hsplit]; ring
+          _ ≤ 3 ^ d * (3 ^ d * s ^ (d - 1)) * C * ((coordinateBox M).card : ℝ) := h1
+          _ = 9 ^ d * C * (s ^ (d - 1) * ((coordinateBox M).card : ℝ)) := by
+              rw [show (9 : ℝ) ^ d = 3 ^ d * 3 ^ d from by
+                rw [← mul_pow]; norm_num]
+              ring
+      exact le_of_mul_le_mul_right h1' (by positivity)
+    -- Contradiction with `K < s·γ`.
+    have hsγK : s * γ ≤ 9 ^ d * C / pkg.c ^ d := by
+      rw [le_div_iff₀ (by positivity)]
+      calc s * γ * pkg.c ^ d = pkg.c ^ d * (s * γ) := by ring
+        _ ≤ 9 ^ d * C := h2
+    exact absurd hK (not_lt_of_ge hsγK)
+
 end Nondividing
