@@ -22,3 +22,8 @@ import Nondividing.Main
 #print axioms Nondividing.exists_shell_reduction
 #print axioms Nondividing.shellNonDividing_dOne
 #print axioms Nondividing.main_log_limit_of_upper
+
+-- Convex-lattice John placement: reaches exactly the E2 interface `discrete_john`
+-- plus Lean core axioms.
+#print axioms Nondividing.coordinate_section_john
+#print axioms Nondividing.section_in_gap
