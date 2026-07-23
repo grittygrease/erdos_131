@@ -106,3 +106,8 @@ import Nondividing.Main
 -- cap_lifting alternative (i): E2+core (John placement through section_in_gap).
 #print axioms Nondividing.cap_lifting_deficient
 #print axioms Nondividing.ShellNonDividing.of_map
+
+-- projective_theorem preamble numerology: core only.
+#print axioms Nondividing.sigma_dimension_cap
+#print axioms Nondividing.box_exponent_of_excess
+#print axioms Nondividing.exists_sigma_gap
