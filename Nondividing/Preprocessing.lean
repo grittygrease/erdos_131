@@ -47,4 +47,43 @@ theorem card_dilatedCoordinateBox_le {r : ℕ} (N : Fin r → ℕ) {t : ℝ}
           rw [Finset.prod_mul_distrib, Finset.prod_const, Finset.card_univ,
             Fintype.card_fin]
 
+/-- Per-factor lower bound for a real dilation of a coordinate interval: for a
+positive radius `N ≥ 1` and dilation `t ≥ 1`, the dilated radius keeps at least a
+`1/3` fraction of the naive growth `t · (2N+1)`. -/
+theorem mul_add_one_le_three_floor {N : ℕ} (hN : 1 ≤ N) {t : ℝ} (ht : 1 ≤ t) :
+    t * (2 * (N : ℝ) + 1) ≤ 3 * (2 * (⌊t * (N : ℝ)⌋₊ : ℝ) + 1) := by
+  have hN1 : (1 : ℝ) ≤ (N : ℝ) := by exact_mod_cast hN
+  have htpos : (0 : ℝ) ≤ t := le_trans zero_le_one ht
+  -- `t·N ≤ ⌊t·N⌋ + 1 ≤ 2⌊t·N⌋ + 1`
+  have hfloor : t * (N : ℝ) ≤ 2 * (⌊t * (N : ℝ)⌋₊ : ℝ) + 1 := by
+    have h := (Nat.lt_floor_add_one (t * (N : ℝ))).le
+    have hnn : (0 : ℝ) ≤ (⌊t * (N : ℝ)⌋₊ : ℝ) := Nat.cast_nonneg _
+    linarith
+  have hprod : (0 : ℝ) ≤ t * ((N : ℝ) - 1) :=
+    mul_nonneg htpos (by linarith)
+  linarith [hfloor, hprod]
+
+/-- Reverse cardinality estimate: a real dilation of a symmetric coordinate box
+retains at least a `3^{-r}` fraction of `t^r` times the original cardinality
+(here every radius is positive, matching the proper coordinate-GAP convention). -/
+theorem card_le_dilatedCoordinateBox {r : ℕ} (N : Fin r → ℕ)
+    (hN : ∀ i, 1 ≤ N i) {t : ℝ} (ht : 1 ≤ t) :
+    t ^ r * (coordinateBox N).card ≤
+      3 ^ r * ((coordinateBox (fun i => ⌊t * (N i : ℝ)⌋₊)).card : ℝ) := by
+  classical
+  have htpos : (0 : ℝ) ≤ t := le_trans zero_le_one ht
+  rw [card_coordinateBox, card_coordinateBox]
+  push_cast
+  calc
+    t ^ r * ∏ i : Fin r, (2 * (N i : ℝ) + 1)
+        = ∏ i : Fin r, (t * (2 * (N i : ℝ) + 1)) := by
+          rw [Finset.prod_mul_distrib, Finset.prod_const, Finset.card_univ,
+            Fintype.card_fin]
+    _ ≤ ∏ i : Fin r, (3 * (2 * (⌊t * (N i : ℝ)⌋₊ : ℝ) + 1)) := by
+          refine Finset.prod_le_prod (fun i _ => by positivity) ?_
+          exact fun i _ => mul_add_one_le_three_floor (hN i) ht
+    _ = 3 ^ r * ∏ i : Fin r, (2 * (⌊t * (N i : ℝ)⌋₊ : ℝ) + 1) := by
+          rw [Finset.prod_mul_distrib, Finset.prod_const, Finset.card_univ,
+            Fintype.card_fin]
+
 end Nondividing
