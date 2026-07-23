@@ -78,6 +78,27 @@ theorem nonempty_package (ell : ℕ) (β : ℝ) (hβ : 1 < β) :
 noncomputable def package (ell : ℕ) (β : ℝ) (hβ : 1 < β) : Package ell β :=
   (nonempty_package ell β hβ).some
 
+/-- Unshifted `(δ,γ)`-irreducibility (manuscript Definition, Phase C).  Relative
+to a structural package, `(V, B)` is irreducible if every eligible subset
+`D ⊆ V` with `|D| ≥ δ|V|` has full subset-sum dimension `d(D) = ell` and its
+progression `P(D)` occupies at least a `γ` fraction of the box. -/
+def UnshiftedIrreducible {ell : ℕ} {β : ℝ} (pkg : Package ell β) (δ γ : ℝ)
+    (V : Finset (Fin ell → ℤ)) (M : Fin ell → ℕ) : Prop :=
+  ∀ (D : Finset (Fin ell → ℤ)), D ⊆ V → δ * (V.card : ℝ) ≤ (D.card : ℝ) →
+    ∀ hE : Eligible β pkg.m₀ D M,
+      (pkg.out D M hE).e = ell ∧
+      γ * ((coordinateBox M).card : ℝ) ≤ ((pkg.out D M hE).P.carrier.card : ℝ)
+
+/-- Irreducibility gives, for the whole eligible set `V` itself (taking `D = V`
+when `δ ≤ 1`), full dimension and the box-fraction lower bound. -/
+theorem UnshiftedIrreducible.self {ell : ℕ} {β : ℝ} {pkg : Package ell β}
+    {δ γ : ℝ} {V : Finset (Fin ell → ℤ)} {M : Fin ell → ℕ}
+    (h : UnshiftedIrreducible pkg δ γ V M) (hδ : δ ≤ 1) (hV : 0 ≤ (V.card : ℝ))
+    (hE : Eligible β pkg.m₀ V M) :
+    (pkg.out V M hE).e = ell ∧
+      γ * ((coordinateBox M).card : ℝ) ≤ ((pkg.out V M hE).P.carrier.card : ℝ) :=
+  h V (le_refl _) (by nlinarith) hE
+
 /-- Progression comparison referencing the *fixed* progression `P(C)` of a
 structural package: once `c·s(C) ≥ 1`, the counting chain of
 `lem:progression-comparison` bounds `P(C)` in terms of the coordinate box.  Base
