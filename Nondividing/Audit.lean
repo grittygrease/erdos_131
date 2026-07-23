@@ -29,3 +29,7 @@ import Nondividing.Main
 -- plus Lean core axioms.
 #print axioms Nondividing.coordinate_section_john
 #print axioms Nondividing.section_in_gap
+
+-- lattice_section_box is proved entirely from mathlib (projection existence via
+-- dual separation), so reaches only Lean core axioms.
+#print axioms Nondividing.lattice_section_box

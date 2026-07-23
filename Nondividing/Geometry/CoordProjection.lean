@@ -1,11 +1,15 @@
 import Mathlib.LinearAlgebra.Dual.Lemmas
 import Mathlib.LinearAlgebra.Dimension.Finrank
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
+import Nondividing.Geometry.LatticeIndex
+import Nondividing.External.DiscreteJohn
 
 open scoped BigOperators
 open Module Submodule
 
 namespace Nondividing
+
+open Nondividing.External
 
 /-!
 # Coordinate-projection existence (Phase D)
@@ -101,5 +105,46 @@ theorem exists_coordProjR_injOn :
     have hx0 : (⟨x, hx⟩ : H) = 0 :=
       (Module.forall_dual_apply_eq_zero_iff ℝ _).mp hall
     exact congrArg (Subtype.val) hx0
+
+/-- `realPoint` is injective. -/
+theorem realPoint_injective {d : ℕ} : Function.Injective (realPoint (d := d)) := by
+  intro z w h
+  funext i
+  have : (z i : ℝ) = (w i : ℝ) := congrFun h i
+  exact_mod_cast this
+
+/-- **Lattice sections of a coordinate box** (`lem:lattice-section-box`).  A set
+`A` of integer points in the `t`-dilated symmetric coordinate box has
+`|A| ≤ t^r · |B|`, where `r = dim ⟨A⟩_ℝ` is the real rank of `A`.  The injective
+coordinate projection is supplied by `exists_coordProjR_injOn`. -/
+theorem lattice_section_box {d : ℕ} {M : Fin d → ℕ} {t : ℝ} (ht : 1 ≤ t)
+    {A : Finset (Fin d → ℤ)}
+    (hA : A ⊆ coordinateBox (fun i => ⌊t * (M i : ℝ)⌋₊)) :
+    (A.card : ℝ) ≤
+      t ^ (Module.finrank ℝ (integerRealSpan A)) * ((coordinateBox M).card : ℝ) := by
+  classical
+  obtain ⟨I, hIcard, hInj⟩ := exists_coordProjR_injOn (integerRealSpan A)
+  refine latticeSection_card_le ht hA I hIcard ?_
+  -- Transfer the real injectivity to the integer coordinate projection on `A`.
+  intro z hz w hw hzw
+  have hmemI : ∀ i ∈ I, z i = w i := by
+    intro i hi
+    have := congrFun hzw i
+    simpa [coordProj, hi] using this
+  -- the difference of real points lies in `H` and vanishes on `I`
+  have hzH : realPoint z ∈ integerRealSpan A :=
+    Submodule.subset_span ⟨z, hz, rfl⟩
+  have hwH : realPoint w ∈ integerRealSpan A :=
+    Submodule.subset_span ⟨w, hw, rfl⟩
+  have hxH : realPoint z - realPoint w ∈ integerRealSpan A :=
+    Submodule.sub_mem _ hzH hwH
+  have hxI : ∀ i ∈ I, (realPoint z - realPoint w) i = 0 := by
+    intro i hi
+    have : z i = w i := hmemI i hi
+    simp only [Pi.sub_apply, realPoint, this, sub_self]
+  have hx0 : realPoint z - realPoint w = 0 := hInj _ hxH hxI
+  have : realPoint z = realPoint w := by
+    rw [sub_eq_zero] at hx0; exact hx0
+  exact realPoint_injective this
 
 end Nondividing
