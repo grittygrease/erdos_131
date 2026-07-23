@@ -7,14 +7,18 @@
 - [x] External interfaces E1–E5 — green
 - [x] Progression comparison — `progression_comparison_package` (e>r) over fixed `P(C)` green, via structural `Package` (E1→choice) + `s(C)→∞` threshold; audit: reaches only `cfp_structure`+core. (e≤r package form pending the John-GAP span step.) Bricks: `progression_comparison_gt/le`, counting cores, dilate→base properness (7.4)
 - [x] Structural package — `Package`/`Eligible`/`StructOut`, `nonempty_package`, `package` green
-- [x] Lattice-section-box cardinality — `latticeSection_card_le` (given injective coord projection) green; remaining: subspace→coordinate-projection existence (linear algebra)
+- [x] Convex-lattice John — `coordinate_section_john` (from E2) green
+- [x] Lattice-section-box cardinality — `latticeSection_card_le` (given injective coord projection) + `card_le_prod_of_injOn_coordProj` green; remaining: subspace→coordinate-projection existence (linear algebra)
+- [x] gap_contained — `gap_contained` (P(C) ⊆ fixed dilate (4/c)·B), hazard 7.4 + homogeneous kp∈csP; green
+- [x] Asymptotic engine — `tendsto_id_div_log_pow_atTop` (s(C)→∞), `tendsto_log_div_log_of_rpow_bounds` (log-ratio squeeze for main_log_limit); green
+- [x] Dyadic shell (Phase H) — `exists_dyadic_shell` (pigeonhole), `shellNonDividing_of_nonDividing` (bridge), `exists_shell_reduction` (F N ≤ (1+log₂N)·|W|, W ShellNonDividing); green
 - [ ] Unshifted preprocessing
-- [ ] Slab lemmas
-- [ ] Filling/index/projective span
-- [ ] Projective convexity
+- [ ] Slab lemmas (slab_count needs Fubini/E5; slab_exclusion consumes progression bounds)
+- [ ] one_sided_filling / index_bound / projective_span
+- [ ] Projective duality / convexity / robust zonotope
 - [ ] Weighted density
 - [ ] Cap lifting
 - [ ] Numerology
 - [ ] Projective theorem
-- [ ] Main theorem
-- [ ] Audit
+- [ ] Main theorem (upper: dyadic shell [done] → projective thm [pending]; log limit engine [done])
+- [~] Audit — extended to progression_comparison_package/nonempty_package (reach only cfp_structure+core); pending main theorems
