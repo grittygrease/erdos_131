@@ -231,6 +231,30 @@ theorem progression_counting_core_gap {h : ℕ} (hP : P.Proper) {t : ℝ}
           mul_le_mul_of_nonneg_left h23 (by positivity)
     _ = (3 ^ e * (2 * k + 1) ^ h) * (R'.carrier.card : ℝ) := by ring
 
+/-- Assembled `e ≤ r` cardinality inequality of `lem:progression-comparison`.
+Folding the convex-lattice John cardinality bound `|Q_H| ≤ Cⱼ |Q|` into the
+GAP-valued counting core closes the chain to `t^e |R| ≤ (3^e (2k+1)^h Cⱼ) |Q|`.
+-/
+theorem progression_cardinality_bound_le {h : ℕ} (hP : P.Proper) {t : ℝ}
+    (ht : 1 ≤ t)
+    (hInj : Set.InjOn P.evalHom (P.dilatedCoeffBox t : Set (Fin e → ℤ)))
+    (R' : GAP d h) (hR' : R'.Proper) {C₀ : Finset (Fin d → ℤ)}
+    (hC₀ : C₀ ⊆ R'.carrier) {k : ℕ} (hk : C₀.card ≤ k) {q : Fin d → ℤ}
+    (hincl : ∀ z ∈ P.dilatedCarrier t, q + z ∈ subsetSums C₀)
+    {Cj : ℕ} {Q : Finset (Fin d → ℤ)} (hJohn : R'.carrier.card ≤ Cj * Q.card) :
+    t ^ e * (P.carrier.card : ℝ) ≤
+      (3 ^ e * (2 * k + 1) ^ h * Cj) * (Q.card : ℝ) := by
+  have core := P.progression_counting_core_gap hP ht hInj R' hR' hC₀ hk hincl
+  have hJohnR : (R'.carrier.card : ℝ) ≤ (Cj : ℝ) * (Q.card : ℝ) := by
+    calc (R'.carrier.card : ℝ) ≤ ((Cj * Q.card : ℕ) : ℝ) := by exact_mod_cast hJohn
+      _ = (Cj : ℝ) * (Q.card : ℝ) := by push_cast; ring
+  calc
+    t ^ e * (P.carrier.card : ℝ)
+        ≤ (3 ^ e * (2 * k + 1) ^ h) * (R'.carrier.card : ℝ) := core
+    _ ≤ (3 ^ e * (2 * k + 1) ^ h) * ((Cj : ℝ) * (Q.card : ℝ)) :=
+          mul_le_mul_of_nonneg_left hJohnR (by positivity)
+    _ = (3 ^ e * (2 * k + 1) ^ h * Cj) * (Q.card : ℝ) := by ring
+
 /-- Assembled `e > r` cardinality inequality of `lem:progression-comparison`:
 `t^e |R| ≤ (3^e k^r) |Q|`.  With the manuscript's choices `t = c·s(C)` and
 `k = |C₀| ≤ s(C)` this is `s^e |R| ≪ s^r |Q|`, i.e. `|R| ≪ s^{-(e-r)} |Q|`. -/
