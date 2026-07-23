@@ -1,5 +1,6 @@
 import Mathlib.LinearAlgebra.Dual.Lemmas
 import Mathlib.LinearAlgebra.Dimension.Finrank
+import Mathlib.LinearAlgebra.Dimension.OrzechProperty
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
 import Nondividing.Geometry.LatticeIndex
 import Nondividing.External.DiscreteJohn
@@ -191,6 +192,15 @@ theorem integerRealSpan_eq_top {d e : ℕ} (P : GAP d e) {c s : ℝ}
   apply Submodule.eq_top_of_finrank_eq
   rw [Module.finrank_pi, Fintype.card_fin]
   omega
+
+/-- **Full-rank steps are linearly independent.**  A GAP whose step rank equals
+its displayed dimension `e` has linearly independent (real) step vectors — the
+`ℝ`-basis underlying the coefficient isomorphism used by `one_sided_filling` and
+`cap_lifting`. -/
+theorem realStep_linearIndependent {d e : ℕ} (P : GAP d e) (hrank : P.realRank = e) :
+    LinearIndependent ℝ (fun i : Fin e => (fun j : Fin d => (P.step i j : ℝ))) := by
+  rw [linearIndependent_iff_card_eq_finrank_span, Fintype.card_fin]
+  exact hrank.symm
 
 /-- The step rank never exceeds the displayed dimension. -/
 theorem realRank_le {d e : ℕ} (P : GAP d e) : P.realRank ≤ e := by
