@@ -4,6 +4,7 @@ import Mathlib.LinearAlgebra.AffineSpace.AffineSubspace.Basic
 import Mathlib.LinearAlgebra.FiniteDimensional.Basic
 import Mathlib.LinearAlgebra.FiniteDimensional.Lemmas
 import Mathlib.LinearAlgebra.Dimension.Constructions
+import Mathlib.Analysis.Convex.Intrinsic
 
 open scoped BigOperators
 
@@ -111,5 +112,17 @@ theorem mem_affineSpan_projNorm_iff {d : ℕ} (hd : 1 ≤ d) (ℓ : Fin d → �
   rw [affineSpan_projNorm_eq_mk' hd ℓ hv₀ hpos hspan, AffineSubspace.mem_mk',
     LinearMap.mem_ker, vsub_eq_sub, map_sub,
     realFunctional_projNorm ℓ v₀ (hpos v₀ hv₀), sub_eq_zero]
+
+/-- **`lem:projective-span`, relative interior.**  The convex hull of `π(V)` has a
+nonempty relative (intrinsic) interior — the point needed to invoke the
+convex-density lemma E4 inside the affine hyperplane `H_λ`. -/
+theorem intrinsicInterior_convexHull_projNorm_nonempty {d : ℕ} (ℓ : Fin d → ℤ)
+    {V : Finset (Fin d → ℤ)} (hVne : V.Nonempty) :
+    (intrinsicInterior ℝ
+      (convexHull ℝ (projNorm ℓ '' (V : Set (Fin d → ℤ))))).Nonempty := by
+  refine Set.Nonempty.intrinsicInterior (convex_convexHull ℝ _) ?_
+  refine Set.Nonempty.mono (subset_convexHull ℝ _) ?_
+  obtain ⟨v, hv⟩ := hVne
+  exact ⟨projNorm ℓ v, v, hv, rfl⟩
 
 end Nondividing
