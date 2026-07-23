@@ -1,4 +1,5 @@
 import Nondividing.External.DiscreteJohn
+import Nondividing.Shell
 import Mathlib.Analysis.Normed.Module.Basic
 
 open scoped BigOperators
@@ -58,5 +59,24 @@ theorem realFunctional_projNorm {d : ℕ} (a : Fin d → ℤ) (v : Fin d → ℤ
   have hv' : ((intFunctional a v : ℤ) : ℝ) ≠ 0 := by exact_mod_cast hv
   rw [projNorm, map_smul, realFunctional_realPoint, smul_eq_mul,
     inv_mul_cancel₀ hv']
+
+/-- Shell points have positive functional value (`X ≥ 1`), hence `π` is
+well-defined on them. -/
+theorem intFunctional_pos_of_shell {d : ℕ} {a : Fin d → ℤ} {X : ℕ}
+    {V : Finset (Fin d → ℤ)} (hX : 1 ≤ X)
+    (hV : ShellNonDividing (fun v => (intFunctional a v : ℤ)) X V)
+    {v : Fin d → ℤ} (hv : v ∈ V) : 0 < intFunctional a v := by
+  have hb := (hV.1 v hv).1
+  have : (1 : ℤ) ≤ (X : ℤ) := by exact_mod_cast hX
+  linarith
+
+/-- Consequently the projective normalization of a shell point lies on the
+hyperplane `{λℝ = 1}`. -/
+theorem realFunctional_projNorm_of_shell {d : ℕ} {a : Fin d → ℤ} {X : ℕ}
+    {V : Finset (Fin d → ℤ)} (hX : 1 ≤ X)
+    (hV : ShellNonDividing (fun v => (intFunctional a v : ℤ)) X V)
+    {v : Fin d → ℤ} (hv : v ∈ V) :
+    realFunctional a (projNorm a v) = 1 :=
+  realFunctional_projNorm a v (ne_of_gt (intFunctional_pos_of_shell hX hV hv))
 
 end Nondividing
