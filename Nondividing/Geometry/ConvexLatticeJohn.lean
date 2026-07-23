@@ -115,4 +115,27 @@ theorem coordinate_section_john (d : ℕ) :
         Finset.card_filter_le (coordinateBox M)
           (fun z => realPoint z ∈ H)))⟩
 
+/-- Any finite set of lattice points in a symmetric coordinate box sits inside a
+proper symmetric GAP of the same rank as its real span, of cardinality
+`≪_d |box|`.  This is the rank-`r` (`r ≤ d`) containment underlying
+`lem:slab-count`'s non-full-rank alternative and the general John placement; the
+sharper full-rank volume estimate is separate. -/
+theorem section_in_gap (d : ℕ) :
+    ∃ C : ℕ, 0 < C ∧ ∀ (S : Finset (Fin d → ℤ)) (M : Fin d → ℕ),
+      S ⊆ coordinateBox M →
+      ∃ (r : ℕ) (Q : GAP d r), Q.Proper ∧ S ⊆ Q.carrier ∧
+        Q.carrier.card ≤ C * (coordinateBox M).card := by
+  obtain ⟨C, hC, hjohn⟩ := coordinate_section_john d
+  refine ⟨C, hC, ?_⟩
+  intro S M hSbox
+  set H := integerRealSpan S with hH
+  obtain ⟨Q, _hstep, hproper, hcover, hcard⟩ :=
+    hjohn (Module.finrank ℝ H) H M S rfl hSbox rfl
+  refine ⟨Module.finrank ℝ H, Q, hproper, ?_, hcard⟩
+  -- `S ⊆ latticeSection H M ⊆ Q.carrier`.
+  intro z hz
+  apply hcover
+  rw [mem_latticeSection]
+  exact ⟨hSbox hz, Submodule.subset_span ⟨z, hz, rfl⟩⟩
+
 end Nondividing
