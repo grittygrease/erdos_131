@@ -13,6 +13,7 @@ import Nondividing.Geometry.GAPVolume
 import Nondividing.Geometry.SlabVolume
 import Nondividing.Geometry.Zonotope
 import Nondividing.Geometry.RobustZonotope
+import Nondividing.ProjectiveConvexity
 import Nondividing.Numerology
 import Nondividing.QuotientOrder
 import Nondividing.Filling

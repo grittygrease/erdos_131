@@ -98,3 +98,7 @@ import Nondividing.Main
 -- Reaches E2+E3+E5+core (parameterized over the package).
 #print axioms Nondividing.tube_inclusion
 #print axioms Nondividing.tube_inclusion_of_zonotope
+
+-- PROJECTIVE CONVEXITY ASSEMBLED: the complete contradiction, E2+E3+E5+core
+-- (E1 enters only via the Package at the call site).
+#print axioms Nondividing.projective_convexity_assembled
