@@ -22,7 +22,8 @@
 - [x] projective_span — FULLY PROVEN (all parts): part 1 `integerRealSpan_eq_top`/`projective_span_package` (⟨V⟩_ℝ=ℝ^d); part 2 `mem_affineSpan_projNorm_iff` (aff π(V) = H_λ = {λℝ=1}, via `vectorSpan_projNorm_eq_ker` dim count); part 3 `smul_projNorm_mem_realBox` (X·π(v)∈B_ℝ) + `intrinsicInterior_convexHull_projNorm_nonempty` (relative interior, E4 setup). All reach only core axioms
 - [ ] one_sided_filling (E3)
 - [x] Projective duality — FULLY PROVEN: `projective_duality` (a ∈ V is a [1/3,3]-total, 4/(μ|V|)-capped combination of the others when π(V) fails μ-convex position). Via `exists_capped_combination` (Hahn-Banach separation from the capped-simplex hull) + `duality_representation` (arithmetic) + `projNorm_combination`. Reaches only core axioms
-- [ ] Projective convexity / robust zonotope
+- [~] Projective convexity — ENDGAME ASSEMBLED: `projective_convexity_of_tube` (full contradiction GIVEN the tube inclusion `L∩(Ta+ξn·B)⊆Σ(V∖a)`), via `shellNonDividing_no_positive_multiple` (final λ-divisibility contradiction) + `exists_positive_nsmul_mem` (finite quotient order) + `exists_nearby_multiple` (nearest multiple). Plus coefficient-iso foundation (`realStep_linearIndependent`, `realEval_injective`). Remaining: the tube inclusion itself (needs one_sided_filling + robust_zonotope + index_bound part 2)
+- [ ] Robust zonotope (needs slab_exclusion → slab_count Fubini)
 - [ ] Weighted density (indexed, from E4 by perturbation+compactness)
 - [ ] Cap lifting (perspective-cone volume)
 - [ ] Numerology optimisation lemma
