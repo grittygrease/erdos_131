@@ -88,3 +88,4 @@ import Nondividing.Main
 #print axioms Nondividing.symZonotope_separation
 #print axioms Nondividing.symZonotope_isCompact
 #print axioms Nondividing.symZonotope_contains_box_of_slab_bound
+#print axioms Nondividing.centre_add_symZonotope_subset_realZonotope

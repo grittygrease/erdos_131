@@ -265,4 +265,27 @@ theorem symZonotope_contains_box_of_slab_bound {d : ℕ}
     linarith [hsupport]
   exact absurd hsep (not_lt_of_ge hfinal)
 
+/-- The one-sided real zonotope `Z(C) = {∑ t_v·v : 0 ≤ t_v ≤ 1}`. -/
+def realZonotope {d : ℕ} (C : Finset (Fin d → ℤ)) : Set (Fin d → ℝ) :=
+  {x | ∃ t : (Fin d → ℤ) → ℝ, (∀ v ∈ C, 0 ≤ t v ∧ t v ≤ 1) ∧
+    x = fun j => ∑ v ∈ C, t v * (v j : ℝ)}
+
+/-- **Shift step** of `lem:robust-zonotope`: with weights `θ_v ≤ 1/2`, the
+shifted symmetric zonotope `z̄ + Z⁰` sits inside the one-sided zonotope
+`Z(C)`, where `z̄ = ∑_v θ_v·v` (coefficients `θ_v + t_v ∈ [0, 2θ_v] ⊆ [0,1]`). -/
+theorem centre_add_symZonotope_subset_realZonotope {d : ℕ}
+    {C : Finset (Fin d → ℤ)} {θ : (Fin d → ℤ) → ℝ}
+    (hθ0 : ∀ v ∈ C, 0 ≤ θ v) (hθhalf : ∀ v ∈ C, θ v ≤ 1 / 2)
+    {x : Fin d → ℝ} (hx : x ∈ symZonotope C θ) :
+    (fun j => (∑ v ∈ C, θ v * (v j : ℝ)) + x j) ∈ realZonotope C := by
+  obtain ⟨t, ht, rfl⟩ := hx
+  refine ⟨fun v => θ v + t v, fun v hv => ?_, ?_⟩
+  · have h1 := abs_le.mp (ht v hv)
+    constructor
+    · linarith [h1.1]
+    · linarith [h1.2, hθhalf v hv]
+  · funext j
+    rw [← Finset.sum_add_distrib]
+    exact Finset.sum_congr rfl fun v _ => by ring
+
 end Nondividing
