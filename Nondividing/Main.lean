@@ -14,6 +14,7 @@ import Nondividing.Geometry.SlabVolume
 import Nondividing.Geometry.Zonotope
 import Nondividing.Geometry.RobustZonotope
 import Nondividing.ProjectiveConvexity
+import Nondividing.CapLifting
 import Nondividing.Numerology
 import Nondividing.QuotientOrder
 import Nondividing.Filling

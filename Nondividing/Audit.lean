@@ -102,3 +102,7 @@ import Nondividing.Main
 -- PROJECTIVE CONVEXITY ASSEMBLED: the complete contradiction, E2+E3+E5+core
 -- (E1 enters only via the Package at the call site).
 #print axioms Nondividing.projective_convexity_assembled
+
+-- cap_lifting alternative (i): E2+core (John placement through section_in_gap).
+#print axioms Nondividing.cap_lifting_deficient
+#print axioms Nondividing.ShellNonDividing.of_map

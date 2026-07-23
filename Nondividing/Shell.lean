@@ -62,6 +62,24 @@ theorem ShellNonDividing.map
     rw [← hmap] at hdvd
     simpa [Finset.sum_map, hval] using hdvd
 
+/-- Reverse transport: shell non-dividing on an embedded image pulls back
+along the embedding. -/
+theorem ShellNonDividing.of_map {α β : Type*} [DecidableEq α] [DecidableEq β]
+    {ell : β → ℤ} {X : ℕ} {S : Finset α} (e : α ↪ β)
+    (h : ShellNonDividing ell X (S.map e)) :
+    ShellNonDividing (fun a => ell (e a)) X S := by
+  constructor
+  · intro a ha
+    exact h.1 (e a) (Finset.mem_map_of_mem e ha)
+  · intro a ha T hT hTsub hdvd
+    apply h.2 (e a) (Finset.mem_map_of_mem e ha) (T.map e) hT.map
+    · intro z hz
+      obtain ⟨t, ht, rfl⟩ := Finset.mem_map.mp hz
+      have ht' := Finset.mem_erase.mp (hTsub ht)
+      exact Finset.mem_erase.mpr
+        ⟨fun hcon => ht'.1 (e.injective hcon), Finset.mem_map_of_mem e ht'.2⟩
+    · rwa [Finset.sum_map]
+
 /-- **Projective-convexity final contradiction** (`thm:projective-convexity`).
 If a shell set `V` (for an integer-linear functional `ℓ`) contains `a`, and a
 *positive* integer multiple `m₀·a` is a subset sum of `V \ {a}`, then shell
