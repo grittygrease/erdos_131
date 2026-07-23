@@ -212,6 +212,22 @@ theorem realEval_injective {d e : ℕ} (P : GAP d e) (hrank : P.realRank = e) :
   (linearIndependent_iff_injective_fintypeLinearCombination).mp
     (realStep_linearIndependent P hrank)
 
+/-- Integer coefficient map of a full-rank GAP is injective: `lem:one-sided-filling`'s
+"`q₁,…,q_d` are a ℤ-basis" — every lattice point has *unique* integer coefficients. -/
+theorem evalHom_injective {d e : ℕ} (P : GAP d e) (hrank : P.realRank = e) :
+    Function.Injective P.evalHom := by
+  intro n m h
+  have hreal : (fun i : Fin e => (n i : ℝ)) = (fun i : Fin e => (m i : ℝ)) := by
+    apply realEval_injective P hrank
+    funext j
+    simp only [Fintype.linearCombination_apply, Finset.sum_apply, Pi.smul_apply,
+      smul_eq_mul]
+    have hj := congrFun h j
+    simp only [GAP.evalHom_apply] at hj
+    exact_mod_cast hj
+  funext i
+  exact_mod_cast congrFun hreal i
+
 /-- The step rank never exceeds the displayed dimension. -/
 theorem realRank_le {d e : ℕ} (P : GAP d e) : P.realRank ≤ e := by
   have h := finrank_range_le_card (R := ℝ)

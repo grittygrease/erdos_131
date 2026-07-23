@@ -17,6 +17,24 @@ noncomputable def subsetSums {α : Type*} [DecidableEq α] [AddCommMonoid α]
   classical
   simp [subsetSums]
 
+/-- Subset sums over disjoint index sets add: the final assembly step of
+`lem:one-sided-filling`, `y = z̃ + ((z−z̃)+t)` with the producing subsets in
+`C̄` and `C₀` respectively. -/
+theorem add_mem_subsetSums_union {α : Type*} [DecidableEq α] [AddCommMonoid α]
+    {A B : Finset α} {x y : α} (hd : Disjoint A B)
+    (hx : x ∈ subsetSums A) (hy : y ∈ subsetSums B) :
+    x + y ∈ subsetSums (A ∪ B) := by
+  obtain ⟨S, hSA, hSx⟩ := mem_subsetSums.mp hx
+  obtain ⟨T, hTB, hTy⟩ := mem_subsetSums.mp hy
+  refine mem_subsetSums.mpr ⟨S ∪ T, Finset.union_subset_union hSA hTB, ?_⟩
+  rw [Finset.sum_union (hd.mono hSA hTB), hSx, hTy]
+
+theorem subsetSums_mono {α : Type*} [DecidableEq α] [AddCommMonoid α]
+    {A B : Finset α} (h : A ⊆ B) : subsetSums A ⊆ subsetSums B := by
+  intro x hx
+  obtain ⟨S, hSA, hSx⟩ := mem_subsetSums.mp hx
+  exact mem_subsetSums.mpr ⟨S, hSA.trans h, hSx⟩
+
 /-- No member of `A` divides a nonempty sum of other, distinct members of `A`. -/
 def NonDividing (A : Finset ℕ) : Prop :=
   ∀ a ∈ A, ∀ S : Finset ℕ, S.Nonempty → S ⊆ A.erase a → ¬a ∣ ∑ s ∈ S, s
