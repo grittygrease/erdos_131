@@ -71,3 +71,9 @@ import Nondividing.Main
 #print axioms Nondividing.stepMapR_realBox_bound
 #print axioms Nondividing.index_mul_le_volume_bound
 #print axioms Nondividing.index_bound_part2
+
+-- slab_count r=d: shear volume bound is core-only; the count reaches E5.
+#print axioms Nondividing.det_shearMatrix
+#print axioms Nondividing.volume_slab_inter_box_le
+#print axioms Nondividing.exists_width_coordinate
+#print axioms Nondividing.slab_count_full_rank

@@ -2,6 +2,7 @@ import Mathlib.LinearAlgebra.Matrix.SchurComplement
 import Mathlib.Tactic.IntervalCases
 import Mathlib.Analysis.Convex.Body
 import Nondividing.Geometry.GAPVolume
+import Nondividing.External.ConvexGeometry
 
 open scoped BigOperators
 open MeasureTheory
@@ -248,5 +249,103 @@ noncomputable def slabBody {d : ℕ} (N : Fin d → ℕ) (a : Fin d → ℝ) {c 
   Iff.rfl
 
 end SlabBody
+
+section SlabCount
+
+open MeasureTheory
+
+/-- **Slab count, full-rank case** (`lem:slab-count`, r = d): the integer
+points of a central slab of relative width `τ` inside the box number at most
+`C·dτ·|B|`, provided they span `ℝ^d`.  Combines E5
+(`full_rank_lattice_points_le_volume`) with the shear volume bound. -/
+theorem slab_count_full_rank (d : ℕ) :
+    ∃ C : ℝ, 0 < C ∧ ∀ (N : Fin d → ℕ) (a : Fin d → ℝ) (τ : ℝ), 0 ≤ τ →
+      ∀ hw : 0 < ∑ i, |a i| * (N i : ℝ),
+      ∀ (A : Finset (Fin d → ℤ)),
+        (∀ z, z ∈ A ↔ (z ∈ coordinateBox N ∧
+          |∑ i, a i * (z i : ℝ)| ≤ τ * ∑ i, |a i| * (N i : ℝ))) →
+        Submodule.span ℝ (External.realPoint '' (A : Set (Fin d → ℤ))) = ⊤ →
+        (A.card : ℝ) ≤ C * (d * τ) * ((coordinateBox N).card : ℝ) := by
+  classical
+  obtain ⟨C, hC, hE5⟩ := External.full_rank_lattice_points_le_volume d
+  refine ⟨(C : ℝ) + 1, by positivity, ?_⟩
+  intro N a τ hτ hw A hAmem hAspan
+  set w : ℝ := ∑ i, |a i| * (N i : ℝ) with hwdef
+  have hτw : 0 ≤ τ * w := mul_nonneg hτ (le_of_lt hw)
+  -- Membership matches the convex body.
+  have hbodymem : ∀ z, z ∈ A ↔ External.realPoint z ∈ slabBody N a hτw := by
+    intro z
+    rw [hAmem z, mem_slabBody]
+    constructor
+    · rintro ⟨hzbox, hzslab⟩
+      refine ⟨⟨fun i => ?_, fun i => ?_⟩, ?_⟩
+      · have := (mem_coordinateBox.mp hzbox i).1
+        show -(N i : ℝ) ≤ (z i : ℝ)
+        exact_mod_cast this
+      · have := (mem_coordinateBox.mp hzbox i).2
+        show (z i : ℝ) ≤ (N i : ℝ)
+        exact_mod_cast this
+      · exact hzslab
+    · rintro ⟨⟨h1, h2⟩, hzslab⟩
+      refine ⟨mem_coordinateBox.mpr fun i => ⟨?_, ?_⟩, hzslab⟩
+      · have hcast : -(N i : ℝ) ≤ (z i : ℝ) := h1 i
+        exact_mod_cast hcast
+      · have hcast : (z i : ℝ) ≤ (N i : ℝ) := h2 i
+        exact_mod_cast hcast
+  -- Symmetry of the body.
+  have hsymm : ∀ x ∈ (slabBody N a hτw : Set (Fin d → ℝ)), -x ∈ slabBody N a hτw := by
+    rintro x ⟨⟨h1, h2⟩, hs⟩
+    refine ⟨⟨fun i => ?_, fun i => ?_⟩, ?_⟩
+    · show -(N i : ℝ) ≤ (-x) i
+      have := h2 i; simp only [Pi.neg_apply]; linarith
+    · show (-x) i ≤ (N i : ℝ)
+      have := h1 i; simp only [Pi.neg_apply]; linarith
+    · rw [show ∑ i, a i * (-x) i = -(∑ i, a i * x i) from by
+        rw [← Finset.sum_neg_distrib]
+        exact Finset.sum_congr rfl fun i _ => by simp [Pi.neg_apply]]
+      rwa [abs_neg]
+  -- E5 count.
+  have hcount := hE5 (slabBody N a hτw) A hsymm hbodymem hAspan
+  -- Volume bound (choose the pigeonhole coordinate).
+  obtain ⟨j, haj, hjw⟩ := exists_width_coordinate a N hw
+  have hvol : volume ((slabBody N a hτw : Set (Fin d → ℝ)))
+      ≤ ENNReal.ofReal ((d * τ) * (2 ^ d * ∏ i, (N i : ℝ))) :=
+    volume_slab_inter_box_le N a j haj hτ (le_of_lt hw) hjw
+  -- Assemble into a real inequality.
+  have hchain : (A.card : ENNReal)
+      ≤ (C : ENNReal) * ENNReal.ofReal ((d * τ) * (2 ^ d * ∏ i, (N i : ℝ))) :=
+    le_trans hcount (mul_le_mul_left' hvol _)
+  have hboxprod : (2 : ℝ) ^ d * ∏ i, (N i : ℝ) ≤ ((coordinateBox N).card : ℝ) := by
+    rw [card_coordinateBox]
+    push_cast
+    rw [show ((2 : ℝ)) ^ d * ∏ i, (N i : ℝ) = ∏ i, (2 * (N i : ℝ)) from by
+      rw [Finset.prod_mul_distrib, Finset.prod_const, Finset.card_univ, Fintype.card_fin]]
+    exact Finset.prod_le_prod (fun i _ => by positivity)
+      (fun i _ => by linarith [Nat.cast_nonneg (α := ℝ) (N i)])
+  -- Convert `hchain` to reals.
+  have hrhs_ne_top : (C : ENNReal) * ENNReal.ofReal ((d * τ) * (2 ^ d * ∏ i, (N i : ℝ)))
+      ≠ ⊤ := by
+    exact ENNReal.mul_ne_top ENNReal.coe_ne_top ENNReal.ofReal_ne_top
+  have hreal : (A.card : ℝ) ≤ (C : ℝ) * ((d * τ) * (2 ^ d * ∏ i, (N i : ℝ))) := by
+    have := ENNReal.toReal_mono hrhs_ne_top hchain
+    rw [ENNReal.toReal_natCast, ENNReal.toReal_mul, ENNReal.coe_toReal,
+      ENNReal.toReal_ofReal (by positivity)] at this
+    exact this
+  calc (A.card : ℝ)
+      ≤ (C : ℝ) * ((d * τ) * (2 ^ d * ∏ i, (N i : ℝ))) := hreal
+    _ = (C : ℝ) * (d * τ) * (2 ^ d * ∏ i, (N i : ℝ)) := by ring
+    _ ≤ ((C : ℝ) + 1) * (d * τ) * ((coordinateBox N).card : ℝ) := by
+        have h2 : (0 : ℝ) ≤ 2 ^ d * ∏ i, (N i : ℝ) := by positivity
+        have hC1 : (C : ℝ) ≤ (C : ℝ) + 1 := by linarith
+        have hdτ : (0 : ℝ) ≤ (d : ℝ) * τ := by positivity
+        have hBnn : (0 : ℝ) ≤ ((coordinateBox N).card : ℝ) := Nat.cast_nonneg _
+        calc (C : ℝ) * (d * τ) * (2 ^ d * ∏ i, (N i : ℝ))
+            ≤ (C : ℝ) * (d * τ) * ((coordinateBox N).card : ℝ) :=
+              mul_le_mul_of_nonneg_left hboxprod (by positivity)
+          _ ≤ ((C : ℝ) + 1) * (d * τ) * ((coordinateBox N).card : ℝ) := by
+              apply mul_le_mul_of_nonneg_right _ hBnn
+              exact mul_le_mul_of_nonneg_right hC1 hdτ
+
+end SlabCount
 
 end Nondividing
