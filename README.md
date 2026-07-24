@@ -18,18 +18,18 @@ The theorem is `Nondividing.main_log_limit`, and it lives in
 
 ---
 
-## I just want to know: should I trust this?
+## Remarks
 
-You don't need to read the proof (400+ lemmas). You need three short reads
+You probably don't need to read the full proof (400+ lemmas). You need three short reads
 and one command. In increasing order of effort:
 
-**1. Check the statement says the right thing (2 minutes, no download).**
+**1. Check the statement says the right thing**
 Read [`Challenge.lean`](Challenge.lean). It is ~50 lines: the definition of
 *non-dividing*, the definition of `F`, and the theorem statement. Nothing
 else. If that file matches your understanding of the problem, the statement
 is right.
 
-**2. Check what is assumed (5 minutes).**
+**2. Check what is assumed**
 The proof uses Lean's three standard axioms plus **eight explicitly declared
 external results** — published theorems from the literature that were taken
 as axioms rather than re-proved. They live in the five short files of
@@ -37,7 +37,7 @@ as axioms rather than re-proved. They live in the five short files of
 a citation. The list is in the table below. *This is the entire trust
 surface:* everything else is verified by the Lean kernel down to mathlib.
 
-**3. Check the proof actually proves that statement (one command).**
+**3. Check the proof actually proves that statement**
 Build the project (next section) — it compiles with **zero `sorry`**. Then
 ask Lean which axioms the theorem really uses:
 
@@ -48,8 +48,7 @@ lake env lean AxCheck.lean && rm AxCheck.lean
 ```
 
 The output must list exactly: `propext`, `Classical.choice`, `Quot.sound`,
-and the eight `Nondividing.External.*` axioms. Nothing more — in particular
-no `sorryAx`.
+and the eight `Nondividing.External.*` axioms.
 
 **4. (Optional, strongest) Mechanical verification with the Comparator.**
 See the [Comparator section](#full-verification-with-the-comparator) below.
@@ -106,15 +105,6 @@ lake build Challenge Solution
 lake env <path-to-comparator-binary> comparator-config.json
 ```
 
-**Checking the statement online instead (no install at all):** a
-self-contained one-file version of the challenge (kept locally as the
-gitignored `comparator_web.lean`; it is `Challenge.lean` with the imports
-inlined to `import Mathlib`) can be pasted into
-[live.lean-lang.org](https://live.lean-lang.org) — it compiles against plain
-mathlib with a single `sorry` warning, showing the statement is well-formed
-and self-contained — or into the Challenge pane of
-[comparator.live.lean-lang.org](https://comparator.live.lean-lang.org).
-
 ---
 
 ## What exactly is assumed (the eight external results)
@@ -145,7 +135,7 @@ proved in Lean from mathlib.
 
 | Path | Contents |
 |---|---|
-| `Manuscript.tex` | The paper (the informal source of truth) |
+| `Manuscript.tex` | The paper |
 | `Nondividing/Basic.lean` | The definitions: `NonDividing`, `F` |
 | `Nondividing/FinalAssembly.lean` | **The main theorem** `main_log_limit` |
 | `Nondividing/External/` | The eight axioms (the trust surface) |
