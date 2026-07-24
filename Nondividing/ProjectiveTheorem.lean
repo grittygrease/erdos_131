@@ -1,5 +1,7 @@
 import Nondividing.Preprocessing2
 import Nondividing.Numerology
+import Nondividing.DyadicShell
+import Nondividing.Main
 
 open scoped BigOperators
 
@@ -342,5 +344,98 @@ theorem projective_theorem_of_descent_supplier (d : ℕ) (_hd : 1 ≤ d)
   obtain ⟨c, n₀, hc, hstep⟩ := hsupply
   exact ⟨n₀, fun lam X V M hX hn hsub hshell _ =>
     projective_theorem_of_descent hζ₀ hc hstep d lam X V M hX hn hsub hshell⟩
+
+/-! ## The `d = 1` adapter and the main-theorem composition -/
+
+/-- A **descent supplier**: for every excess parameter `ζ₀ > 0`, a uniform
+one-step excess gain `c > 0` and a cardinality threshold `n₀` realizing the
+one-step increment (`DescentStep`).  This is the single remaining
+`TODO(orchestrator)` input to the whole main theorem. -/
+def DescentSupplier : Prop :=
+  ∀ ζ₀ : ℝ, 0 < ζ₀ → ∃ (c : ℝ) (n₀ : ℕ), 0 < c ∧ DescentStep ζ₀ c n₀
+
+/-- **`d = 1` adapter** (`thm:projective-main` feeding
+`main_upper_eps_of_projective`).  Given a descent supplier, dense dyadic
+shells `W ⊆ [X, 2X]` obey `|W| ≤ X^{1/5+ε}`: embed via `dOneEmbedding` into
+the box of radius `2X` (cardinality `4X+1`), apply the projective theorem at
+`d = 1`, `ζ₀ = ε/2`, and absorb the constant `(4X+1 ≤ 5X)^{1/5+ε/2}` into the
+`ε/2` exponent gap for `X` large. -/
+theorem projective_theorem_dOne (hsupply : DescentSupplier) :
+    ∀ ε : ℝ, 0 < ε → ∃ X₀ : ℕ, ∀ (X : ℕ) (W : Finset ℕ),
+      X₀ ≤ X → (∀ a ∈ W, X ≤ a ∧ a ≤ 2 * X) →
+      ShellNonDividing (fun a : ℕ => (a : ℤ)) X W →
+      (X : ℝ) ≤ (W.card : ℝ) ^ 5 →
+      (W.card : ℝ) ≤ (X : ℝ) ^ ((1 : ℝ) / 5 + ε) := by
+  intro ε hε
+  have hε2 : (0 : ℝ) < ε / 2 := by linarith
+  obtain ⟨c, n₀, hc, hstep⟩ := hsupply (ε / 2) hε2
+  -- Eventual facts absorbing the threshold and the constant `5`.
+  have h1 : ∀ᶠ X : ℕ in Filter.atTop,
+      (n₀ : ℝ) ≤ (X : ℝ) ^ ((1 : ℝ) / 5 + ε) :=
+    ((tendsto_rpow_atTop (by linarith : (0 : ℝ) < 1 / 5 + ε)).comp
+      tendsto_natCast_atTop_atTop).eventually_ge_atTop _
+  have h2 : ∀ᶠ X : ℕ in Filter.atTop,
+      (5 : ℝ) ^ ((1 : ℝ) / 5 + ε / 2) ≤ (X : ℝ) ^ (ε / 2) :=
+    ((tendsto_rpow_atTop hε2).comp
+      tendsto_natCast_atTop_atTop).eventually_ge_atTop _
+  have h3 : ∀ᶠ X : ℕ in Filter.atTop, 1 ≤ X := Filter.eventually_ge_atTop 1
+  obtain ⟨X₀, hX₀⟩ := Filter.eventually_atTop.mp (h1.and (h2.and h3))
+  refine ⟨X₀, ?_⟩
+  intro X W hXX₀ hWmem hWshell _hdens
+  obtain ⟨hn₀X, h5X, hX1⟩ := hX₀ X hXX₀
+  have hXR : (0 : ℝ) < (X : ℝ) := by exact_mod_cast (by omega : 0 < X)
+  by_cases hbig : n₀ ≤ W.card
+  · -- The projective theorem at `d = 1`.
+    set V : Finset (Fin 1 → ℤ) := W.map dOneEmbedding with hV
+    have hcard : V.card = W.card := Finset.card_map _
+    have hsub : V ⊆ coordinateBox (fun _ : Fin 1 => 2 * X) := by
+      intro v hv
+      obtain ⟨a, haW, rfl⟩ := Finset.mem_map.mp hv
+      rw [mem_coordinateBox]
+      intro i
+      obtain ⟨_, ha2⟩ := hWmem a haW
+      show -((2 * X : ℕ) : ℤ) ≤ (a : ℤ) ∧ (a : ℤ) ≤ ((2 * X : ℕ) : ℤ)
+      constructor <;> [push_cast; push_cast] <;> omega
+    have hbox : (coordinateBox (fun _ : Fin 1 => 2 * X)).card = 4 * X + 1 := by
+      rw [card_coordinateBox, Fin.prod_univ_one]
+      omega
+    have hmain := projective_theorem_of_descent hε2 hc hstep 1 dOneFunctional X
+      V (fun _ => 2 * X) hX1 (by rw [hcard]; exact hbig) hsub
+      (shellNonDividing_dOne hWshell)
+    rw [hcard, hbox, sigma_one] at hmain
+    have h4X : ((4 * X + 1 : ℕ) : ℝ) ≤ 5 * (X : ℝ) := by
+      have : (1 : ℝ) ≤ (X : ℝ) := by exact_mod_cast hX1
+      push_cast
+      linarith
+    have hexp : (0 : ℝ) ≤ 1 / 5 + ε / 2 := by linarith
+    calc (W.card : ℝ)
+        ≤ ((4 * X + 1 : ℕ) : ℝ) ^ ((1 : ℝ) / 5 + ε / 2) := hmain
+      _ ≤ (5 * (X : ℝ)) ^ ((1 : ℝ) / 5 + ε / 2) :=
+          Real.rpow_le_rpow (by positivity) h4X hexp
+      _ = (5 : ℝ) ^ ((1 : ℝ) / 5 + ε / 2) * (X : ℝ) ^ ((1 : ℝ) / 5 + ε / 2) :=
+          Real.mul_rpow (by norm_num) hXR.le
+      _ ≤ (X : ℝ) ^ (ε / 2) * (X : ℝ) ^ ((1 : ℝ) / 5 + ε / 2) :=
+          mul_le_mul_of_nonneg_right h5X (Real.rpow_nonneg hXR.le _)
+      _ = (X : ℝ) ^ ((1 : ℝ) / 5 + ε) := by
+          rw [← Real.rpow_add hXR]; congr 1; ring
+  · push Not at hbig
+    calc (W.card : ℝ) ≤ (n₀ : ℝ) := by exact_mod_cast hbig.le
+      _ ≤ (X : ℝ) ^ ((1 : ℝ) / 5 + ε) := hn₀X
+
+/-- **Main upper epsilon bound, given a descent supplier**: `F N ≤ N^{1/5+ε}`
+eventually.  Composition `main_upper_eps_of_projective ∘
+projective_theorem_dOne`. -/
+theorem main_upper_eps_of_descent (hsupply : DescentSupplier) :
+    ∀ ε : ℝ, 0 < ε → ∃ N₀ : ℕ, ∀ N ≥ N₀,
+      (F N : ℝ) ≤ Real.rpow (N : ℝ) ((1 : ℝ) / 5 + ε) :=
+  main_upper_eps_of_projective (projective_theorem_dOne hsupply)
+
+/-- **The main theorem, given a descent supplier**:
+`log F(N)/log N → 1/5`.  The entire Erdős 131 upper bound is reduced to
+`DescentSupplier`. -/
+theorem main_log_limit_of_descent (hsupply : DescentSupplier) :
+    Filter.Tendsto (fun N : ℕ => Real.log (F N) / Real.log N)
+      Filter.atTop (nhds ((1 : ℝ) / 5)) :=
+  main_log_limit_of_upper (main_upper_eps_of_descent hsupply)
 
 end Nondividing
