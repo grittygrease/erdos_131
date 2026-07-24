@@ -312,4 +312,110 @@ theorem eventually_stage_thresholds (d : ℕ) {c cw K γ μ δ : ℝ}
     six_pow_lt_of_scale_ge hc hγ hF5, six_pow_lt_of_scale_ge hc hγ hF6,
     hF7, hidx, hgap, hεκ⟩
 
+/-- The scale/gap threshold package of the per-stage supplier at stage
+cardinality `n` (dimension `d`, package constant `c = (pkgs d).c`, pipeline
+constants `cw d`, `K d`). -/
+abbrev StageThresholds {β : ℝ} (pkgs : ∀ r, Package r β) (cw K : ℕ → ℝ)
+    (d : ℕ) (μ δ γ : ℝ) (n : ℕ) : Prop :=
+  8 ≤ μ * n ∧
+  δ * n ≤ (n : ℝ) - 1 ∧
+  (∀ m : ℕ, δ * n ≤ (m : ℝ) → m ≤ n →
+    1 ≤ structureScale m ∧ 1 ≤ (pkgs d).c * structureScale m ∧
+    K d < structureScale m * γ) ∧
+  2 ≤ (pkgs d).c * structureScale (n - 1) ∧
+  (6 : ℝ) ^ d < (pkgs d).c ^ d * (structureScale (n - 1) * γ) ∧
+  (6 : ℝ) ^ d < (pkgs d).c ^ d * (structureScale n * γ) ∧
+  Real.sqrt (d * n) * 3 ≤ (pkgs d).c * structureScale (n - 1) / 2 ∧
+  (12 / min (pkgs d).c 8) ^ d * γ⁻¹ + 1 ≤ μ * n / 8 ∧
+  0 < μ * n / 24 - 1 -
+    ((pkgs d).c⁻¹ * ((n - 1 : ℕ) : ℝ) / Real.log ((n - 1 : ℕ) : ℝ) +
+      structureScale (n - 1)) / 2 - 2 * (δ * n) ∧
+  (12 / min (pkgs d).c 8) ^ d * γ⁻¹ + 1 +
+    (((pkgs d).c⁻¹ * ((n - 1 : ℕ) : ℝ) / Real.log ((n - 1 : ℕ) : ℝ) +
+      structureScale (n - 1)) / 2 + structureScale (n - 1)) ≤
+    cw d * γ * (μ * n / 24 - 1 -
+      ((pkgs d).c⁻¹ * ((n - 1 : ℕ) : ℝ) / Real.log ((n - 1 : ℕ) : ℝ) +
+        structureScale (n - 1)) / 2 - 2 * (δ * n))
+
+/-- The threshold package holds eventually. -/
+theorem eventually_stageThresholds {β : ℝ} (pkgs : ∀ r, Package r β)
+    (cw K : ℕ → ℝ) (d : ℕ) (hcw : 0 < cw d) {γ μ δ : ℝ}
+    (hγ : 0 < γ) (hμ : 0 < μ) (hμ1 : μ ≤ 1) (hδ0 : 0 < δ)
+    (hδμ : δ ≤ μ / 100) :
+    ∀ᶠ n : ℕ in atTop, StageThresholds pkgs cw K d μ δ γ n := by
+  have h := eventually_stage_thresholds d (c := (pkgs d).c) (cw := cw d)
+    (K := K d) (pkgs d).c_pos hcw hγ hμ hμ1 hδ0 hδμ
+  filter_upwards [h] with n hn
+  exact hn
+
+/-- **`IrreducibleIncrement` from the parameter regime.**  On top of
+`irreducibleIncrement_of_numerics`, the nine scale/gap thresholds and the
+scale clause on `δ`-large subsets are discharged for `n ≥ n₂(d, μ, δ, γ)`.
+The remaining per-stage supplier consists of:
+
+* the parameter regime `0 < δ ≤ min(μ^{1+ε}, μ/100)`, `0 < μ < min(1, μ₀ d)`,
+  `0 < γ`;
+* the largeness `n ≥ max(n₀(d,μ), n₂(d,μ,δ,γ))`;
+* eligibility of `δ`-large subsets (the polynomial box bound `|B| ≤ |W|^β`
+  and `m₀ ≤ |W|`, manuscript: the stage's box regime);
+* `γ·|B| > 1` (the progression fraction is meaningful);
+* the absorption numerics for `η ∈ [μ, μ^{τ_d}]`. -/
+theorem irreducibleIncrement_of_regime {β : ℝ}
+    (pkgs : ∀ r, Package r β) (eps : ℝ) (heps : 0 < eps) :
+    ∃ (tau C μ₀ : ℕ → ℝ) (n₀ : ℕ → ℝ → ℕ) (n₂ : ℕ → ℝ → ℝ → ℝ → ℕ),
+      (∀ d, 0 < tau d ∧ tau d < 1 ∧ 0 < C d ∧ 0 < μ₀ d) ∧
+      ∀ (ζ₀ ε δ γ ν : ℝ) (n₁ : ℕ), 2 ≤ n₁ →
+      (∀ (X : ℕ) (s : PrepStage X), 1 ≤ X → n₁ ≤ s.V.card →
+        StageIrreducible pkgs δ γ s →
+        ∃ μ : ℝ,
+          0 < μ ∧ μ < 1 ∧ μ < μ₀ s.dim ∧
+          0 < γ ∧ 0 < δ ∧ δ ≤ μ ^ ((1 : ℝ) + eps) ∧ δ ≤ μ / 100 ∧
+          n₀ s.dim μ ≤ s.V.card ∧
+          n₂ s.dim μ δ γ ≤ s.V.card ∧
+          (∀ W : Finset (Fin s.dim → ℤ), W ⊆ s.V →
+            δ * (s.V.card : ℝ) ≤ (W.card : ℝ) →
+            Eligible β (pkgs s.dim).m₀ W s.M) ∧
+          1 < γ * ((coordinateBox s.M).card : ℝ) ∧
+          (∀ η : ℝ, μ ≤ η → η ≤ μ ^ tau s.dim →
+            C s.dim * η < 1 ∧
+            (C s.dim * η) ^ (sigma s.dim + ζ₀ - ν) ≤
+              η ^ (((s.dim : ℝ) - 2) / (s.dim : ℝ) + eps) ∧
+            (n₁ : ℝ) ≤ η ^ (((s.dim : ℝ) - 2) / (s.dim : ℝ) + eps) *
+              (s.V.card : ℝ))) →
+      IrreducibleIncrement pkgs ζ₀ ε δ γ ν n₁ := by
+  classical
+  obtain ⟨tau, K, C, μ₀, cw, n₀, hpos, hmain⟩ :=
+    irreducibleIncrement_of_numerics (β := β) pkgs eps heps
+  -- Extract the eventual-threshold rank as a function of `(d, μ, δ, γ)`.
+  have hev : ∀ (d : ℕ) (μ δ γ : ℝ), ∃ N : ℕ, ∀ n : ℕ, N ≤ n →
+      0 < γ → 0 < μ → μ ≤ 1 → 0 < δ → δ ≤ μ / 100 →
+      StageThresholds pkgs cw K d μ δ γ n := by
+    intro d μ δ γ
+    by_cases h : 0 < γ ∧ 0 < μ ∧ μ ≤ 1 ∧ 0 < δ ∧ δ ≤ μ / 100
+    · obtain ⟨hγ, hμ, hμ1, hδ0, hδμ⟩ := h
+      obtain ⟨N, hN⟩ := Filter.eventually_atTop.mp
+        (eventually_stageThresholds pkgs cw K d
+          (hpos d).2.2.2.2.2 hγ hμ hμ1 hδ0 hδμ)
+      exact ⟨N, fun n hn _ _ _ _ _ => hN n hn⟩
+    · exact ⟨0, fun n _ hγ hμ hμ1 hδ0 hδμ =>
+        absurd ⟨hγ, hμ, hμ1, hδ0, hδμ⟩ h⟩
+  choose n₂ hn₂ using hev
+  refine ⟨tau, C, μ₀, n₀, n₂,
+    fun d => ⟨(hpos d).1, (hpos d).2.1, (hpos d).2.2.2.1,
+      (hpos d).2.2.2.2.1⟩, ?_⟩
+  intro ζ₀ ε δ γ ν n₁ hn₁ hsup
+  refine hmain ζ₀ ε δ γ ν n₁ hn₁ ?_
+  intro X s hX hn hirr
+  obtain ⟨μ, hμ0, hμ1, hμμ₀, hγ, hδ0, hδμe, hδμ100, hn₀le, hn₂le, hElig,
+    hγB, habs⟩ := hsup X s hX hn hirr
+  have hthr := hn₂ s.dim μ δ γ s.V.card hn₂le hγ hμ0 hμ1.le hδ0 hδμ100
+  obtain ⟨h8, hb, hrange, h2cs, h6dp, h6dn, hsqrt, hidx, hgap, hεκ⟩ := hthr
+  exact ⟨μ, hμ0, hμ1, hμμ₀, hn₀le, hγ, hδ0.le, hδμe, h8, hb,
+    (fun W hWV hWcard =>
+      ⟨hElig W hWV hWcard,
+        (hrange W.card hWcard (Finset.card_le_card hWV)).1,
+        (hrange W.card hWcard (Finset.card_le_card hWV)).2.1,
+        (hrange W.card hWcard (Finset.card_le_card hWV)).2.2⟩),
+    hγB, h6dn, h2cs, h6dp, hsqrt, hidx, hgap, hεκ, habs⟩
+
 end Nondividing
