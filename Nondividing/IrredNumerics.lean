@@ -361,11 +361,11 @@ The remaining per-stage supplier consists of:
 * `γ·|B| > 1` (the progression fraction is meaningful);
 * the absorption numerics for `η ∈ [μ, μ^{τ_d}]`. -/
 theorem irreducibleIncrement_of_regime {β : ℝ}
-    (pkgs : ∀ r, Package r β) (eps : ℝ) (heps : 0 < eps) :
+    (pkgs : ∀ r, Package r β) (eps : ℝ) (heps : 0 < eps) (Dcap : ℕ) :
     ∃ (tau C μ₀ : ℕ → ℝ) (n₀ : ℕ → ℝ → ℕ) (n₂ : ℕ → ℝ → ℝ → ℝ → ℕ),
       (∀ d, 0 < tau d ∧ tau d < 1 ∧ 0 < C d ∧ 0 < μ₀ d) ∧
       ∀ (ζ₀ ε δ γ ν : ℝ) (n₁ : ℕ), 2 ≤ n₁ →
-      (∀ (X : ℕ) (s : PrepStage X), 1 ≤ X → n₁ ≤ s.V.card →
+      (∀ (X : ℕ) (s : PrepStage X), 1 ≤ X → n₁ ≤ s.V.card → s.dim ≤ Dcap →
         StageIrreducible pkgs δ γ s →
         ∃ μ : ℝ,
           0 < μ ∧ μ < 1 ∧ μ < μ₀ s.dim ∧
@@ -382,10 +382,10 @@ theorem irreducibleIncrement_of_regime {β : ℝ}
               η ^ (((s.dim : ℝ) - 2) / (s.dim : ℝ) + eps) ∧
             (n₁ : ℝ) ≤ η ^ (((s.dim : ℝ) - 2) / (s.dim : ℝ) + eps) *
               (s.V.card : ℝ))) →
-      IrreducibleIncrement pkgs ζ₀ ε δ γ ν n₁ := by
+      IrreducibleIncrementCapped pkgs Dcap ζ₀ ε δ γ ν n₁ := by
   classical
   obtain ⟨tau, K, C, μ₀, cw, n₀, hpos, hmain⟩ :=
-    irreducibleIncrement_of_numerics (β := β) pkgs eps heps
+    irreducibleIncrement_of_numerics (β := β) pkgs eps heps Dcap
   -- Extract the eventual-threshold rank as a function of `(d, μ, δ, γ)`.
   have hev : ∀ (d : ℕ) (μ δ γ : ℝ), ∃ N : ℕ, ∀ n : ℕ, N ≤ n →
       0 < γ → 0 < μ → μ ≤ 1 → 0 < δ → δ ≤ μ / 100 →
@@ -405,9 +405,9 @@ theorem irreducibleIncrement_of_regime {β : ℝ}
       (hpos d).2.2.2.2.1⟩, ?_⟩
   intro ζ₀ ε δ γ ν n₁ hn₁ hsup
   refine hmain ζ₀ ε δ γ ν n₁ hn₁ ?_
-  intro X s hX hn hirr
+  intro X s hX hn hcap hirr
   obtain ⟨μ, hμ0, hμ1, hμμ₀, hγ, hδ0, hδμe, hδμ100, hn₀le, hn₂le, hElig,
-    hγB, habs⟩ := hsup X s hX hn hirr
+    hγB, habs⟩ := hsup X s hX hn hcap hirr
   have hthr := hn₂ s.dim μ δ γ s.V.card hn₂le hγ hμ0 hμ1.le hδ0 hδμ100
   obtain ⟨h8, hb, hrange, h2cs, h6dp, h6dn, hsqrt, hidx, hgap, hεκ⟩ := hthr
   exact ⟨μ, hμ0, hμ1, hμμ₀, hn₀le, hγ, hδ0.le, hδμe, h8, hb,
@@ -494,11 +494,12 @@ remaining supplier is a per-stage choice of `μ` with:
   `κ_d + ε ≤ σ_d + ζ₀ - ν`, and the two retention endpoints
   `n₁ ≤ μ^{κ_d+ε}·n`, `n₁ ≤ μ^{τ_d(κ_d+ε)}·n`. -/
 theorem irreducibleIncrement_of_parameters {β : ℝ}
-    (pkgs : ∀ r, Package r β) (eps : ℝ) (heps : 0 < eps) (hβ : 0 ≤ β) :
+    (pkgs : ∀ r, Package r β) (eps : ℝ) (heps : 0 < eps) (hβ : 0 ≤ β)
+    (Dcap : ℕ) :
     ∃ (tau C μ₀ : ℕ → ℝ) (n₀ : ℕ → ℝ → ℕ) (n₂ : ℕ → ℝ → ℝ → ℝ → ℕ),
       (∀ d, 0 < tau d ∧ tau d < 1 ∧ 0 < C d ∧ 0 < μ₀ d) ∧
       ∀ (ζ₀ ε δ γ ν : ℝ) (n₁ : ℕ), 2 ≤ n₁ →
-      (∀ (X : ℕ) (s : PrepStage X), 1 ≤ X → n₁ ≤ s.V.card →
+      (∀ (X : ℕ) (s : PrepStage X), 1 ≤ X → n₁ ≤ s.V.card → s.dim ≤ Dcap →
         StageIrreducible pkgs δ γ s →
         ∃ μ : ℝ,
           0 < μ ∧ μ < 1 ∧ μ < μ₀ s.dim ∧
@@ -517,16 +518,16 @@ theorem irreducibleIncrement_of_parameters {β : ℝ}
             s.V.card ∧
           (n₁ : ℝ) ≤ μ ^ (tau s.dim * (((s.dim : ℝ) - 2) / s.dim + eps)) *
             s.V.card) →
-      IrreducibleIncrement pkgs ζ₀ ε δ γ ν n₁ := by
+      IrreducibleIncrementCapped pkgs Dcap ζ₀ ε δ γ ν n₁ := by
   classical
   obtain ⟨tau, C, μ₀, n₀, n₂, hpos, hmain⟩ :=
-    irreducibleIncrement_of_regime (β := β) pkgs eps heps
+    irreducibleIncrement_of_regime (β := β) pkgs eps heps Dcap
   refine ⟨tau, C, μ₀, n₀, n₂, hpos, ?_⟩
   intro ζ₀ ε δ γ ν n₁ hn₁ hsup
   refine hmain ζ₀ ε δ γ ν n₁ hn₁ ?_
-  intro X s hX hn hirr
+  intro X s hX hn hcap hirr
   obtain ⟨μ, hμ0, hμ1, hμμ₀, hγ, hδ0, hδμe, hδμ100, hn₀le, hn₂le, hm₀,
-    hbox, hγB, hCμ, hCa, hba, hn₁b, hn₁τb⟩ := hsup X s hX hn hirr
+    hbox, hγB, hCμ, hCa, hba, hn₁b, hn₁τb⟩ := hsup X s hX hn hcap hirr
   exact ⟨μ, hμ0, hμ1, hμμ₀, hγ, hδ0, hδμe, hδμ100, hn₀le, hn₂le,
     (fun W hWV hWcard =>
       eligible_of_box_bound (pkgs s.dim).m₀ hWV s.subset hm₀ hWcard hβ hbox),
@@ -534,42 +535,5 @@ theorem irreducibleIncrement_of_parameters {β : ℝ}
     absorption_of_mu_small (hpos s.dim).2.2.1 (hpos s.dim).1 hμ0 hμ1 hba
       hCμ hCa hn₁b hn₁τb⟩
 
-/-- **End-to-end raw step.**  The composition check: the parameter-level
-supplier of `irreducibleIncrement_of_parameters`, together with a
-preprocessing supplier, yields the raw density-increment step of the
-projective iteration (`rawStep_of_suppliers`). -/
-theorem rawStep_of_prep_and_parameters {β : ℝ}
-    (pkgs : ∀ r, Package r β) (eps : ℝ) (heps : 0 < eps) (hβ : 0 ≤ β) :
-    ∃ (tau C μ₀ : ℕ → ℝ) (n₀ : ℕ → ℝ → ℕ) (n₂ : ℕ → ℝ → ℝ → ℝ → ℕ),
-      (∀ d, 0 < tau d ∧ tau d < 1 ∧ 0 < C d ∧ 0 < μ₀ d) ∧
-      ∀ (D : ℕ) (ζ₀ ε δ γ ν K₀ : ℝ) (n₁ : ℕ),
-        0 < ζ₀ → 0 < ε → ε ≤ 1 / 2 → 0 < ν → 5 ≤ K₀ → 2 ≤ n₁ →
-        PrepSupplier pkgs D ζ₀ ε δ γ K₀ n₁ →
-        (∀ (X : ℕ) (s : PrepStage X), 1 ≤ X → n₁ ≤ s.V.card →
-          StageIrreducible pkgs δ γ s →
-          ∃ μ : ℝ,
-            0 < μ ∧ μ < 1 ∧ μ < μ₀ s.dim ∧
-            0 < γ ∧ 0 < δ ∧ δ ≤ μ ^ ((1 : ℝ) + eps) ∧ δ ≤ μ / 100 ∧
-            n₀ s.dim μ ≤ s.V.card ∧
-            n₂ s.dim μ δ γ ≤ s.V.card ∧
-            ((pkgs s.dim).m₀ : ℝ) ≤ δ * s.V.card ∧
-            ((coordinateBox s.M).card : ℝ) ≤ (δ * s.V.card) ^ β ∧
-            1 < γ * ((coordinateBox s.M).card : ℝ) ∧
-            C s.dim * μ ^ tau s.dim < 1 ∧
-            C s.dim ^ (sigma s.dim + ζ₀ - ν) ≤
-              μ ^ (tau s.dim * ((((s.dim : ℝ) - 2) / s.dim + eps) -
-                (sigma s.dim + ζ₀ - ν))) ∧
-            ((s.dim : ℝ) - 2) / s.dim + eps ≤ sigma s.dim + ζ₀ - ν ∧
-            (n₁ : ℝ) ≤ μ ^ (((s.dim : ℝ) - 2) / s.dim + eps) *
-              s.V.card ∧
-            (n₁ : ℝ) ≤ μ ^ (tau s.dim *
-              (((s.dim : ℝ) - 2) / s.dim + eps)) * s.V.card) →
-        RawStep D ζ₀ (2 * ε) n₁ := by
-  obtain ⟨tau, C, μ₀, n₀, n₂, hpos, hmain⟩ :=
-    irreducibleIncrement_of_parameters (β := β) pkgs eps heps hβ
-  refine ⟨tau, C, μ₀, n₀, n₂, hpos, ?_⟩
-  intro D ζ₀ ε δ γ ν K₀ n₁ hζ₀ hε hεhalf hν hK₀ hn₁ hprep hsup
-  exact rawStep_of_suppliers pkgs D hζ₀ hε hεhalf hν hK₀ hn₁ hprep
-    (hmain ζ₀ ε δ γ ν n₁ hn₁ hsup)
 
 end Nondividing

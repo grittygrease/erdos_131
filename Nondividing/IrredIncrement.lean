@@ -1241,11 +1241,11 @@ dimension-lowering alternative of `lem:cap-lifting` never fires. -/
 supplier.**  The constants `tau, K, C, μ₀, n₀` (indexed by the stage
 dimension) are produced by the pipeline; the supplier must meet them. -/
 theorem irreducibleIncrement_of_convexPosition {β : ℝ}
-    (pkgs : ∀ r, Package r β) (eps : ℝ) (heps : 0 < eps) :
+    (pkgs : ∀ r, Package r β) (eps : ℝ) (heps : 0 < eps) (Dcap : ℕ) :
     ∃ (tau K C μ₀ : ℕ → ℝ) (n₀ : ℕ → ℝ → ℕ),
       (∀ d, 0 < tau d ∧ tau d < 1 ∧ 0 < K d ∧ 0 < C d ∧ 0 < μ₀ d) ∧
       ∀ (ζ₀ ε δ γ ν : ℝ) (n₁ : ℕ), 2 ≤ n₁ →
-      (∀ (X : ℕ) (s : PrepStage X), 1 ≤ X → n₁ ≤ s.V.card →
+      (∀ (X : ℕ) (s : PrepStage X), 1 ≤ X → n₁ ≤ s.V.card → s.dim ≤ Dcap →
         StageIrreducible pkgs δ γ s →
         ∃ (ℓ : Fin s.dim → ℤ) (μ : ℝ),
           (∀ v, s.lam v = intFunctional ℓ v) ∧
@@ -1268,7 +1268,7 @@ theorem irreducibleIncrement_of_convexPosition {β : ℝ}
               η ^ (((s.dim : ℝ) - 2) / (s.dim : ℝ) + eps) ∧
             (n₁ : ℝ) ≤ η ^ (((s.dim : ℝ) - 2) / (s.dim : ℝ) + eps) *
               (s.V.card : ℝ))) →
-      IrreducibleIncrement pkgs ζ₀ ε δ γ ν n₁ := by
+      IrreducibleIncrementCapped pkgs Dcap ζ₀ ε δ γ ν n₁ := by
   classical
   have hstep := fun r : ℕ =>
     irreducible_cap_step (β := β) eps heps r (pkgs (r + 1))
@@ -1277,10 +1277,10 @@ theorem irreducibleIncrement_of_convexPosition {β : ℝ}
   refine ⟨fun d => tau (d - 1), fun d => K (d - 1), fun d => C (d - 1),
     fun d => μ₀ (d - 1), fun d μ => n₀ (d - 1) μ,
     fun d => ⟨htau0 _, htau1 _, hK _, hC _, hμ₀ _⟩, ?_⟩
-  intro ζ₀ ε δ γ ν n₁ hn₁ hsup X s hX hncard hirr
+  intro ζ₀ ε δ γ ν n₁ hn₁ hsup X s hX hncard hcap hirr
   obtain ⟨d, V, M, lam, hsub, hshell⟩ := s
   obtain ⟨ℓ, μ, hlam, hμ0, hμ1, hμμ₀, hn₀le, hγ, hδμ, hspanV, hsupply,
-    hconv, habs⟩ := hsup X ⟨d, V, M, lam, hsub, hshell⟩ hX hncard hirr
+    hconv, habs⟩ := hsup X ⟨d, V, M, lam, hsub, hshell⟩ hX hncard hcap hirr
   rcases d with _ | r
   · -- Dimension 0: the box has one point, contradicting `n₁ ≥ 2`.
     exfalso
@@ -1845,12 +1845,12 @@ position) are discharged; what remains is the numeric regime listed in the
 section header.  The constants `tau, K, C, μ₀, cw, n₀` are produced by the
 pipeline. -/
 theorem irreducibleIncrement_of_numerics {β : ℝ}
-    (pkgs : ∀ r, Package r β) (eps : ℝ) (heps : 0 < eps) :
+    (pkgs : ∀ r, Package r β) (eps : ℝ) (heps : 0 < eps) (Dcap : ℕ) :
     ∃ (tau K C μ₀ cw : ℕ → ℝ) (n₀ : ℕ → ℝ → ℕ),
       (∀ d, 0 < tau d ∧ tau d < 1 ∧ 0 < K d ∧ 0 < C d ∧ 0 < μ₀ d ∧
         0 < cw d) ∧
       ∀ (ζ₀ ε δ γ ν : ℝ) (n₁ : ℕ), 2 ≤ n₁ →
-      (∀ (X : ℕ) (s : PrepStage X), 1 ≤ X → n₁ ≤ s.V.card →
+      (∀ (X : ℕ) (s : PrepStage X), 1 ≤ X → n₁ ≤ s.V.card → s.dim ≤ Dcap →
         StageIrreducible pkgs δ γ s →
         ∃ μ : ℝ,
           0 < μ ∧ μ < 1 ∧ μ < μ₀ s.dim ∧
@@ -1895,10 +1895,10 @@ theorem irreducibleIncrement_of_numerics {β : ℝ}
               η ^ (((s.dim : ℝ) - 2) / (s.dim : ℝ) + eps) ∧
             (n₁ : ℝ) ≤ η ^ (((s.dim : ℝ) - 2) / (s.dim : ℝ) + eps) *
               (s.V.card : ℝ))) →
-      IrreducibleIncrement pkgs ζ₀ ε δ γ ν n₁ := by
+      IrreducibleIncrementCapped pkgs Dcap ζ₀ ε δ γ ν n₁ := by
   classical
   obtain ⟨tau, K₁, C, μ₀, n₀, hpos, hmainIC⟩ :=
-    irreducibleIncrement_of_convexPosition (β := β) pkgs eps heps
+    irreducibleIncrement_of_convexPosition (β := β) pkgs eps heps Dcap
   have hconvAll := fun r : ℕ =>
     stage_convexPosition_of_thresholds (pkgs (r + 1)) (Nat.le_add_left 1 r)
   choose cw₀ K₂ hcw₀ hK₂ hconvmain using hconvAll
@@ -1909,11 +1909,11 @@ theorem irreducibleIncrement_of_numerics {β : ℝ}
     exact ⟨h1, h2, lt_max_of_lt_left h3, h4, h5, hcw₀ _⟩
   · intro ζ₀ ε δ γ ν n₁ hn₁ hsupnum
     refine hmainIC ζ₀ ε δ γ ν n₁ hn₁ ?_
-    intro X s hX hn hirr
+    intro X s hX hn hcap hirr
     obtain ⟨d, V, M, lam, hsub, hshell⟩ := s
     obtain ⟨μ, hμ0, hμ1, hμμ₀, hn₀le, hγ, hδ0, hδμ, hμn8, hδn1, hWsup,
       hγB, h6dV, h2cs, h6d, hsqrt, hidx8, hgapT, hεκT, habs⟩ :=
-      hsupnum X ⟨d, V, M, lam, hsub, hshell⟩ hX hn hirr
+      hsupnum X ⟨d, V, M, lam, hsub, hshell⟩ hX hn hcap hirr
     rcases d with _ | r
     · -- Dimension 0: the box has one point, contradicting `n₁ ≥ 2`.
       exfalso

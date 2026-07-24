@@ -879,6 +879,27 @@ def IrreducibleIncrement {β : ℝ} (pkgs : ∀ r, Package r β)
           ((coordinateBox s'.M).card : ℝ) ≤
             η * ((coordinateBox s.M).card : ℝ)))
 
+/-- **Dimension-capped irreducible-stage increment.**  Identical to
+`IrreducibleIncrement` except the supplier is only obligated at stages of
+dimension `≤ Dcap` — the only stages the descent ever visits
+(`ExcessiveStage.dim_cast_le`: excessive stages have `dim ≤ 2/ζ₀`, and the
+irreducible intermediate stage of the pipeline has the same dimension).
+This capping is what makes the parameter supplier dischargeable: the
+per-dimension thresholds `n₀(d,μ), n₂(d,…)` are only bounded over finitely
+many dimensions. -/
+def IrreducibleIncrementCapped {β : ℝ} (pkgs : ∀ r, Package r β) (Dcap : ℕ)
+    (ζ₀ ε δ γ ν : ℝ) (n₁ : ℕ) : Prop :=
+  ∀ (X : ℕ) (s : PrepStage X), 1 ≤ X → n₁ ≤ s.V.card → s.dim ≤ Dcap →
+    StageIrreducible pkgs δ γ s →
+    ∃ s' : PrepStage X, n₁ ≤ s'.V.card ∧
+      ((s'.dim < s.dim ∧
+          (s.V.card : ℝ) ^ (1 - ε) ≤ (s'.V.card : ℝ) ∧
+          (coordinateBox s'.M).card ≤ (coordinateBox s.M).card) ∨
+        (s'.dim = s.dim ∧ ∃ η : ℝ, 0 < η ∧ η < 1 ∧
+          η ^ (sigma s.dim + ζ₀ - ν) * (s.V.card : ℝ) ≤ (s'.V.card : ℝ) ∧
+          ((coordinateBox s'.M).card : ℝ) ≤
+            η * ((coordinateBox s.M).card : ℝ)))
+
 /-- **Composition: raw step from the two suppliers** (at `2ε`).  The up/down
 preprocessing branches pass through (weakening `1−ε` to `1−2ε`); in the
 same-dimensional branch the increment is applied at the irreducible stage and
