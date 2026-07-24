@@ -1103,4 +1103,470 @@ theorem eventually_mul_log_sq_le {c d a : ℝ} (hd : 0 < d) (ha : 0 < a) :
   rw [div_le_div_iff₀ hd hsq] at h1
   linarith
 
+/-! ## Discharging the numeric bundle: explicit constants -/
+
+/-- The uniform up-move constant `Cup` (dominating `(3/c_r)^{D_r}` for every
+package in play). -/
+noncomputable def prepCup {β : ℝ} (pkgs : ∀ r, Package r β) (Dcap : ℕ) : ℝ :=
+  1 + ∑ r ∈ Finset.range (Dcap + 1),
+    ((3 : ℝ) * max 1 (pkgs r).c⁻¹) ^ (pkgs r).D
+
+/-- The uniform inverse-constant bound (dominating `c_r⁻¹`). -/
+noncomputable def prepCinv {β : ℝ} (pkgs : ∀ r, Package r β) (Dcap : ℕ) :
+    ℝ :=
+  1 + ∑ r ∈ Finset.range (Dcap + 1), (pkgs r).c⁻¹
+
+/-- The shrink-count cap `⌊log(Cup^{10}·n^5)/log(1/γ)⌋` (the γ-power
+accounting bound on `|𝒮|`). -/
+noncomputable def prepScap {β : ℝ} (pkgs : ∀ r, Package r β) (Dcap : ℕ)
+    (γ : ℝ) (n : ℕ) : ℕ :=
+  ⌊Real.log (prepCup pkgs Dcap ^ 10 * (n : ℝ) ^ 5) / Real.log (1 / γ)⌋₊
+
+/-- The chain-length cap `Scap + 2·Ucap + d₀ ≤ Scap + 20 + Dcap` (with the
+uniform `Ucap = 10` from `B₀ < n^5 = (√n)^{10}`). -/
+noncomputable def prepImax {β : ℝ} (pkgs : ∀ r, Package r β) (Dcap : ℕ)
+    (γ : ℝ) (n : ℕ) : ℕ :=
+  prepScap pkgs Dcap γ n + 20 + Dcap
+
+theorem one_le_prepCup {β : ℝ} (pkgs : ∀ r, Package r β) (Dcap : ℕ) :
+    1 ≤ prepCup pkgs Dcap := by
+  have h : 0 ≤ ∑ r ∈ Finset.range (Dcap + 1),
+      ((3 : ℝ) * max 1 (pkgs r).c⁻¹) ^ (pkgs r).D :=
+    Finset.sum_nonneg fun r _ => by positivity
+  rw [prepCup]
+  linarith
+
+theorem le_prepCup {β : ℝ} (pkgs : ∀ r, Package r β) (Dcap : ℕ) {r : ℕ}
+    (hr : r ≤ Dcap) :
+    ((3 : ℝ) * max 1 (pkgs r).c⁻¹) ^ (pkgs r).D ≤ prepCup pkgs Dcap := by
+  have h : ((3 : ℝ) * max 1 (pkgs r).c⁻¹) ^ (pkgs r).D ≤
+      ∑ r ∈ Finset.range (Dcap + 1),
+        ((3 : ℝ) * max 1 (pkgs r).c⁻¹) ^ (pkgs r).D :=
+    Finset.single_le_sum (f := fun r =>
+        ((3 : ℝ) * max 1 (pkgs r).c⁻¹) ^ (pkgs r).D)
+      (fun i _ => by positivity) (Finset.mem_range.mpr (by omega))
+  rw [prepCup]
+  linarith
+
+theorem one_le_prepCinv {β : ℝ} (pkgs : ∀ r, Package r β) (Dcap : ℕ) :
+    1 ≤ prepCinv pkgs Dcap := by
+  have h : 0 ≤ ∑ r ∈ Finset.range (Dcap + 1), (pkgs r).c⁻¹ :=
+    Finset.sum_nonneg fun r _ => inv_nonneg.mpr (pkgs r).c_pos.le
+  rw [prepCinv]
+  linarith
+
+theorem le_prepCinv {β : ℝ} (pkgs : ∀ r, Package r β) (Dcap : ℕ) {r : ℕ}
+    (hr : r ≤ Dcap) : (pkgs r).c⁻¹ ≤ prepCinv pkgs Dcap := by
+  have h : (pkgs r).c⁻¹ ≤ ∑ r ∈ Finset.range (Dcap + 1), (pkgs r).c⁻¹ :=
+    Finset.single_le_sum (f := fun r => (pkgs r).c⁻¹)
+      (fun i _ => inv_nonneg.mpr (pkgs i).c_pos.le)
+      (Finset.mem_range.mpr (by omega))
+  rw [prepCinv]
+  linarith
+
+theorem log_prepR {β : ℝ} (pkgs : ∀ r, Package r β) (Dcap : ℕ) {n : ℕ}
+    (hn : 1 ≤ n) :
+    Real.log (prepCup pkgs Dcap ^ 10 * (n : ℝ) ^ 5) =
+      10 * Real.log (prepCup pkgs Dcap) + 5 * Real.log n := by
+  have hCup0 : (0 : ℝ) < prepCup pkgs Dcap :=
+    lt_of_lt_of_le one_pos (one_le_prepCup pkgs Dcap)
+  have hn0 : (0 : ℝ) < (n : ℝ) := by exact_mod_cast (by omega : 0 < n)
+  rw [Real.log_mul (by positivity) (by positivity), Real.log_pow,
+    Real.log_pow]
+  push_cast
+  ring
+
+theorem one_le_prepR {β : ℝ} (pkgs : ∀ r, Package r β) (Dcap : ℕ) {n : ℕ}
+    (hn : 1 ≤ n) : (1 : ℝ) ≤ prepCup pkgs Dcap ^ 10 * (n : ℝ) ^ 5 := by
+  have hCup1 := one_le_prepCup pkgs Dcap
+  have hn1 : (1 : ℝ) ≤ (n : ℝ) := by exact_mod_cast hn
+  have h1 : (1 : ℝ) ≤ prepCup pkgs Dcap ^ 10 := one_le_pow₀ hCup1
+  have h2 : (1 : ℝ) ≤ (n : ℝ) ^ 5 := one_le_pow₀ hn1
+  nlinarith
+
+/-- Shrink-cap driver: `Cup^{10}·n^5 < (1/γ)^{Scap+1}`. -/
+theorem lt_pow_prepScap_succ {β : ℝ} (pkgs : ∀ r, Package r β) (Dcap : ℕ)
+    {γ : ℝ} (hγ0 : 0 < γ) (hγ1 : γ < 1) {n : ℕ} (hn : 1 ≤ n) :
+    prepCup pkgs Dcap ^ 10 * (n : ℝ) ^ 5 <
+      (1 / γ) ^ (prepScap pkgs Dcap γ n + 1) := by
+  have hLγ : 0 < Real.log (1 / γ) :=
+    Real.log_pos (by rw [lt_div_iff₀ hγ0]; linarith)
+  have hR1 := one_le_prepR pkgs Dcap (n := n) hn
+  have hR0 : (0 : ℝ) < prepCup pkgs Dcap ^ 10 * (n : ℝ) ^ 5 := by linarith
+  have hfl : Real.log (prepCup pkgs Dcap ^ 10 * (n : ℝ) ^ 5) /
+      Real.log (1 / γ) < (prepScap pkgs Dcap γ n : ℝ) + 1 := by
+    rw [prepScap]
+    exact Nat.lt_floor_add_one _
+  have h6' : Real.log (prepCup pkgs Dcap ^ 10 * (n : ℝ) ^ 5) <
+      ((prepScap pkgs Dcap γ n : ℝ) + 1) * Real.log (1 / γ) := by
+    rw [div_lt_iff₀ hLγ] at hfl
+    linarith
+  have hpow : (0 : ℝ) < (1 / γ) ^ (prepScap pkgs Dcap γ n + 1) := by
+    positivity
+  calc prepCup pkgs Dcap ^ 10 * (n : ℝ) ^ 5
+      = Real.exp (Real.log (prepCup pkgs Dcap ^ 10 * (n : ℝ) ^ 5)) :=
+        (Real.exp_log hR0).symm
+    _ < Real.exp (((prepScap pkgs Dcap γ n : ℝ) + 1) * Real.log (1 / γ)) :=
+        Real.exp_lt_exp.mpr h6'
+    _ = (1 / γ) ^ (prepScap pkgs Dcap γ n + 1) := by
+        rw [← Real.exp_log hpow, Real.log_pow]
+        push_cast
+        ring_nf
+
+/-- Length-cap logarithm bound: under the manuscript's `γ ≤ δ^K` regime
+(`40·log(2/δ) ≤ ε·log(1/γ)`) and once `n` absorbs the constants,
+`imax·log(2/δ) ≤ (ε/2)·log n`. -/
+theorem prepImax_log_le {β : ℝ} (pkgs : ∀ r, Package r β) (Dcap : ℕ)
+    {ε δ γ : ℝ} (hδ0 : 0 < δ) (hδ1 : δ ≤ 1) (hγ0 : 0 < γ) (hγ1 : γ < 1)
+    (hKε : 40 * Real.log (2 / δ) ≤ ε * Real.log (1 / γ)) {n : ℕ}
+    (hn : 2 ≤ n)
+    (h8 : ε / 4 * Real.log (prepCup pkgs Dcap) +
+      ((20 : ℝ) + Dcap) * Real.log (2 / δ) ≤ 3 * ε / 8 * Real.log n) :
+    (prepImax pkgs Dcap γ n : ℝ) * Real.log (2 / δ) ≤
+      ε / 2 * Real.log n := by
+  have hLγ : 0 < Real.log (1 / γ) :=
+    Real.log_pos (by rw [lt_div_iff₀ hγ0]; linarith)
+  have hLδ : 0 < Real.log (2 / δ) :=
+    Real.log_pos (by rw [lt_div_iff₀ hδ0]; linarith)
+  have hlogCup0 : 0 ≤ Real.log (prepCup pkgs Dcap) :=
+    Real.log_nonneg (one_le_prepCup pkgs Dcap)
+  have hlogn0 : 0 ≤ Real.log n := by
+    apply Real.log_nonneg
+    exact_mod_cast (by omega : 1 ≤ n)
+  have hlogR : Real.log (prepCup pkgs Dcap ^ 10 * (n : ℝ) ^ 5) =
+      10 * Real.log (prepCup pkgs Dcap) + 5 * Real.log n :=
+    log_prepR pkgs Dcap (by omega)
+  have hlogR0 : 0 ≤ Real.log (prepCup pkgs Dcap ^ 10 * (n : ℝ) ^ 5) := by
+    rw [hlogR]; linarith
+  have hScaple : (prepScap pkgs Dcap γ n : ℝ) ≤
+      Real.log (prepCup pkgs Dcap ^ 10 * (n : ℝ) ^ 5) /
+        Real.log (1 / γ) :=
+    Nat.floor_le (by positivity)
+  have hLδLγ : Real.log (2 / δ) / Real.log (1 / γ) ≤ ε / 40 := by
+    rw [div_le_iff₀ hLγ]
+    linarith
+  have hScapLδ : (prepScap pkgs Dcap γ n : ℝ) * Real.log (2 / δ) ≤
+      ε / 4 * Real.log (prepCup pkgs Dcap) + ε / 8 * Real.log n := by
+    calc (prepScap pkgs Dcap γ n : ℝ) * Real.log (2 / δ)
+        ≤ (Real.log (prepCup pkgs Dcap ^ 10 * (n : ℝ) ^ 5) /
+            Real.log (1 / γ)) * Real.log (2 / δ) :=
+          mul_le_mul_of_nonneg_right hScaple hLδ.le
+      _ = Real.log (prepCup pkgs Dcap ^ 10 * (n : ℝ) ^ 5) *
+            (Real.log (2 / δ) / Real.log (1 / γ)) := by ring
+      _ ≤ Real.log (prepCup pkgs Dcap ^ 10 * (n : ℝ) ^ 5) * (ε / 40) :=
+          mul_le_mul_of_nonneg_left hLδLγ hlogR0
+      _ = ε / 4 * Real.log (prepCup pkgs Dcap) + ε / 8 * Real.log n := by
+          rw [hlogR]; ring
+  have hcast : (prepImax pkgs Dcap γ n : ℝ) =
+      (prepScap pkgs Dcap γ n : ℝ) + 20 + Dcap := by
+    rw [prepImax]
+    push_cast
+    ring
+  rw [hcast]
+  have hexp : ((prepScap pkgs Dcap γ n : ℝ) + 20 + Dcap) *
+      Real.log (2 / δ) =
+      (prepScap pkgs Dcap γ n : ℝ) * Real.log (2 / δ) +
+        ((20 : ℝ) + Dcap) * Real.log (2 / δ) := by ring
+  rw [hexp]
+  linarith
+
+/-- The retention floor `n^{-ε/2} ≤ (δ/2)^{imax}` (whence
+`(δ/2)^{imax}·n ≥ n^{1-ε/2}`). -/
+theorem rpow_le_pow_prepImax {β : ℝ} (pkgs : ∀ r, Package r β) (Dcap : ℕ)
+    {ε δ γ : ℝ} (hδ0 : 0 < δ) (hδ1 : δ ≤ 1) (hγ0 : 0 < γ) (hγ1 : γ < 1)
+    (hKε : 40 * Real.log (2 / δ) ≤ ε * Real.log (1 / γ)) {n : ℕ}
+    (hn : 2 ≤ n)
+    (h8 : ε / 4 * Real.log (prepCup pkgs Dcap) +
+      ((20 : ℝ) + Dcap) * Real.log (2 / δ) ≤ 3 * ε / 8 * Real.log n) :
+    (n : ℝ) ^ (-(ε / 2)) ≤ (δ / 2) ^ prepImax pkgs Dcap γ n := by
+  have hkey := prepImax_log_le pkgs Dcap hδ0 hδ1 hγ0 hγ1 hKε hn h8
+  have hδ2pos : (0 : ℝ) < δ / 2 := by linarith
+  have hn0 : (0 : ℝ) < (n : ℝ) := by exact_mod_cast (by omega : 0 < n)
+  have h1 : ((δ / 2 : ℝ)) ^ prepImax pkgs Dcap γ n =
+      Real.exp (-((prepImax pkgs Dcap γ n : ℝ) * Real.log (2 / δ))) := by
+    rw [← Real.exp_log (pow_pos hδ2pos (prepImax pkgs Dcap γ n)),
+      Real.log_pow]
+    congr 1
+    have hlogδ2 : Real.log (δ / 2) = -Real.log (2 / δ) := by
+      rw [show (δ / 2 : ℝ) = (2 / δ)⁻¹ by rw [inv_div], Real.log_inv]
+    rw [hlogδ2]
+    ring
+  have h2 : (n : ℝ) ^ (-(ε / 2)) =
+      Real.exp (Real.log (n : ℝ) * (-(ε / 2))) :=
+    Real.rpow_def_of_pos hn0 _
+  rw [h1, h2]
+  apply Real.exp_le_exp.mpr
+  nlinarith
+
+/-! ## Discharging the numeric bundle: the eventual instantiation -/
+
+/-- **All clauses of `PrepNumerics` hold for `n` large**, with the explicit
+choices `Ucap = 10`, `T = √n`, `Scap/imax` from the γ-power accounting, and
+`smin = δ·n^{1-ε/2}/(log n)²` — *given* the uniform output threshold
+`hout` (the `TODO(orchestrator)` interface gap: `PrepSupplier` demands
+output cardinality `≥ n₁` uniformly, which fails for `n` near `n₁`; the
+manuscript instead tracks a shrinking threshold along the descent).
+
+Parameter regime: `0 < δ ≤ 1`, `0 < γ < 1`, `0 < ε < 1`, `K₀ ≥ 0`, the
+manuscript's `γ ≤ (δ/2)^{K₀}` and `γ ≤ δ^K`-type smallness
+`40·log(2/δ) ≤ ε·log(1/γ)`, and the dimension headroom
+`2/ζ₀ + 10 ≤ Dcap`. -/
+theorem prepNumerics_of_large {β : ℝ} (pkgs : ∀ r, Package r β) (Dcap : ℕ)
+    (ζ₀ ε δ γ K₀ : ℝ)
+    (hζ₀ : 0 < ζ₀) (hδ0 : 0 < δ) (hδ1 : δ ≤ 1) (hγ0 : 0 < γ) (hγ1 : γ < 1)
+    (hε0 : 0 < ε) (hε1 : ε < 1) (hγK₀ : γ ≤ (δ / 2) ^ K₀)
+    (hKε : 40 * Real.log (2 / δ) ≤ ε * Real.log (1 / γ))
+    (hDζ : 2 / ζ₀ + 10 ≤ (Dcap : ℝ)) :
+    ∃ n₂ : ℕ, ∀ n₁ n d₀ B₀ : ℕ, n₂ ≤ n →
+      (n₁ : ℝ) ≤ (δ / 2) ^ prepImax pkgs Dcap γ n * (n : ℝ) →
+      (B₀ : ℝ) ^ (sigma d₀ + ζ₀) < (n : ℝ) → n ≤ B₀ → 1 ≤ d₀ →
+      (d₀ : ℝ) ≤ 2 / ζ₀ →
+      PrepNumerics pkgs Dcap ε δ γ K₀ n₁ n d₀ B₀ := by
+  have hCup1 : 1 ≤ prepCup pkgs Dcap := one_le_prepCup pkgs Dcap
+  have hCup0 : (0 : ℝ) < prepCup pkgs Dcap := lt_of_lt_of_le one_pos hCup1
+  have hCinv1 : 1 ≤ prepCinv pkgs Dcap := one_le_prepCinv pkgs Dcap
+  have hδ2pos : (0 : ℝ) < δ / 2 := by linarith
+  have hδ2le : δ / 2 ≤ 1 := by linarith
+  have hq2δ : (0 : ℝ) < (δ / 2) ^ (2 * K₀) := Real.rpow_pos_of_pos hδ2pos _
+  -- The eventual clauses.
+  have hev2 : ∀ᶠ n : ℕ in Filter.atTop,
+      prepCup pkgs Dcap * (Real.log n) ^ 2 ≤
+        δ * (n : ℝ) ^ ((1 - ε) / 2) :=
+    eventually_mul_log_sq_le hδ0 (by linarith)
+  have hev3 : ∀ᶠ n : ℕ in Filter.atTop,
+      prepCup pkgs Dcap ^ 10 * (Real.log n) ^ 2 ≤
+        δ * (n : ℝ) ^ (ε / 2) :=
+    eventually_mul_log_sq_le hδ0 (by linarith)
+  have hev4 : ∀ᶠ n : ℕ in Filter.atTop,
+      prepCup pkgs Dcap * (Real.log n) ^ 2 ≤
+        ((δ / 2) ^ (2 * K₀) * δ) * (n : ℝ) ^ (1 - ε / 2) :=
+    eventually_mul_log_sq_le (by positivity) (by linarith)
+  have hev5 : ∀ᶠ n : ℕ in Filter.atTop,
+      prepCinv pkgs Dcap * (Real.log n) ^ 2 ≤
+        δ * (n : ℝ) ^ (1 - ε / 2) :=
+    eventually_mul_log_sq_le hδ0 (by linarith)
+  have htm₁ : Filter.Tendsto (fun n : ℕ => δ * (n : ℝ) ^ (1 - ε / 2))
+      Filter.atTop Filter.atTop :=
+    (((tendsto_rpow_atTop (by linarith : (0 : ℝ) < 1 - ε / 2)).comp
+      tendsto_natCast_atTop_atTop).const_mul_atTop hδ0)
+  have hev6 : ∀ᶠ n : ℕ in Filter.atTop,
+      Real.exp 2 ≤ δ * (n : ℝ) ^ (1 - ε / 2) :=
+    htm₁.eventually_ge_atTop _
+  have hev7 : ∀ᶠ n : ℕ in Filter.atTop,
+      prepCinv pkgs Dcap ≤
+        δ / 2 * Real.log (δ * (n : ℝ) ^ (1 - ε / 2)) := by
+    have h := (Real.tendsto_log_atTop.comp htm₁).eventually_ge_atTop
+      (2 / δ * prepCinv pkgs Dcap)
+    filter_upwards [h] with n hn
+    have h2 : δ / 2 * (2 / δ * prepCinv pkgs Dcap) ≤
+        δ / 2 * Real.log (δ * (n : ℝ) ^ (1 - ε / 2)) :=
+      mul_le_mul_of_nonneg_left hn (by linarith)
+    calc prepCinv pkgs Dcap = δ / 2 * (2 / δ * prepCinv pkgs Dcap) := by
+          field_simp
+      _ ≤ δ / 2 * Real.log (δ * (n : ℝ) ^ (1 - ε / 2)) := h2
+  have hev8 : ∀ᶠ n : ℕ in Filter.atTop,
+      ε / 4 * Real.log (prepCup pkgs Dcap) +
+        ((20 : ℝ) + Dcap) * Real.log (2 / δ) ≤
+        3 * ε / 8 * Real.log n := by
+    have h := (Real.tendsto_log_atTop.comp
+      tendsto_natCast_atTop_atTop).eventually_ge_atTop
+      ((ε / 4 * Real.log (prepCup pkgs Dcap) +
+        ((20 : ℝ) + Dcap) * Real.log (2 / δ)) / (3 * ε / 8))
+    filter_upwards [h] with n hn
+    simp only [Function.comp_apply] at hn
+    rw [div_le_iff₀ (by linarith)] at hn
+    linarith
+  obtain ⟨n₂, hn₂⟩ := Filter.eventually_atTop.mp
+    ((Filter.eventually_ge_atTop 2).and (hev2.and (hev3.and (hev4.and
+      (hev5.and (hev6.and (hev7.and hev8)))))))
+  refine ⟨n₂, ?_⟩
+  intro n₁ n d₀ B₀ hn hout hbadB hnB _hd₀ hdd
+  obtain ⟨h1, h2, h3, h4, h5, h6, h7, h8⟩ := hn₂ n hn
+  have hn2 : 2 ≤ n := h1
+  have hnR : (2 : ℝ) ≤ (n : ℝ) := by exact_mod_cast hn2
+  have hn0 : (0 : ℝ) < (n : ℝ) := by linarith
+  have hn1R : (1 : ℝ) ≤ (n : ℝ) := by linarith
+  have hlogn : 0 < Real.log n := Real.log_pos (by linarith)
+  have hsq : (0 : ℝ) < (Real.log n) ^ 2 := by positivity
+  -- The retention floor.
+  have hhalf : (n : ℝ) ^ (-(ε / 2)) ≤ (δ / 2) ^ prepImax pkgs Dcap γ n :=
+    rpow_le_pow_prepImax pkgs Dcap hδ0 hδ1 hγ0 hγ1 hKε hn2 h8
+  have hm₁m₀ : δ * (n : ℝ) ^ (1 - ε / 2) ≤
+      δ * ((δ / 2) ^ prepImax pkgs Dcap γ n * (n : ℝ)) := by
+    apply mul_le_mul_of_nonneg_left _ hδ0.le
+    calc (n : ℝ) ^ (1 - ε / 2)
+        = (n : ℝ) ^ (-(ε / 2)) * (n : ℝ) := by
+          rw [show (1 - ε / 2 : ℝ) = -(ε / 2) + 1 by ring,
+            Real.rpow_add hn0, Real.rpow_one]
+      _ ≤ (δ / 2) ^ prepImax pkgs Dcap γ n * (n : ℝ) :=
+          mul_le_mul_of_nonneg_right hhalf hn0.le
+  have hm₁pos : (0 : ℝ) < δ * (n : ℝ) ^ (1 - ε / 2) := by positivity
+  have h1exp2 : (1 : ℝ) ≤ Real.exp 2 := by
+    rw [show (1 : ℝ) = Real.exp 0 from Real.exp_zero.symm]
+    exact Real.exp_le_exp.mpr (by norm_num)
+  -- `B₀ < n^5`.
+  have hB₀1 : (1 : ℝ) ≤ (B₀ : ℝ) := by
+    have h : (n : ℝ) ≤ (B₀ : ℝ) := by exact_mod_cast hnB
+    linarith
+  have hB₀n5 : (B₀ : ℝ) < (n : ℝ) ^ (5 : ℕ) := by
+    have h15 : (1 : ℝ) / 5 ≤ sigma d₀ + ζ₀ := by
+      linarith [one_fifth_le_sigma d₀]
+    have ha : (B₀ : ℝ) ^ ((1 : ℝ) / 5) ≤ (B₀ : ℝ) ^ (sigma d₀ + ζ₀) :=
+      Real.rpow_le_rpow_of_exponent_le hB₀1 h15
+    have hb : (B₀ : ℝ) ^ ((1 : ℝ) / 5) < (n : ℝ) := lt_of_le_of_lt ha hbadB
+    have hc : ((B₀ : ℝ) ^ ((1 : ℝ) / 5)) ^ (5 : ℝ) < (n : ℝ) ^ (5 : ℝ) :=
+      Real.rpow_lt_rpow (Real.rpow_nonneg (by linarith) _) hb (by norm_num)
+    have hd : ((B₀ : ℝ) ^ ((1 : ℝ) / 5)) ^ (5 : ℝ) = (B₀ : ℝ) := by
+      rw [← Real.rpow_mul (by linarith : (0 : ℝ) ≤ (B₀ : ℝ))]
+      norm_num
+    have he : (n : ℝ) ^ (5 : ℝ) = (n : ℝ) ^ (5 : ℕ) := by
+      rw [← Real.rpow_natCast (n : ℝ) 5]
+      norm_num
+    rw [hd, he] at hc
+    exact hc
+  -- Assemble the bundle.
+  refine ⟨δ * (n : ℝ) ^ (1 - ε / 2) / (Real.log n) ^ 2, prepCup pkgs Dcap,
+    (n : ℝ) ^ ((1 : ℝ) / 2), 10, prepScap pkgs Dcap γ n,
+    prepImax pkgs Dcap γ n, hCup1, ?_, ?_, ?_, ?_, ?_, ?_, ?_, hout, ?_,
+    hγK₀, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  · -- `1 < T`
+    calc (1 : ℝ) = (1 : ℝ) ^ ((1 : ℝ) / 2) := (Real.one_rpow _).symm
+      _ < (n : ℝ) ^ ((1 : ℝ) / 2) :=
+        Real.rpow_lt_rpow (by norm_num) (by linarith) (by norm_num)
+  · -- `Cup·T ≤ smin`
+    rw [le_div_iff₀ hsq]
+    have hT0 : (0 : ℝ) ≤ (n : ℝ) ^ ((1 : ℝ) / 2) := Real.rpow_nonneg hn0.le _
+    have hexp : (1 : ℝ) / 2 + (1 - ε) / 2 = 1 - ε / 2 := by ring
+    calc prepCup pkgs Dcap * (n : ℝ) ^ ((1 : ℝ) / 2) * (Real.log n) ^ 2
+        = (n : ℝ) ^ ((1 : ℝ) / 2) *
+            (prepCup pkgs Dcap * (Real.log n) ^ 2) := by ring
+      _ ≤ (n : ℝ) ^ ((1 : ℝ) / 2) * (δ * (n : ℝ) ^ ((1 - ε) / 2)) :=
+          mul_le_mul_of_nonneg_left h2 hT0
+      _ = δ * ((n : ℝ) ^ ((1 : ℝ) / 2) * (n : ℝ) ^ ((1 - ε) / 2)) := by
+          ring
+      _ = δ * (n : ℝ) ^ (1 - ε / 2) := by
+          rw [← Real.rpow_add hn0, hexp]
+  · -- `B₀ < T^{11}`
+    have hT1 : (1 : ℝ) < (n : ℝ) ^ ((1 : ℝ) / 2) := by
+      calc (1 : ℝ) = (1 : ℝ) ^ ((1 : ℝ) / 2) := (Real.one_rpow _).symm
+        _ < (n : ℝ) ^ ((1 : ℝ) / 2) :=
+          Real.rpow_lt_rpow (by norm_num) (by linarith) (by norm_num)
+    have hT10 : ((n : ℝ) ^ ((1 : ℝ) / 2)) ^ (10 : ℕ) = (n : ℝ) ^ (5 : ℕ) := by
+      rw [← Real.rpow_natCast ((n : ℝ) ^ ((1 : ℝ) / 2)) 10,
+        ← Real.rpow_mul hn0.le, ← Real.rpow_natCast (n : ℝ) 5]
+      norm_num
+    calc (B₀ : ℝ) < (n : ℝ) ^ (5 : ℕ) := hB₀n5
+      _ = ((n : ℝ) ^ ((1 : ℝ) / 2)) ^ (10 : ℕ) := hT10.symm
+      _ ≤ ((n : ℝ) ^ ((1 : ℝ) / 2)) ^ (10 + 1 : ℕ) :=
+          pow_le_pow_right₀ hT1.le (by omega)
+  · -- `Cup^{10}·B₀ < (1/γ)^{Scap+1}`
+    calc prepCup pkgs Dcap ^ 10 * (B₀ : ℝ)
+        < prepCup pkgs Dcap ^ 10 * (n : ℝ) ^ (5 : ℕ) :=
+          mul_lt_mul_of_pos_left hB₀n5 (by positivity)
+      _ < (1 / γ) ^ (prepScap pkgs Dcap γ n + 1) :=
+          lt_pow_prepScap_succ pkgs Dcap hγ0 hγ1 (by omega)
+  · -- `Scap + 2·Ucap + d₀ ≤ imax`
+    have hd₀D : d₀ ≤ Dcap := by
+      have h : (d₀ : ℝ) ≤ (Dcap : ℝ) := by linarith
+      exact_mod_cast h
+    have : prepImax pkgs Dcap γ n = prepScap pkgs Dcap γ n + 20 + Dcap :=
+      rfl
+    omega
+  · -- `d₀ + Ucap ≤ Dcap`
+    have h : (d₀ : ℝ) + 10 ≤ (Dcap : ℝ) := by linarith
+    exact_mod_cast h
+  · -- `n^{-ε} ≤ (δ/2)^{imax}`
+    calc (n : ℝ) ^ (-ε) ≤ (n : ℝ) ^ (-(ε / 2)) :=
+        Real.rpow_le_rpow_of_exponent_le hn1R (by linarith)
+      _ ≤ (δ / 2) ^ prepImax pkgs Dcap γ n := hhalf
+  · -- `n^{1-ε}·Cup^{10} ≤ smin`
+    rw [le_div_iff₀ hsq]
+    have hn1ε0 : (0 : ℝ) ≤ (n : ℝ) ^ (1 - ε) := Real.rpow_nonneg hn0.le _
+    have hexp : (1 - ε : ℝ) + ε / 2 = 1 - ε / 2 := by ring
+    calc (n : ℝ) ^ (1 - ε) * prepCup pkgs Dcap ^ 10 * (Real.log n) ^ 2
+        = (n : ℝ) ^ (1 - ε) *
+            (prepCup pkgs Dcap ^ 10 * (Real.log n) ^ 2) := by ring
+      _ ≤ (n : ℝ) ^ (1 - ε) * (δ * (n : ℝ) ^ (ε / 2)) :=
+          mul_le_mul_of_nonneg_left h3 hn1ε0
+      _ = δ * ((n : ℝ) ^ (1 - ε) * (n : ℝ) ^ (ε / 2)) := by ring
+      _ = δ * (n : ℝ) ^ (1 - ε / 2) := by
+          rw [← Real.rpow_add hn0, hexp]
+  · -- `Cup ≤ (δ/2)^{2K₀}·smin`
+    rw [show (δ / 2) ^ (2 * K₀) *
+        (δ * (n : ℝ) ^ (1 - ε / 2) / (Real.log n) ^ 2) =
+        ((δ / 2) ^ (2 * K₀) * δ) * (n : ℝ) ^ (1 - ε / 2) /
+          (Real.log n) ^ 2 by ring]
+    rw [le_div_iff₀ hsq]
+    exact h4
+  · -- the scale supplier
+    intro m hm
+    have hm₁m : δ * (n : ℝ) ^ (1 - ε / 2) ≤ (m : ℝ) :=
+      le_trans hm₁m₀ hm
+    have hf := le_structureScale h6 hm₁m
+    have hsminf : δ * (n : ℝ) ^ (1 - ε / 2) / (Real.log n) ^ 2 ≤
+        δ * (n : ℝ) ^ (1 - ε / 2) /
+          (Real.log (δ * (n : ℝ) ^ (1 - ε / 2))) ^ 2 := by
+      have hm₁n : δ * (n : ℝ) ^ (1 - ε / 2) ≤ (n : ℝ) := by
+        calc δ * (n : ℝ) ^ (1 - ε / 2)
+            ≤ 1 * (n : ℝ) ^ (1 - ε / 2) :=
+              mul_le_mul_of_nonneg_right hδ1 (Real.rpow_nonneg hn0.le _)
+          _ = (n : ℝ) ^ (1 - ε / 2) := one_mul _
+          _ ≤ (n : ℝ) ^ (1 : ℝ) :=
+              Real.rpow_le_rpow_of_exponent_le hn1R (by linarith)
+          _ = (n : ℝ) := Real.rpow_one _
+      have hlm₁ : Real.log (δ * (n : ℝ) ^ (1 - ε / 2)) ≤ Real.log n :=
+        Real.log_le_log hm₁pos hm₁n
+      have hlm₁2 : (2 : ℝ) ≤ Real.log (δ * (n : ℝ) ^ (1 - ε / 2)) := by
+        have h := Real.log_le_log (Real.exp_pos 2) h6
+        rwa [Real.log_exp] at h
+      have hlm₁0 : (0 : ℝ) ≤ Real.log (δ * (n : ℝ) ^ (1 - ε / 2)) := by
+        linarith
+      have hsqm₁ : (0 : ℝ) <
+          (Real.log (δ * (n : ℝ) ^ (1 - ε / 2))) ^ 2 := by positivity
+      have hsqle : (Real.log (δ * (n : ℝ) ^ (1 - ε / 2))) ^ 2 ≤
+          (Real.log n) ^ 2 := pow_le_pow_left₀ hlm₁0 hlm₁ 2
+      rw [div_le_div_iff₀ hsq hsqm₁]
+      exact mul_le_mul_of_nonneg_left hsqle hm₁pos.le
+    have hsminsc : δ * (n : ℝ) ^ (1 - ε / 2) / (Real.log n) ^ 2 ≤
+        structureScale m := le_trans hsminf hf
+    refine ⟨?_, hsminsc⟩
+    have hsmin1 : (1 : ℝ) ≤
+        δ * (n : ℝ) ^ (1 - ε / 2) / (Real.log n) ^ 2 := by
+      rw [le_div_iff₀ hsq]
+      have h5' : prepCinv pkgs Dcap * (Real.log n) ^ 2 ≤
+          δ * (n : ℝ) ^ (1 - ε / 2) := h5
+      nlinarith [hsq.le]
+    linarith
+  · -- `1 ≤ c_r·smin`
+    intro r hr
+    have hCinvsmin : prepCinv pkgs Dcap ≤
+        δ * (n : ℝ) ^ (1 - ε / 2) / (Real.log n) ^ 2 := by
+      rw [le_div_iff₀ hsq]
+      exact h5
+    calc (1 : ℝ) = (pkgs r).c * (pkgs r).c⁻¹ :=
+          (mul_inv_cancel₀ (ne_of_gt (pkgs r).c_pos)).symm
+      _ ≤ (pkgs r).c * prepCinv pkgs Dcap :=
+          mul_le_mul_of_nonneg_left (le_prepCinv pkgs Dcap hr)
+            (pkgs r).c_pos.le
+      _ ≤ (pkgs r).c *
+            (δ * (n : ℝ) ^ (1 - ε / 2) / (Real.log n) ^ 2) :=
+          mul_le_mul_of_nonneg_left hCinvsmin (pkgs r).c_pos.le
+  · -- `(3·max(1,c_r⁻¹))^{D_r} ≤ Cup`
+    intro r hr
+    exact le_prepCup pkgs Dcap hr
+  · -- the deletion threshold
+    intro r hr
+    have hlogm : Real.log (δ * (n : ℝ) ^ (1 - ε / 2)) ≤
+        Real.log (δ * ((δ / 2) ^ prepImax pkgs Dcap γ n * (n : ℝ))) :=
+      Real.log_le_log hm₁pos hm₁m₀
+    calc (pkgs r).c⁻¹ ≤ prepCinv pkgs Dcap := le_prepCinv pkgs Dcap hr
+      _ ≤ δ / 2 * Real.log (δ * (n : ℝ) ^ (1 - ε / 2)) := h7
+      _ ≤ δ / 2 *
+            Real.log (δ * ((δ / 2) ^ prepImax pkgs Dcap γ n * (n : ℝ))) :=
+          mul_le_mul_of_nonneg_left hlogm (by linarith)
+  · -- `e ≤ δ·(δ/2)^{imax}·n`
+    calc Real.exp 1 ≤ Real.exp 2 := Real.exp_le_exp.mpr (by norm_num)
+      _ ≤ δ * (n : ℝ) ^ (1 - ε / 2) := h6
+      _ ≤ δ * ((δ / 2) ^ prepImax pkgs Dcap γ n * (n : ℝ)) := hm₁m₀
+
 end Nondividing
