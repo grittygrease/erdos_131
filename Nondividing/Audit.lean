@@ -122,3 +122,7 @@ import Nondividing.Main
 
 -- weighted_density FULL (rho->0 Blaschke limit): E4+E5a+E5b+core.
 #print axioms Nondividing.weighted_density
+
+-- cap_lifting alternative (ii) cone-volume core: E5c+E5d+core.
+#print axioms Nondividing.cap_cone_count
+#print axioms Nondividing.volume_cone
