@@ -1417,6 +1417,44 @@ theorem pow_upSum_le {s₀ : PrepStage X} {smin Cup Cdown T : ℝ}
           rw [h7]; ring
   exact le_of_mul_le_mul_left key (by positivity)
 
+/-- The summed up-move increase dominates the net dimension change
+(manuscript: `U + max(0, d₀−ℓ) ≥ d_i − ℓ` with `d₀ = ℓ`). -/
+theorem le_upSum {a b : PrepStage X} (ch : PrepChain pkgs δ γ C a b) :
+    b.dim - a.dim ≤ ch.upSum := by
+  have := ch.dim_add_downSum_eq
+  omega
+
+/-- **Net up-move box estimate** (`thm:projective-main`, up-case input): when
+the chain raises the dimension, the box decays by the *net* scale power,
+`smin^{dim_end−dim_start}·|B_end| ≤ γ^{|𝒮|}·Cup^{|𝒰|}·Cdown^{|𝒟|}·|B_start|`.
+Feeding `γ ≤ 1` and the count caps turns this into `PrepSupplier`'s up-branch
+box bound. -/
+theorem box_master_net_up {s₀ : PrepStage X} {smin Cup Cdown : ℝ}
+    (hγ0 : 0 < γ) (hCup : 0 < Cup) (hCdown : 0 < Cdown) (hs1 : 1 ≤ smin)
+    (hup : ∀ x y : PrepStage X,
+      Relation.ReflTransGen (PrepMove pkgs δ γ C) s₀ x →
+      PrepMove pkgs δ γ C x y → x.dim < y.dim →
+      smin ^ (y.dim - x.dim) * ((coordinateBox y.M).card : ℝ) ≤
+        Cup * ((coordinateBox x.M).card : ℝ))
+    (hdown : ∀ x y : PrepStage X,
+      Relation.ReflTransGen (PrepMove pkgs δ γ C) s₀ x →
+      PrepMove pkgs δ γ C x y → y.dim < x.dim →
+      ((coordinateBox y.M).card : ℝ) ≤
+        Cdown * ((coordinateBox x.M).card : ℝ))
+    {b : PrepStage X} (ch : PrepChain pkgs δ γ C s₀ b) :
+    smin ^ (b.dim - s₀.dim) * ((coordinateBox b.M).card : ℝ) ≤
+      γ ^ ch.shrinkCount * Cup ^ ch.upCount * Cdown ^ ch.downCount *
+        ((coordinateBox s₀.M).card : ℝ) := by
+  have hmaster := box_master hγ0 hCup hCdown hs1 hup hdown ch
+    Relation.ReflTransGen.refl
+  have hpow : smin ^ (b.dim - s₀.dim) ≤ smin ^ ch.upSum :=
+    pow_le_pow_right₀ hs1 ch.le_upSum
+  calc smin ^ (b.dim - s₀.dim) * ((coordinateBox b.M).card : ℝ)
+      ≤ smin ^ ch.upSum * ((coordinateBox b.M).card : ℝ) :=
+        mul_le_mul_of_nonneg_right hpow (Nat.cast_nonneg _)
+    _ ≤ γ ^ ch.shrinkCount * Cup ^ ch.upCount * Cdown ^ ch.downCount *
+        ((coordinateBox s₀.M).card : ℝ) := hmaster
+
 end PrepChain
 
 end Nondividing
