@@ -426,6 +426,7 @@ def PrepMove {X : ℕ} {β : ℝ} (pkgs : ∀ r, Package r β) (δ γ C : ℝ)
     δ * (s.V.card : ℝ) ≤ (D.card : ℝ) ∧
     (D.card : ℝ) - (pkgs s.dim).c⁻¹ * D.card / Real.log D.card ≤
       (s'.V.card : ℝ) ∧
+    s'.dim ≤ (pkgs s.dim).D ∧
     ((s'.dim = s.dim ∧
         ((coordinateBox s'.M).card : ℝ) <
           γ * ((coordinateBox s.M).card : ℝ)) ∨
@@ -470,8 +471,10 @@ theorem prep_step {X : ℕ} {β : ℝ} (pkgs : ∀ r, Package r β) (dmax : ℕ)
   · -- down move
     obtain ⟨r, lam', D', N, hbox, hshell', hcardge, hr, hbound⟩ :=
       (hCd s.dim).2 D s.M hE hs1 ht1 s.lam X hshellD
-    refine ⟨⟨r, D', N, lam', hbox, hshell'⟩, D, hDV, hDcard, hcardge,
+    refine ⟨⟨r, D', N, lam', hbox, hshell'⟩, D, hDV, hDcard, hcardge, ?_,
       Or.inr (Or.inr ⟨?_, ?_⟩)⟩
+    · show r ≤ (pkgs s.dim).D
+      rw [hr]; exact ((pkgs s.dim).out D s.M hE).e_le
     · show r < s.dim
       rw [hr]; exact hlt
     · show (pkgs s.dim).c ^ r * ((coordinateBox N).card : ℝ) ≤
@@ -487,15 +490,19 @@ theorem prep_step {X : ℕ} {β : ℝ} (pkgs : ∀ r, Package r β) (dmax : ℕ)
     · exact absurd heq hne
     obtain ⟨r, lam', D', N, hbox, hshell', hcardge, hboxlt, hr⟩ :=
       small_progression_move (pkgs s.dim) hE ht1 hsmall s.lam X hshellD
-    refine ⟨⟨r, D', N, lam', hbox, hshell'⟩, D, hDV, hDcard, hcardge,
+    refine ⟨⟨r, D', N, lam', hbox, hshell'⟩, D, hDV, hDcard, hcardge, ?_,
       Or.inl ⟨?_, hboxlt⟩⟩
-    show r = s.dim
-    rw [hr]; exact heq
+    · show r ≤ (pkgs s.dim).D
+      rw [hr]; exact ((pkgs s.dim).out D s.M hE).e_le
+    · show r = s.dim
+      rw [hr]; exact heq
   · -- up move
     obtain ⟨r, lam', D', N, hbox, hshell', hcardge, hr, hbound⟩ :=
       dimension_move_up (pkgs s.dim) hE hs1 ht1 s.lam X hshellD
-    refine ⟨⟨r, D', N, lam', hbox, hshell'⟩, D, hDV, hDcard, hcardge,
+    refine ⟨⟨r, D', N, lam', hbox, hshell'⟩, D, hDV, hDcard, hcardge, ?_,
       Or.inr (Or.inl ⟨?_, ?_⟩)⟩
+    · show r ≤ (pkgs s.dim).D
+      rw [hr]; exact ((pkgs s.dim).out D s.M hE).e_le
     · show s.dim < r
       rw [hr]; exact hgt
     · show ((pkgs s.dim).c * structureScale D.card) ^ r *
@@ -556,5 +563,210 @@ theorem preprocessing_iteration_full {X : ℕ} {β : ℝ}
   intro s hns
   obtain ⟨hdim, hsup⟩ := hcond s hns
   exact hstep δ γ s hdim hns hsup
+
+/-! ## Deliverable 4b: a concrete termination measure, discharged
+
+The potential `Φ(s) = log|box_s| + λ·dim_s` drops by at least `1` under every
+`PrepMove` once the manuscript's numeric thresholds hold: `log γ ≤ -1`
+(shrink), `λ ≥ log C + D̄·log⁺(1/c) + 1` (down), and the witness scale
+`log s(D) ≥ λ + D̄·(log 3 + log⁺(1/c)) + 1` (up; manuscript: `s(D) ≥ n^{1-ε}`).
+Hence `⌊Φ⌋₊` is a strictly decreasing ℕ-measure, and the iteration
+terminates: `preprocessing_iteration_measured`. -/
+
+/-- Symmetric coordinate boxes are nonempty. -/
+theorem one_le_card_coordinateBox {d : ℕ} (M : Fin d → ℕ) :
+    1 ≤ (coordinateBox M).card :=
+  Finset.card_pos.mpr ⟨0, zero_mem_coordinateBox M⟩
+
+/-- The termination potential `Φ(s) = log|box_s| + λ·dim_s`. -/
+noncomputable def stagePotential {X : ℕ} (lam : ℝ) (s : PrepStage X) : ℝ :=
+  Real.log ((coordinateBox s.M).card : ℝ) + lam * s.dim
+
+/-- The ℕ-valued termination measure `⌊Φ⌋₊`. -/
+noncomputable def stageMeasure {X : ℕ} (lam : ℝ) (s : PrepStage X) : ℕ :=
+  ⌊stagePotential lam s⌋₊
+
+theorem stagePotential_nonneg {X : ℕ} {lam : ℝ} (hlam : 0 ≤ lam)
+    (s : PrepStage X) : 0 ≤ stagePotential lam s :=
+  add_nonneg (Real.log_natCast_nonneg _)
+    (mul_nonneg hlam (Nat.cast_nonneg _))
+
+/-- Floor comparison: a unit drop of a nonnegative real strictly drops the
+floor. -/
+theorem floor_lt_floor_of_le_sub_one {x y : ℝ} (hy : 0 ≤ y) (h : y ≤ x - 1) :
+    ⌊y⌋₊ < ⌊x⌋₊ := by
+  have h1 : (⌊y⌋₊ : ℝ) ≤ y := Nat.floor_le hy
+  have h2 : ((⌊y⌋₊ + 1 : ℕ) : ℝ) ≤ x := by push_cast; linarith
+  have h3 : ⌊y⌋₊ + 1 ≤ ⌊x⌋₊ := Nat.le_floor h2
+  omega
+
+/-- **The potential drops by `≥ 1` along every move.**  Numeric thresholds:
+`log γ ≤ -1` handles shrink moves; `λ` dominating `log C + D̄·log⁺(1/c) + 1`
+handles down moves; the witness scale dominating
+`λ + D̄·(log 3 + log⁺(1/c)) + 1` handles up moves.  These are exactly the
+manuscript's `γ` small / `s(D) ≥ n^{1-ε}` large regime. -/
+theorem prepMove_potential_decrease {X : ℕ} {β : ℝ} {pkgs : ∀ r, Package r β}
+    {δ γ C lam : ℝ} {s s' : PrepStage X}
+    (hC : 0 < C) (hγ0 : 0 < γ) (hγ : Real.log γ ≤ -1) (hlam0 : 0 ≤ lam)
+    (hlam : Real.log C +
+        ((pkgs s.dim).D : ℝ) * max 0 (Real.log ((pkgs s.dim).c)⁻¹) + 1 ≤ lam)
+    (hscale : ∀ Dw : Finset (Fin s.dim → ℤ), Dw ⊆ s.V →
+      δ * (s.V.card : ℝ) ≤ (Dw.card : ℝ) →
+      1 ≤ structureScale Dw.card ∧
+        lam + ((pkgs s.dim).D : ℝ) *
+            (Real.log 3 + max 0 (Real.log ((pkgs s.dim).c)⁻¹)) + 1 ≤
+          Real.log (structureScale Dw.card))
+    (h : PrepMove pkgs δ γ C s s') :
+    stagePotential lam s' ≤ stagePotential lam s - 1 := by
+  classical
+  obtain ⟨D, hDV, hDcard, _hdel, hdimD, hcases⟩ := h
+  set c : ℝ := (pkgs s.dim).c with hcdef
+  have hc : 0 < c := (pkgs s.dim).c_pos
+  set Dd : ℝ := ((pkgs s.dim).D : ℝ) with hDddef
+  set m : ℝ := max 0 (Real.log c⁻¹) with hmdef
+  have hm0 : 0 ≤ m := le_max_left _ _
+  have hmc : -Real.log c ≤ m := by
+    rw [hmdef, Real.log_inv]
+    exact le_max_right _ _
+  have hDd0 : (0 : ℝ) ≤ Dd := Nat.cast_nonneg _
+  have hd2Dd : (s'.dim : ℝ) ≤ Dd := by
+    rw [hDddef]
+    exact_mod_cast hdimD
+  have hlog3 : (0 : ℝ) ≤ Real.log 3 := Real.log_nonneg (by norm_num)
+  have hB1 : (1 : ℝ) ≤ ((coordinateBox s.M).card : ℝ) := by
+    exact_mod_cast one_le_card_coordinateBox s.M
+  have hB'1 : (1 : ℝ) ≤ ((coordinateBox s'.M).card : ℝ) := by
+    exact_mod_cast one_le_card_coordinateBox s'.M
+  have hB0 : (0 : ℝ) < ((coordinateBox s.M).card : ℝ) :=
+    lt_of_lt_of_le one_pos hB1
+  have hB'0 : (0 : ℝ) < ((coordinateBox s'.M).card : ℝ) :=
+    lt_of_lt_of_le one_pos hB'1
+  simp only [stagePotential]
+  rcases hcases with ⟨hdim, hlt⟩ | ⟨hlt, hbound⟩ | ⟨hlt, hbound⟩
+  · -- shrink move: `log|box'| ≤ log γ + log|box| ≤ log|box| - 1`
+    have hlog : Real.log ((coordinateBox s'.M).card : ℝ) ≤
+        Real.log γ + Real.log ((coordinateBox s.M).card : ℝ) := by
+      have hstep := Real.log_le_log hB'0 hlt.le
+      rwa [Real.log_mul (ne_of_gt hγ0) (ne_of_gt hB0)] at hstep
+    have hdimR : ((s'.dim : ℕ) : ℝ) = ((s.dim : ℕ) : ℝ) := by rw [hdim]
+    have hmul : lam * ((s'.dim : ℕ) : ℝ) = lam * ((s.dim : ℕ) : ℝ) := by
+      rw [hdimR]
+    linarith
+  · -- up move: pay `λ·Δdim`, gain `Δdim·log s(D)`
+    obtain ⟨hs1, hslog⟩ := hscale D hDV hDcard
+    set sD : ℝ := structureScale D.card with hsDdef
+    have hsD0 : (0 : ℝ) < sD := lt_of_lt_of_le one_pos hs1
+    have e1 : Real.log ((c * sD) ^ s'.dim * ((coordinateBox s'.M).card : ℝ))
+        = (s'.dim : ℝ) * (Real.log c + Real.log sD) +
+          Real.log ((coordinateBox s'.M).card : ℝ) := by
+      rw [Real.log_mul (by positivity) (ne_of_gt hB'0), Real.log_pow,
+        Real.log_mul (ne_of_gt hc) (ne_of_gt hsD0)]
+    have e2 : Real.log (3 ^ s'.dim * sD ^ s.dim *
+          ((coordinateBox s.M).card : ℝ))
+        = (s'.dim : ℝ) * Real.log 3 + (s.dim : ℝ) * Real.log sD +
+          Real.log ((coordinateBox s.M).card : ℝ) := by
+      rw [Real.log_mul (by positivity) (ne_of_gt hB0),
+        Real.log_mul (by positivity) (by positivity),
+        Real.log_pow, Real.log_pow]
+    have hL : (s'.dim : ℝ) * (Real.log c + Real.log sD) +
+        Real.log ((coordinateBox s'.M).card : ℝ) ≤
+        (s'.dim : ℝ) * Real.log 3 + (s.dim : ℝ) * Real.log sD +
+          Real.log ((coordinateBox s.M).card : ℝ) := by
+      rw [← e1, ← e2]
+      exact Real.log_le_log (by positivity) hbound
+    have hprod : 0 ≤ Dd * (Real.log 3 + m) :=
+      mul_nonneg hDd0 (by linarith)
+    have hd21 : ((s.dim : ℕ) : ℝ) + 1 ≤ ((s'.dim : ℕ) : ℝ) := by
+      exact_mod_cast hlt
+    have hd20 : (0 : ℝ) ≤ ((s'.dim : ℕ) : ℝ) := Nat.cast_nonneg _
+    have hstep1 : (s'.dim : ℝ) * (Real.log 3 + -Real.log c) ≤
+        Dd * (Real.log 3 + m) :=
+      le_trans
+        (mul_le_mul_of_nonneg_left (by linarith) hd20)
+        (mul_le_mul_of_nonneg_right hd2Dd (by linarith))
+    have hstep2 : Real.log sD - lam ≤
+        (((s'.dim : ℕ) : ℝ) - ((s.dim : ℕ) : ℝ)) * (Real.log sD - lam) :=
+      le_mul_of_one_le_left (by linarith) (by linarith)
+    linarith [hL, hstep1, hstep2, hslog]
+  · -- down move: pay `log C`, gain `λ·Δdim`
+    obtain ⟨hs1, _⟩ := hscale D hDV hDcard
+    have e1 : Real.log (c ^ s'.dim * ((coordinateBox s'.M).card : ℝ))
+        = (s'.dim : ℝ) * Real.log c +
+          Real.log ((coordinateBox s'.M).card : ℝ) := by
+      rw [Real.log_mul (by positivity) (ne_of_gt hB'0), Real.log_pow]
+    have e2 : Real.log (C * ((coordinateBox s.M).card : ℝ))
+        = Real.log C + Real.log ((coordinateBox s.M).card : ℝ) := by
+      rw [Real.log_mul (ne_of_gt hC) (ne_of_gt hB0)]
+    have hL : (s'.dim : ℝ) * Real.log c +
+        Real.log ((coordinateBox s'.M).card : ℝ) ≤
+        Real.log C + Real.log ((coordinateBox s.M).card : ℝ) := by
+      rw [← e1, ← e2]
+      exact Real.log_le_log (by positivity) hbound
+    have hd12 : ((s'.dim : ℕ) : ℝ) + 1 ≤ ((s.dim : ℕ) : ℝ) := by
+      exact_mod_cast hlt
+    have hd20 : (0 : ℝ) ≤ ((s'.dim : ℕ) : ℝ) := Nat.cast_nonneg _
+    have hstep1 : (s'.dim : ℝ) * (-Real.log c) ≤ Dd * m :=
+      le_trans (mul_le_mul_of_nonneg_left hmc hd20)
+        (mul_le_mul_of_nonneg_right hd2Dd hm0)
+    have hstep2 : lam ≤ lam * (((s.dim : ℕ) : ℝ) - ((s'.dim : ℕ) : ℝ)) :=
+      le_mul_of_one_le_right hlam0 (by linarith)
+    linarith [hL, hstep1, hstep2, hlam]
+
+/-- The ℕ-measure `⌊Φ⌋₊` strictly decreases along every move (thresholds as
+in `prepMove_potential_decrease`). -/
+theorem prepMove_measure_decrease {X : ℕ} {β : ℝ} {pkgs : ∀ r, Package r β}
+    {δ γ C lam : ℝ} {s s' : PrepStage X}
+    (hC : 0 < C) (hγ0 : 0 < γ) (hγ : Real.log γ ≤ -1) (hlam0 : 0 ≤ lam)
+    (hlam : Real.log C +
+        ((pkgs s.dim).D : ℝ) * max 0 (Real.log ((pkgs s.dim).c)⁻¹) + 1 ≤ lam)
+    (hscale : ∀ Dw : Finset (Fin s.dim → ℤ), Dw ⊆ s.V →
+      δ * (s.V.card : ℝ) ≤ (Dw.card : ℝ) →
+      1 ≤ structureScale Dw.card ∧
+        lam + ((pkgs s.dim).D : ℝ) *
+            (Real.log 3 + max 0 (Real.log ((pkgs s.dim).c)⁻¹)) + 1 ≤
+          Real.log (structureScale Dw.card))
+    (h : PrepMove pkgs δ γ C s s') :
+    stageMeasure lam s' < stageMeasure lam s :=
+  floor_lt_floor_of_le_sub_one (stagePotential_nonneg hlam0 s')
+    (prepMove_potential_decrease hC hγ0 hγ hlam0 hlam hscale h)
+
+/-- **Measured preprocessing iteration** — the termination measure is now
+*discharged*: only the manuscript's numeric thresholds remain as hypotheses
+(`TODO(orchestrator)`: derive them from `γ ≤ δ^K`, `γ ≥ n^{-1/3}`,
+`|A_j| > n^{1-ε/2}`, `n` large).  From any start stage, a finite chain of
+`PrepMove`s reaches an unshiftedly `(δ,γ)`-irreducible stage. -/
+theorem preprocessing_iteration_measured {X : ℕ} {β : ℝ}
+    (pkgs : ∀ r, Package r β) (dmax : ℕ) :
+    ∃ C : ℝ, 0 < C ∧
+      ∀ (δ γ lam : ℝ), 0 < γ → Real.log γ ≤ -1 → 0 ≤ lam →
+        (∀ s : PrepStage X, ¬ StageIrreducible pkgs δ γ s →
+          s.dim ≤ dmax ∧
+          (Real.log C + ((pkgs s.dim).D : ℝ) *
+              max 0 (Real.log ((pkgs s.dim).c)⁻¹) + 1 ≤ lam) ∧
+          ∀ D : Finset (Fin s.dim → ℤ), D ⊆ s.V →
+            δ * (s.V.card : ℝ) ≤ (D.card : ℝ) →
+            1 ≤ structureScale D.card ∧
+            1 ≤ (pkgs s.dim).c * structureScale D.card ∧
+            lam + ((pkgs s.dim).D : ℝ) *
+                (Real.log 3 + max 0 (Real.log ((pkgs s.dim).c)⁻¹)) + 1 ≤
+              Real.log (structureScale D.card)) →
+        ∀ s₀ : PrepStage X,
+          ∃ s : PrepStage X,
+            Relation.ReflTransGen (PrepMove pkgs δ γ C) s₀ s ∧
+              StageIrreducible pkgs δ γ s := by
+  obtain ⟨C, hC, hstep⟩ := prep_step pkgs dmax
+  refine ⟨C, hC, ?_⟩
+  intro δ γ lam hγ0 hγ hlam0 hcond s₀
+  refine descend_to_good (stageMeasure lam) (StageIrreducible pkgs δ γ)
+    (PrepMove pkgs δ γ C) ?_ s₀
+  intro a
+  by_cases hg : StageIrreducible pkgs δ γ a
+  · exact Or.inl hg
+  · obtain ⟨hdim, hlamS, hsup⟩ := hcond a hg
+    obtain ⟨b, hb⟩ := hstep δ γ a hdim hg
+      (fun D h1 h2 _hE => ⟨(hsup D h1 h2).1, (hsup D h1 h2).2.1⟩)
+    refine Or.inr ⟨b, hb, ?_⟩
+    exact prepMove_measure_decrease hC hγ0 hγ hlam0 hlamS
+      (fun Dw hw1 hw2 => ⟨(hsup Dw hw1 hw2).1, (hsup Dw hw1 hw2).2.2⟩) hb
 
 end Nondividing
