@@ -1329,4 +1329,421 @@ theorem irreducibleIncrement_of_convexPosition {β : ℝ}
     · -- Box decay.
       exact hW'bound
 
+/-! ## 7. The μ-convex-position dichotomy (`thm:projective-convexity`)
+
+At an irreducible stage meeting the manuscript's parameter thresholds, the
+projective family is in `μ`-convex position: a failure yields, via
+`projective_duality`, capped weights `β` realizing some `a ∈ V` from the
+others; rounding to `θ = T·β` with `T = ⌊μn/8⌋` and feeding the fixed package
+data of `C = V∖{a}` into `projective_convexity_assembled` produces the
+contradiction.  This discharges the `IndexedMuConvexPosition` clause of the
+supplier of `irreducibleIncrement_of_convexPosition`. -/
+
+set_option maxHeartbeats 1600000 in
+theorem stage_convexPosition_of_thresholds {d : ℕ} {β : ℝ}
+    (pkg : Package d β) (hd : 1 ≤ d) :
+    ∃ cw K : ℝ, 0 < cw ∧ 0 < K ∧
+    ∀ (ℓ : Fin d → ℤ) (X : ℕ) (V : Finset (Fin d → ℤ)) (M : Fin d → ℕ)
+      (δ γ μ : ℝ),
+      1 ≤ X →
+      ShellNonDividing (fun v => (intFunctional ℓ v : ℤ)) X V →
+      V ⊆ coordinateBox M →
+      UnshiftedIrreducible pkg δ γ V M →
+      0 < γ → 0 ≤ δ → μ ≤ 1 →
+      8 ≤ μ * (V.card : ℝ) →
+      δ * (V.card : ℝ) ≤ (V.card : ℝ) - 1 →
+      (∀ D : Finset (Fin d → ℤ), D ⊆ V →
+        δ * (V.card : ℝ) ≤ (D.card : ℝ) →
+        ∃ _hE : Eligible β pkg.m₀ D M,
+          1 ≤ External.structureScale D.card ∧
+          1 ≤ pkg.c * External.structureScale D.card ∧
+          K < External.structureScale D.card * γ) →
+      -- scale thresholds (`s₁ = s(n-1)`, `Rb = c⁻¹(n-1)/log(n-1)`)
+      2 ≤ pkg.c * External.structureScale (V.card - 1) →
+      1 < γ * ((coordinateBox M).card : ℝ) →
+      (6 : ℝ) ^ d < pkg.c ^ d *
+        (External.structureScale (V.card - 1) * γ) →
+      Real.sqrt (d * (V.card : ℝ)) * 3 ≤
+        pkg.c * External.structureScale (V.card - 1) / 2 →
+      (12 / min pkg.c 8) ^ d * γ⁻¹ + 1 ≤ μ * (V.card : ℝ) / 8 →
+      0 < μ * (V.card : ℝ) / 24 - 1 -
+        (pkg.c⁻¹ * ((V.card - 1 : ℕ) : ℝ) /
+            Real.log ((V.card - 1 : ℕ) : ℝ) +
+          External.structureScale (V.card - 1)) / 2 -
+        2 * (δ * (V.card : ℝ)) →
+      (12 / min pkg.c 8) ^ d * γ⁻¹ + 1 +
+        ((pkg.c⁻¹ * ((V.card - 1 : ℕ) : ℝ) /
+            Real.log ((V.card - 1 : ℕ) : ℝ) +
+          External.structureScale (V.card - 1)) / 2 +
+          External.structureScale (V.card - 1)) ≤
+        cw * γ * (μ * (V.card : ℝ) / 24 - 1 -
+          (pkg.c⁻¹ * ((V.card - 1 : ℕ) : ℝ) /
+              Real.log ((V.card - 1 : ℕ) : ℝ) +
+            External.structureScale (V.card - 1)) / 2 -
+          2 * (δ * (V.card : ℝ))) →
+      IndexedMuConvexPosition μ
+        (fun v : {x // x ∈ V} => projNorm ℓ v.1) := by
+  classical
+  obtain ⟨cw, K, hcw, hK, hasm⟩ := projective_convexity_assembled pkg hd
+  refine ⟨cw, K, hcw, hK, ?_⟩
+  intro ℓ X V M δ γ μ hX hshell hVbox hirr hγ hδ0 hμ1 h8 herase hsupply
+    h2cs hγB h6d hsqrt hidx8 hgapT hεκT
+  by_contra hnc
+  obtain ⟨a, hfa⟩ := not_indexedMuConvexPosition_iff.mp hnc
+  -- Basic cardinalities.
+  set n : ℝ := (V.card : ℝ) with hn_def
+  have hn8 : (8 : ℝ) ≤ n := by
+    calc (8 : ℝ) ≤ μ * n := h8
+      _ ≤ 1 * n := by
+          refine mul_le_mul_of_nonneg_right hμ1 ?_
+          exact Nat.cast_nonneg _
+      _ = n := one_mul n
+  have hn8N : 8 ≤ V.card := by
+    have h := hn8
+    rw [hn_def] at h
+    exact_mod_cast h
+  have hμpos : 0 < μ := by nlinarith [Nat.cast_nonneg (α := ℝ) V.card]
+  have hμn0 : 0 < μ * n := by nlinarith
+  -- The deleted set.
+  set C : Finset (Fin d → ℤ) := V.erase a.1 with hC_def
+  have hCV : C ⊆ V := Finset.erase_subset _ _
+  have hscard : C.card = V.card - 1 := Finset.card_erase_of_mem a.2
+  have hscardR : (C.card : ℝ) = n - 1 := by
+    rw [hscard, hn_def]
+    have : (1 : ℕ) ≤ V.card := by omega
+    push_cast [Nat.cast_sub this]
+    ring
+  have hCcard : δ * n ≤ (C.card : ℝ) := by rw [hscardR]; exact herase
+  -- The duality weights.
+  have hfail : ∀ u : Module.Dual ℝ (Fin d → ℝ),
+      μ * V.card < ((V.filter fun k =>
+        u (projNorm ℓ a.1) ≤ u (projNorm ℓ k)).card : ℝ) := by
+    intro u
+    have hfa' := hfa u (u (projNorm ℓ a.1)) le_rfl
+    have hfe : (Finset.univ.filter fun k : {x // x ∈ V} =>
+        u (projNorm ℓ a.1) ≤
+          u ((fun v : {x // x ∈ V} => projNorm ℓ v.1) k))
+        = Finset.univ.filter fun k : {x // x ∈ V} =>
+            u (projNorm ℓ a.1) ≤ u (projNorm ℓ k.1) :=
+      Finset.filter_congr fun k _ => Iff.rfl
+    have hcard : (Finset.univ.filter fun k : {x // x ∈ V} =>
+        u (projNorm ℓ a.1) ≤ u (projNorm ℓ k.1)).card
+        = (V.filter fun k =>
+            u (projNorm ℓ a.1) ≤ u (projNorm ℓ k)).card := by
+      rw [Finset.card_filter, Finset.card_filter, ← Finset.sum_coe_sort V
+        (fun k => if u (projNorm ℓ a.1) ≤ u (projNorm ℓ k) then 1 else 0)]
+    rw [hfe, hcard, Fintype.card_coe] at hfa'
+    exact hfa'
+  have hμn4 : 4 ≤ μ * (V.card : ℝ) := by linarith
+  obtain ⟨βw, hrepr, hβbound, hβlo, hβhi⟩ :=
+    projective_duality hX hshell.1 hμn4 a.2 hfail
+  -- The rounded weights.
+  set T : ℕ := ⌊μ * n / 8⌋₊ with hT_def
+  have hTle : (T : ℝ) ≤ μ * n / 8 := Nat.floor_le (by positivity)
+  have hTgt : μ * n / 8 - 1 < (T : ℝ) := Nat.sub_one_lt_floor _
+  have hT0 : (0 : ℝ) ≤ (T : ℝ) := Nat.cast_nonneg _
+  set θ : (Fin d → ℤ) → ℝ := fun v => (T : ℝ) * βw v with hθ_def
+  have hθ0 : ∀ v ∈ C, 0 ≤ θ v := fun v hv =>
+    mul_nonneg hT0 (hβbound v hv).1
+  have hθhalf : ∀ v ∈ C, θ v ≤ 1 / 2 := by
+    intro v hv
+    have hb := (hβbound v hv).2
+    have h1 : θ v ≤ (T : ℝ) * (4 / (μ * n)) :=
+      mul_le_mul_of_nonneg_left hb hT0
+    have h2 : (T : ℝ) * (4 / (μ * n)) ≤ (μ * n / 8) * (4 / (μ * n)) :=
+      mul_le_mul_of_nonneg_right hTle (by positivity)
+    have h3 : (μ * n / 8) * (4 / (μ * n)) = 1 / 2 := by
+      field_simp
+      norm_num
+    linarith
+  -- The package data for `C`.
+  obtain ⟨hE_C, hsC1, hcsC1, hKsC⟩ := hsupply C hCV hCcard
+  have hirrC := hirr C hCV hCcard hE_C
+  -- Rewrite the thresholds in terms of `C.card`.
+  rw [← hscard] at h2cs h6d hsqrt hgapT hεκT
+  generalize hgen : pkg.out C M hE_C = o at hirrC
+  obtain ⟨Chat, e, P, C₀, q, hChatsub, hChatcard, _hele, hcover, hC₀sub,
+    hC₀card, hqmem, hincl, hinj⟩ := o
+  obtain ⟨he, hPlow⟩ := hirrC
+  have he' : d = e := he.symm
+  subst he'
+  -- Named scale.
+  set s₁ : ℝ := External.structureScale C.card with hs₁_def
+  have hs₁1 : 1 ≤ s₁ := hsC1
+  have hs₁0 : 0 < s₁ := lt_of_lt_of_le one_pos hs₁1
+  set cs : ℝ := pkg.c * s₁ with hcs_def
+  have hcs1 : 1 ≤ cs := hcsC1
+  -- Box positivity.
+  have hBpos : (0 : ℝ) < ((coordinateBox M).card : ℝ) := by
+    have : 0 < (coordinateBox M).card :=
+      Finset.card_pos.mpr ⟨0, zero_mem_coordinateBox M⟩
+    exact_mod_cast this
+  -- Properness.
+  have hP : P.Proper := P.proper_of_dilate hcs1 hinj
+  -- The core is nonempty (`1 < γ|B|` forces `|P| ≥ 2`).
+  have hC₀box : C₀ ⊆ coordinateBox M :=
+    (hC₀sub.trans hChatsub).trans (hCV.trans hVbox)
+  have hcard1 : 1 ≤ C₀.card := by
+    by_contra hc0
+    have hC₀e : C₀ = ∅ := Finset.card_eq_zero.mp (by omega)
+    have hsub1 : subsetSums C₀ ⊆ {0} := by
+      intro x hx
+      obtain ⟨S, hS, hsum⟩ := mem_subsetSums.mp hx
+      rw [hC₀e, Finset.subset_empty] at hS
+      rw [Finset.mem_singleton, ← hsum, hS, Finset.sum_empty]
+    have hcar2 : 2 ≤ P.carrier.card := by
+      have h1 : (1 : ℝ) < (P.carrier.card : ℝ) :=
+        lt_of_lt_of_le hγB hPlow
+      exact_mod_cast Nat.lt_iff_add_one_le.mp (by exact_mod_cast h1)
+    have hcarsub : P.carrier ⊆ P.dilatedCarrier cs := by
+      rw [GAP.carrier, GAP.dilatedCarrier]
+      exact Finset.image_subset_image
+        (P.coeffBox_subset_dilatedCoeffBox hcs1)
+    have hmap : (P.dilatedCarrier cs).card ≤ (subsetSums C₀).card := by
+      refine Finset.card_le_card_of_injOn (fun z => q + z)
+        (fun z hz => hincl z hz) ?_
+      intro z₁ _ z₂ _ hz
+      exact add_left_cancel hz
+    have hone : (subsetSums C₀).card ≤ 1 :=
+      le_trans (Finset.card_le_card hsub1) (by simp)
+    have := le_trans (Finset.card_le_card hcarsub) hmap
+    omega
+  -- Full rank.
+  have hrank : P.realRank = d :=
+    realRank_eq_of_index hd P hP pkg.c_pos hs₁1 hγ hcs1 hinj hC₀box
+      hcard1 hC₀card hincl hBpos hPlow h6d
+  have hinjfun : Function.Injective P.evalHom := evalHom_injective P hrank
+  -- Index bound with the capped constant `c' = min c 8`.
+  set c' : ℝ := min pkg.c 8 with hc'_def
+  have hc'0 : 0 < c' := lt_min pkg.c_pos (by norm_num)
+  have hc'8 : c' ≤ 8 := min_le_right _ _
+  have hc'c : c' ≤ pkg.c := min_le_left _ _
+  have hincl' : ∀ z ∈ P.dilatedCarrier (c' * s₁), q + z ∈ subsetSums C₀ :=
+    fun z hz => hincl z (P.dilatedCarrier_mono
+      (mul_le_mul_of_nonneg_right hc'c hs₁0.le) hz)
+  have hc's2 : 2 ≤ c' * s₁ := by
+    rcases le_total pkg.c 8 with hc8 | hc8
+    · rw [hc'_def, min_eq_left hc8]
+      exact h2cs
+    · rw [hc'_def, min_eq_right hc8]
+      nlinarith
+  have hidxbound : ((LinearMap.range
+      P.evalHom.toIntLinearMap).toAddSubgroup.index : ℝ) ≤
+      (12 / c') ^ d * γ⁻¹ :=
+    index_bound_part2 P hP hinjfun hc'0 hc'8 hs₁0 hc's2 hC₀box hC₀card
+      hincl' hγ hPlow hBpos
+  -- The tube radius.
+  set ξn : ℕ := ⌈(12 / c') ^ d * γ⁻¹⌉₊ with hξn_def
+  have hidxξ : (LinearMap.range
+      P.evalHom.toIntLinearMap).toAddSubgroup.index ≤ ξn := by
+    have h1 : ((LinearMap.range
+        P.evalHom.toIntLinearMap).toAddSubgroup.index : ℝ) ≤ (ξn : ℝ) :=
+      le_trans hidxbound (Nat.le_ceil _)
+    exact_mod_cast h1
+  have hidxT : (LinearMap.range
+      P.evalHom.toIntLinearMap).toAddSubgroup.index ≤ T := by
+    have h1 : ((LinearMap.range
+        P.evalHom.toIntLinearMap).toAddSubgroup.index : ℝ) ≤ (T : ℝ) := by
+      calc ((LinearMap.range
+          P.evalHom.toIntLinearMap).toAddSubgroup.index : ℝ)
+          ≤ (12 / c') ^ d * γ⁻¹ := hidxbound
+        _ ≤ μ * n / 8 - 1 := by linarith
+        _ ≤ (T : ℝ) := by linarith
+    exact_mod_cast h1
+  -- The support of the mass.
+  set Cbar : Finset (Fin d → ℤ) := Chat \ C₀ with hCbar_def
+  have hCbarC : Cbar ⊆ C := (Finset.sdiff_subset).trans hChatsub
+  have hCbarV : Cbar ⊆ V := hCbarC.trans hCV
+  have hCbarP : Cbar ⊆ P.carrier := by
+    refine (Finset.sdiff_subset).trans ?_
+    exact (Finset.subset_union_left).trans hcover
+  -- The discarded set.
+  set Rb : ℝ := pkg.c⁻¹ * (C.card : ℝ) / Real.log (C.card : ℝ) with hRb_def
+  have hdiff_sub : C \ Cbar ⊆ (C \ Chat) ∪ C₀ := by
+    intro z hz
+    rw [Finset.mem_sdiff, hCbar_def, Finset.mem_sdiff] at hz
+    rw [Finset.mem_union, Finset.mem_sdiff]
+    by_cases hzC : z ∈ C₀
+    · exact Or.inr hzC
+    · exact Or.inl ⟨hz.1, fun hchat => hz.2 ⟨hchat, hzC⟩⟩
+  have hdiff_card : ((C \ Cbar).card : ℝ) ≤ Rb + s₁ := by
+    have h1 : (C \ Cbar).card ≤ (C \ Chat).card + C₀.card :=
+      le_trans (Finset.card_le_card hdiff_sub) (Finset.card_union_le _ _)
+    have h2 : ((C \ Chat).card : ℝ) ≤ Rb := hChatcard
+    have h3 : (C₀.card : ℝ) ≤ s₁ := hC₀card
+    have h4 : ((C \ Cbar).card : ℝ) ≤
+        ((C \ Chat).card : ℝ) + (C₀.card : ℝ) := by exact_mod_cast h1
+    linarith
+  -- The mass.
+  set m : ℝ := μ * n / 24 - 1 - (Rb + s₁) / 2 with hm_def
+  have hθsum_sdiff : ∑ v ∈ C \ Cbar, θ v ≤ (Rb + s₁) / 2 := by
+    have h1 : ∑ v ∈ C \ Cbar, θ v ≤ ∑ _v ∈ C \ Cbar, (1 / 2 : ℝ) :=
+      Finset.sum_le_sum fun v hv =>
+        hθhalf v (Finset.mem_sdiff.mp hv).1
+    rw [Finset.sum_const, nsmul_eq_mul] at h1
+    have h2 : ((C \ Cbar).card : ℝ) * (1 / 2) ≤ (Rb + s₁) / 2 := by
+      linarith [hdiff_card]
+    linarith
+  have hθsum_C : (T : ℝ) / 3 ≤ ∑ v ∈ C, θ v := by
+    rw [hθ_def]
+    rw [← Finset.mul_sum]
+    have hβlo' : 1 / 3 ≤ ∑ v ∈ C, βw v := by
+      rw [hC_def]; exact hβlo
+    calc (T : ℝ) / 3 = (T : ℝ) * (1 / 3) := by ring
+      _ ≤ (T : ℝ) * ∑ v ∈ C, βw v :=
+          mul_le_mul_of_nonneg_left hβlo' hT0
+  have hmass : m ≤ ∑ v ∈ Cbar, θ v := by
+    have hsplit : ∑ v ∈ C \ Cbar, θ v + ∑ v ∈ Cbar, θ v = ∑ v ∈ C, θ v :=
+      Finset.sum_sdiff hCbarC
+    have h1 : (T : ℝ) / 3 - (Rb + s₁) / 2 ≤ ∑ v ∈ Cbar, θ v := by
+      linarith
+    have h2 : m ≤ (T : ℝ) / 3 - (Rb + s₁) / 2 := by
+      rw [hm_def]
+      have : μ * n / 24 - 1 / 3 ≤ (T : ℝ) / 3 := by linarith
+      linarith
+    linarith
+  -- The gap and the tube-radius threshold.
+  have hgap : 0 < m - 2 * (δ * n) := by
+    rw [hm_def]
+    linarith [hgapT]
+  set ε₂ : ℝ := (Rb + s₁) / 2 + s₁ with hε₂_def
+  have hε₂0 : 0 ≤ ε₂ := by
+    have hlog : 0 < Real.log (C.card : ℝ) := by
+      refine Real.log_pos ?_
+      rw [hscardR]
+      linarith
+    have hRb0 : 0 ≤ Rb := by
+      rw [hRb_def]
+      have h1 : 0 ≤ pkg.c⁻¹ := (inv_pos.mpr pkg.c_pos).le
+      positivity
+    rw [hε₂_def]
+    linarith
+  have hεκ : ((ξn : ℝ) + ε₂) ≤ (cw * γ) * (m - 2 * (δ * n)) := by
+    have hξle : (ξn : ℝ) ≤ (12 / c') ^ d * γ⁻¹ + 1 := by
+      rw [hξn_def]
+      have h0 : (0 : ℝ) ≤ (12 / c') ^ d * γ⁻¹ := by positivity
+      linarith [Nat.ceil_lt_add_one h0]
+    rw [hε₂_def, hm_def]
+    calc (ξn : ℝ) + ((Rb + s₁) / 2 + s₁)
+        ≤ (12 / c') ^ d * γ⁻¹ + 1 + ((Rb + s₁) / 2 + s₁) := by linarith
+      _ ≤ cw * γ * (μ * n / 24 - 1 - (Rb + s₁) / 2 - 2 * (δ * n)) := hεκT
+      _ = (cw * γ) * (μ * n / 24 - 1 - (Rb + s₁) / 2 - 2 * (δ * n)) := rfl
+      _ = (cw * γ) * (μ * n / 24 - 1 - (Rb + s₁) / 2 - 2 * (δ * n)) := rfl
+  -- The filling threshold.
+  have hthr : Real.sqrt (d * (Cbar.card + 1)) * 3 ≤ cs / 2 := by
+    have hCbarcard : (Cbar.card : ℝ) + 1 ≤ n := by
+      have h1 : Cbar.card ≤ C.card := Finset.card_le_card hCbarC
+      have h2 : (Cbar.card : ℝ) ≤ (C.card : ℝ) := by exact_mod_cast h1
+      rw [hscardR] at h2
+      linarith
+    have hmono : Real.sqrt (d * (Cbar.card + 1)) ≤
+        Real.sqrt (d * n) := by
+      refine Real.sqrt_le_sqrt ?_
+      have hd0 : (0 : ℝ) ≤ (d : ℝ) := Nat.cast_nonneg _
+      exact mul_le_mul_of_nonneg_left hCbarcard hd0
+    calc Real.sqrt (d * (Cbar.card + 1)) * 3
+        ≤ Real.sqrt (d * n) * 3 := by linarith
+      _ ≤ cs / 2 := hsqrt
+  -- The core inclusion and its translate.
+  have hq0 : q ∈ subsetSums C₀ := by
+    have h0 := hincl 0 (P.zero_mem_dilatedCarrier cs)
+    rwa [add_zero] at h0
+  have hqbound : ∀ i, |(q i : ℝ)| ≤ s₁ * (M i : ℝ) := by
+    intro i
+    have hsub := subsetSums_subset_coordinateBox hC₀box (le_refl C₀.card)
+    have hmem := (mem_coordinateBox.mp (hsub hq0)) i
+    have hz : |q i| ≤ ((C₀.card * M i : ℕ) : ℤ) := abs_le.mpr hmem
+    have hcast : |(q i : ℝ)| ≤ (C₀.card : ℝ) * (M i : ℝ) := by
+      rw [← Int.cast_abs]
+      calc ((|q i| : ℤ) : ℝ) ≤ (((C₀.card * M i : ℕ) : ℤ) : ℝ) := by
+            exact_mod_cast hz
+        _ = (C₀.card : ℝ) * (M i : ℝ) := by push_cast; ring
+    refine hcast.trans ?_
+    exact mul_le_mul_of_nonneg_right hC₀card (Nat.cast_nonneg _)
+  -- The centre closeness.
+  have hTa : ∀ i, (T : ℝ) * (a.1 i : ℝ) = ∑ v ∈ C, θ v * (v i : ℝ) := by
+    intro i
+    have h := congrFun hrepr i
+    rw [Finset.sum_apply] at h
+    have h1 : (a.1 i : ℝ) = ∑ v ∈ C, βw v * (v i : ℝ) := by
+      rw [show External.realPoint a.1 i = (a.1 i : ℝ) from rfl] at h
+      rw [h]
+      exact Finset.sum_congr rfl fun v _ => by
+        rw [Pi.smul_apply, smul_eq_mul]
+        rfl
+    rw [h1, Finset.mul_sum]
+    exact Finset.sum_congr rfl fun v _ => by rw [hθ_def]; ring
+  have hcentre : ∀ i, |(((T • a.1 - q) i : ℤ) : ℝ) -
+      ∑ v ∈ Cbar, θ v * (v i : ℝ)| ≤ ε₂ * (M i : ℝ) := by
+    intro i
+    have hcast : (((T • a.1 - q) i : ℤ) : ℝ) =
+        (T : ℝ) * (a.1 i : ℝ) - (q i : ℝ) := by
+      have h1 : (T • a.1 - q) i = (T : ℤ) * a.1 i - q i := by
+        simp [Pi.sub_apply]
+      rw [h1]
+      push_cast
+      ring
+    have hsdiff : ∑ v ∈ C, θ v * (v i : ℝ) -
+        ∑ v ∈ Cbar, θ v * (v i : ℝ) =
+        ∑ v ∈ C \ Cbar, θ v * (v i : ℝ) := by
+      have := Finset.sum_sdiff (f := fun v => θ v * (v i : ℝ)) hCbarC
+      exact (eq_sub_of_add_eq this).symm
+    have hbound : |∑ v ∈ C \ Cbar, θ v * (v i : ℝ)| ≤
+        (Rb + s₁) / 2 * (M i : ℝ) := by
+      have h1 : |∑ v ∈ C \ Cbar, θ v * (v i : ℝ)| ≤
+          ∑ v ∈ C \ Cbar, |θ v * (v i : ℝ)| :=
+        Finset.abs_sum_le_sum_abs _ _
+      have h2 : ∀ v ∈ C \ Cbar, |θ v * (v i : ℝ)| ≤
+          (1 / 2) * (M i : ℝ) := by
+        intro v hv
+        have hvC := (Finset.mem_sdiff.mp hv).1
+        have hvbox := (hCV.trans hVbox) hvC
+        have hvi := (mem_coordinateBox.mp hvbox) i
+        have hviR : |(v i : ℝ)| ≤ (M i : ℝ) := by
+          rw [← Int.cast_abs]
+          have : |v i| ≤ (M i : ℤ) := abs_le.mpr hvi
+          exact_mod_cast this
+        rw [abs_mul]
+        have hθv : |θ v| ≤ 1 / 2 := by
+          rw [abs_of_nonneg (hθ0 v hvC)]
+          exact hθhalf v hvC
+        exact mul_le_mul hθv hviR (abs_nonneg _) (by norm_num)
+      have h3 : ∑ v ∈ C \ Cbar, |θ v * (v i : ℝ)| ≤
+          ((C \ Cbar).card : ℝ) * ((1 / 2) * (M i : ℝ)) := by
+        have := Finset.sum_le_card_nsmul (C \ Cbar)
+          (fun v => |θ v * (v i : ℝ)|) ((1 / 2) * (M i : ℝ)) h2
+        rw [nsmul_eq_mul] at this
+        exact this
+      have h4 : ((C \ Cbar).card : ℝ) * ((1 / 2) * (M i : ℝ)) ≤
+          (Rb + s₁) / 2 * (M i : ℝ) := by
+        have hM0 : (0 : ℝ) ≤ (M i : ℝ) := Nat.cast_nonneg _
+        have h5 := mul_le_mul_of_nonneg_right hdiff_card hM0
+        linarith only [h5]
+      linarith only [h1, h3, h4]
+    calc |(((T • a.1 - q) i : ℤ) : ℝ) - ∑ v ∈ Cbar, θ v * (v i : ℝ)|
+        = |∑ v ∈ C \ Cbar, θ v * (v i : ℝ) - (q i : ℝ)| := by
+          rw [hcast, hTa i]
+          congr 1
+          linarith only [hsdiff]
+      _ ≤ |∑ v ∈ C \ Cbar, θ v * (v i : ℝ)| + |(q i : ℝ)| := by
+          exact abs_sub _ _
+      _ ≤ (Rb + s₁) / 2 * (M i : ℝ) + s₁ * (M i : ℝ) := by
+          linarith only [hbound, hqbound i]
+      _ = ε₂ * (M i : ℝ) := by rw [hε₂_def]; ring
+  -- The evaluated translate.
+  obtain ⟨nq, _hnq, hnq_eval⟩ := (P.mem_dilatedCarrier).mp hqmem
+  -- Feed everything into the assembled contradiction.
+  exact hasm (intFunctional ℓ) X V Cbar C₀ M δ γ m cs ε₂ θ P q nq a.1 T ξn
+    hX hshell a.2 (hVbox a.2) hirr hCbarV hγ hδ0
+    (fun D hDV hDcard => hsupply D hDV hDcard)
+    (fun v hv => hθ0 v (hCbarC hv)) (fun v hv => hθhalf v (hCbarC hv))
+    hmass hgap hε₂0 hεκ hrank hCbarP (by positivity) hthr hincl
+    Finset.sdiff_disjoint
+    (by
+      rw [Finset.union_comm]
+      refine Finset.union_subset ?_ ?_
+      · exact hC₀sub.trans hChatsub
+      · exact (Finset.sdiff_subset).trans hChatsub)
+    hnq_eval hidxT hidxξ hcentre
+
 end Nondividing
