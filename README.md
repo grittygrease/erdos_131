@@ -1,4 +1,4 @@
-# Erdős Problem 131 — a Lean 4 formalization
+# Erdős Problem 131 : a Lean 4 formalization
 
 **The question** ([erdosproblems.com/131](https://www.erdosproblems.com/131)):
 call a set of integers *non-dividing* if no member divides the sum of any
