@@ -354,4 +354,207 @@ theorem dimension_move_up {ell : ℕ} {β : ℝ} (pkg : Package ell β)
           apply mul_le_mul_of_nonneg_right _ (Nat.cast_nonneg _)
           exact mul_le_mul_of_nonneg_left hpow (by positivity)
 
+/-! ## Deliverable 4: termination skeleton
+
+The iteration state, the move relation with the manuscript's three cases
+(shrink / up / down) and their box bookkeeping, the one-step lemma
+(`prep_step`, real content: dichotomy + the three moves), and the
+well-founded iteration (`preprocessing_iteration`).  The strict decrease of a
+termination measure is the manuscript's product-estimate numerology
+(`γ ≤ δ^K`, `γ ≥ n^{-1/3}`, `n` large); it enters as an explicit hypothesis —
+`TODO(orchestrator)`: discharge it, e.g. with the potential
+`Φ(s) = log|box| + λ·dim`, `log C < λ < (1-ε)·log n`. -/
+
+/-- **Well-founded descent.**  If from every non-`Good` state a `Rel`-step
+strictly decreases a ℕ-measure, every state reaches a `Good` state. -/
+theorem descend_to_good {α : Type*} (μ : α → ℕ) (Good : α → Prop)
+    (Rel : α → α → Prop)
+    (hstep : ∀ a, Good a ∨ ∃ b, Rel a b ∧ μ b < μ a) :
+    ∀ a, ∃ b, Relation.ReflTransGen Rel a b ∧ Good b := by
+  have key : ∀ n a, μ a ≤ n → ∃ b, Relation.ReflTransGen Rel a b ∧ Good b := by
+    intro n
+    induction n with
+    | zero =>
+      intro a ha
+      rcases hstep a with hg | ⟨b, _, hlt⟩
+      · exact ⟨a, Relation.ReflTransGen.refl, hg⟩
+      · omega
+    | succ n ih =>
+      intro a ha
+      rcases hstep a with hg | ⟨b, hab, hlt⟩
+      · exact ⟨a, Relation.ReflTransGen.refl, hg⟩
+      · obtain ⟨c, hbc, hc⟩ := ih b (by omega)
+        exact ⟨c, Relation.ReflTransGen.head hab hbc, hc⟩
+  intro a
+  exact key (μ a) a le_rfl
+
+/-- A preprocessing stage: an ambient dimension, a shell non-dividing set `V`
+inside the symmetric coordinate box of radii `M`, with its integer-linear
+shell functional (parameter `X`).  The manuscript's `A_j^♯ ⊆ Q_j ⊆ ℤ^{d_j}`. -/
+structure PrepStage (X : ℕ) where
+  /-- The ambient dimension of the stage. -/
+  dim : ℕ
+  /-- The stage set (image of the accepted set under the identifications). -/
+  V : Finset (Fin dim → ℤ)
+  /-- The radii of the ambient symmetric coordinate box. -/
+  M : Fin dim → ℕ
+  /-- The transported shell functional. -/
+  lam : (Fin dim → ℤ) →+ ℤ
+  /-- The stage set lives in the box. -/
+  subset : V ⊆ coordinateBox M
+  /-- Shell non-dividing is preserved along the iteration. -/
+  shell : ShellNonDividing (fun v => lam v) X V
+
+/-- Unshifted irreducibility of a stage, relative to a family of structural
+packages (one for each ambient dimension, fixed before the iteration). -/
+def StageIrreducible {X : ℕ} {β : ℝ} (pkgs : ∀ r, Package r β) (δ γ : ℝ)
+    (s : PrepStage X) : Prop :=
+  UnshiftedIrreducible (pkgs s.dim) δ γ s.V s.M
+
+/-- The move relation of `lem:unshifted-preprocessing`: `s'` arises from `s`
+by choosing a witness `D ⊆ V` of size `≥ δ|V|`, deleting at most
+`c⁻¹|D|/log|D|` points, and applying the coefficient identification of
+`P(D)`, with the manuscript's three box estimates:
+
+* **shrink move** (same dimension): `|box'| < γ·|box|`;
+* **up move** (dimension increases): `(c·s(D))^{d'}·|box'| ≤ 3^{d'}·s(D)^{d}·|box|`
+  (the `s^{-(d'-d)}` decay in multiplied form);
+* **down move** (dimension decreases): `c^{d'}·|box'| ≤ C·|box|`. -/
+def PrepMove {X : ℕ} {β : ℝ} (pkgs : ∀ r, Package r β) (δ γ C : ℝ)
+    (s s' : PrepStage X) : Prop :=
+  ∃ D : Finset (Fin s.dim → ℤ), D ⊆ s.V ∧
+    δ * (s.V.card : ℝ) ≤ (D.card : ℝ) ∧
+    (D.card : ℝ) - (pkgs s.dim).c⁻¹ * D.card / Real.log D.card ≤
+      (s'.V.card : ℝ) ∧
+    ((s'.dim = s.dim ∧
+        ((coordinateBox s'.M).card : ℝ) <
+          γ * ((coordinateBox s.M).card : ℝ)) ∨
+      (s.dim < s'.dim ∧
+        ((pkgs s.dim).c * structureScale D.card) ^ s'.dim *
+            ((coordinateBox s'.M).card : ℝ) ≤
+          3 ^ s'.dim * structureScale D.card ^ s.dim *
+            ((coordinateBox s.M).card : ℝ)) ∨
+      (s'.dim < s.dim ∧
+        (pkgs s.dim).c ^ s'.dim * ((coordinateBox s'.M).card : ℝ) ≤
+          C * ((coordinateBox s.M).card : ℝ)))
+
+/-- **One-step lemma.**  There is a single constant `C` (uniform over ambient
+dimensions `≤ dmax`) such that from every non-irreducible stage of dimension
+`≤ dmax` whose `δ`-large subsets meet the scale thresholds, some `PrepMove`
+is available.  This composes `irreducible_or_witness` with
+`small_progression_move`, `dimension_move_up` and `dimension_move`. -/
+theorem prep_step {X : ℕ} {β : ℝ} (pkgs : ∀ r, Package r β) (dmax : ℕ) :
+    ∃ C : ℝ, 0 < C ∧
+      ∀ (δ γ : ℝ) (s : PrepStage X), s.dim ≤ dmax →
+        ¬ StageIrreducible pkgs δ γ s →
+        (∀ D : Finset (Fin s.dim → ℤ), D ⊆ s.V →
+          δ * (s.V.card : ℝ) ≤ (D.card : ℝ) →
+          ∀ _hE : Eligible β (pkgs s.dim).m₀ D s.M,
+          1 ≤ structureScale D.card ∧
+            1 ≤ (pkgs s.dim).c * structureScale D.card) →
+        ∃ s' : PrepStage X, PrepMove pkgs δ γ C s s' := by
+  classical
+  choose Cd hCd using fun r : ℕ => dimension_move r (pkgs r)
+  set C : ℝ := ∑ r ∈ Finset.range (dmax + 1), Cd r with hCdef
+  have hCpos : 0 < C :=
+    Finset.sum_pos (fun r _ => (hCd r).1) ⟨0, Finset.mem_range.mpr (by omega)⟩
+  refine ⟨C, hCpos, ?_⟩
+  intro δ γ s hdim hnot hsupply
+  rcases irreducible_or_witness (pkgs s.dim) δ γ s.V s.M with hirr |
+    ⟨D, hDV, hDcard, hE, hdefect⟩
+  · exact absurd hirr hnot
+  obtain ⟨hs1, ht1⟩ := hsupply D hDV hDcard hE
+  have hshellD : ShellNonDividing (fun v => s.lam v) X D := s.shell.mono hDV
+  rcases Nat.lt_trichotomy ((pkgs s.dim).out D s.M hE).e s.dim with
+    hlt | heq | hgt
+  · -- down move
+    obtain ⟨r, lam', D', N, hbox, hshell', hcardge, hr, hbound⟩ :=
+      (hCd s.dim).2 D s.M hE hs1 ht1 s.lam X hshellD
+    refine ⟨⟨r, D', N, lam', hbox, hshell'⟩, D, hDV, hDcard, hcardge,
+      Or.inr (Or.inr ⟨?_, ?_⟩)⟩
+    · show r < s.dim
+      rw [hr]; exact hlt
+    · show (pkgs s.dim).c ^ r * ((coordinateBox N).card : ℝ) ≤
+        C * ((coordinateBox s.M).card : ℝ)
+      have hCle : Cd s.dim ≤ C := by
+        rw [hCdef]
+        exact Finset.single_le_sum (f := Cd) (fun i _ => (hCd i).1.le)
+          (Finset.mem_range.mpr (by omega))
+      rw [← hr] at hbound
+      exact hbound.trans (mul_le_mul_of_nonneg_right hCle (Nat.cast_nonneg _))
+  · -- same dimension: the defect must be a small progression
+    rcases hdefect with hne | hsmall
+    · exact absurd heq hne
+    obtain ⟨r, lam', D', N, hbox, hshell', hcardge, hboxlt, hr⟩ :=
+      small_progression_move (pkgs s.dim) hE ht1 hsmall s.lam X hshellD
+    refine ⟨⟨r, D', N, lam', hbox, hshell'⟩, D, hDV, hDcard, hcardge,
+      Or.inl ⟨?_, hboxlt⟩⟩
+    show r = s.dim
+    rw [hr]; exact heq
+  · -- up move
+    obtain ⟨r, lam', D', N, hbox, hshell', hcardge, hr, hbound⟩ :=
+      dimension_move_up (pkgs s.dim) hE hs1 ht1 s.lam X hshellD
+    refine ⟨⟨r, D', N, lam', hbox, hshell'⟩, D, hDV, hDcard, hcardge,
+      Or.inr (Or.inl ⟨?_, ?_⟩)⟩
+    · show s.dim < r
+      rw [hr]; exact hgt
+    · show ((pkgs s.dim).c * structureScale D.card) ^ r *
+          ((coordinateBox N).card : ℝ) ≤
+        3 ^ r * structureScale D.card ^ s.dim *
+          ((coordinateBox s.M).card : ℝ)
+      rw [← hr] at hbound
+      exact hbound
+
+/-- **Preprocessing iteration** (skeleton of `lem:unshifted-preprocessing`).
+If every move strictly decreases a ℕ-measure (`TODO(orchestrator)`: this is
+the manuscript's product-estimate termination, valid under `γ ≤ δ^K`,
+`γ ≥ n^{-1/3}`, `n` large) and a move is available at every non-irreducible
+stage, then from any start stage a finite chain of moves reaches an
+unshiftedly `(δ,γ)`-irreducible stage. -/
+theorem preprocessing_iteration {X : ℕ} {β : ℝ} (pkgs : ∀ r, Package r β)
+    (δ γ C : ℝ) (μ : PrepStage X → ℕ)
+    (hdec : ∀ s s' : PrepStage X, PrepMove pkgs δ γ C s s' → μ s' < μ s)
+    (hmove : ∀ s : PrepStage X, ¬ StageIrreducible pkgs δ γ s →
+      ∃ s', PrepMove pkgs δ γ C s s')
+    (s₀ : PrepStage X) :
+    ∃ s : PrepStage X,
+      Relation.ReflTransGen (PrepMove pkgs δ γ C) s₀ s ∧
+        StageIrreducible pkgs δ γ s := by
+  refine descend_to_good μ (StageIrreducible pkgs δ γ)
+    (PrepMove pkgs δ γ C) ?_ s₀
+  intro a
+  by_cases hg : StageIrreducible pkgs δ γ a
+  · exact Or.inl hg
+  · obtain ⟨b, hb⟩ := hmove a hg
+    exact Or.inr ⟨b, hb, hdec _ _ hb⟩
+
+/-- **Assembled iteration.**  `prep_step` supplies the moves; the remaining
+hypotheses are exactly the manuscript's numerics, taken as input
+(`TODO(orchestrator)`): a strictly decreasing measure for `PrepMove`, and at
+every non-irreducible stage the dimension cutoff `dim ≤ dmax` plus the scale
+thresholds for `δ`-large subsets. -/
+theorem preprocessing_iteration_full {X : ℕ} {β : ℝ}
+    (pkgs : ∀ r, Package r β) (dmax : ℕ) :
+    ∃ C : ℝ, 0 < C ∧
+      ∀ (δ γ : ℝ) (μ : PrepStage X → ℕ),
+        (∀ s s' : PrepStage X, PrepMove pkgs δ γ C s s' → μ s' < μ s) →
+        (∀ s : PrepStage X, ¬ StageIrreducible pkgs δ γ s →
+          s.dim ≤ dmax ∧
+          ∀ D : Finset (Fin s.dim → ℤ), D ⊆ s.V →
+            δ * (s.V.card : ℝ) ≤ (D.card : ℝ) →
+            ∀ _hE : Eligible β (pkgs s.dim).m₀ D s.M,
+            1 ≤ structureScale D.card ∧
+              1 ≤ (pkgs s.dim).c * structureScale D.card) →
+        ∀ s₀ : PrepStage X,
+          ∃ s : PrepStage X,
+            Relation.ReflTransGen (PrepMove pkgs δ γ C) s₀ s ∧
+              StageIrreducible pkgs δ γ s := by
+  obtain ⟨C, hC, hstep⟩ := prep_step pkgs dmax
+  refine ⟨C, hC, ?_⟩
+  intro δ γ μ hdec hcond s₀
+  refine preprocessing_iteration pkgs δ γ C μ hdec ?_ s₀
+  intro s hns
+  obtain ⟨hdim, hsup⟩ := hcond s hns
+  exact hstep δ γ s hdim hns hsup
+
 end Nondividing
