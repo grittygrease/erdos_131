@@ -769,4 +769,157 @@ theorem preprocessing_iteration_measured {X : ℕ} {β : ℝ}
     exact prepMove_measure_decrease hC hγ0 hγ hlam0 hlamS
       (fun Dw hw1 hw2 => ⟨(hsup Dw hw1 hw2).1, (hsup Dw hw1 hw2).2.2⟩) hb
 
+/-! ## Deliverable 5 (toward assembly): reachability-relative iteration and
+the cardinality estimate along the chain
+
+The numeric thresholds are only available (and only true) at stages
+*reachable* from the start — the manuscript proves them inductively along the
+iteration (`|A_i| ≥ δ_*^i n`, dimensions stay `< d̄`).  We therefore provide
+the descent and the chain bookkeeping in reachability-relative form, and the
+manuscript's cardinality estimate `|A_i| ≥ δ_*^i·n` with the iteration count
+`i` bounded by the initial measure. -/
+
+/-- Reachability-relative well-founded descent: the step hypothesis is only
+required at stages reachable from the start. -/
+theorem descend_to_good_from {α : Type*} (μ : α → ℕ) (Good : α → Prop)
+    (Rel : α → α → Prop) (a₀ : α)
+    (hstep : ∀ a, Relation.ReflTransGen Rel a₀ a →
+      Good a ∨ ∃ b, Rel a b ∧ μ b < μ a) :
+    ∃ b, Relation.ReflTransGen Rel a₀ b ∧ Good b := by
+  have key : ∀ n a, Relation.ReflTransGen Rel a₀ a → μ a ≤ n →
+      ∃ b, Relation.ReflTransGen Rel a₀ b ∧ Good b := by
+    intro n
+    induction n with
+    | zero =>
+      intro a hreach ha
+      rcases hstep a hreach with hg | ⟨b, _, hlt⟩
+      · exact ⟨a, hreach, hg⟩
+      · omega
+    | succ n ih =>
+      intro a hreach ha
+      rcases hstep a hreach with hg | ⟨b, hab, hlt⟩
+      · exact ⟨a, hreach, hg⟩
+      · exact ih b (hreach.tail hab) (by omega)
+  exact key (μ a₀) a₀ Relation.ReflTransGen.refl le_rfl
+
+/-- **Chain power estimate.**  If along a `Rel`-chain each step multiplies a
+nonnegative weight `f` by at least `ρ ∈ [0,1]` and strictly decreases a
+ℕ-measure `μ`, then the endpoint weight is at least `ρ^{μ(start)}·f(start)`
+(the chain has at most `μ(start)` steps).  This is the manuscript's
+`|A_i| ≥ δ_*^i·n` bookkeeping. -/
+theorem chain_pow_lower {α : Type*} (μ : α → ℕ) (Rel : α → α → Prop)
+    (f : α → ℝ) (ρ : ℝ) (hρ0 : 0 ≤ ρ) (hρ1 : ρ ≤ 1)
+    (hf : ∀ x, 0 ≤ f x) {a b : α}
+    (hchain : Relation.ReflTransGen Rel a b)
+    (hdec : ∀ x y, Relation.ReflTransGen Rel a x → Rel x y → μ y < μ x)
+    (hlow : ∀ x y, Relation.ReflTransGen Rel a x → Rel x y →
+      ρ * f x ≤ f y) :
+    ρ ^ μ a * f a ≤ f b := by
+  suffices h : ∃ n, n + μ b ≤ μ a ∧ ρ ^ n * f a ≤ f b by
+    obtain ⟨n, hn, hρn⟩ := h
+    calc ρ ^ μ a * f a ≤ ρ ^ n * f a := by
+          apply mul_le_mul_of_nonneg_right _ (hf a)
+          exact pow_le_pow_of_le_one hρ0 hρ1 (by omega)
+      _ ≤ f b := hρn
+  induction hchain with
+  | refl => exact ⟨0, by omega, by simp⟩
+  | @tail x y hax hxy ih =>
+      obtain ⟨n, hn, hρn⟩ := ih
+      have hd := hdec x y hax hxy
+      refine ⟨n + 1, by omega, ?_⟩
+      calc ρ ^ (n + 1) * f a = ρ * (ρ ^ n * f a) := by ring
+        _ ≤ ρ * f x := mul_le_mul_of_nonneg_left hρn hρ0
+        _ ≤ f y := hlow x y hax hxy
+
+/-- Single-move cardinality retention: when the E1 deletion at the witness is
+at most `(δ/2)|V|` (manuscript: `c⁻¹|D|/log|D| = o(|D|)`), each move keeps
+`|V'| ≥ (δ/2)|V|` — the manuscript's `|A_{j+1}| ≥ δ_*|A_j|`. -/
+theorem prepMove_card_lower {X : ℕ} {β : ℝ} {pkgs : ∀ r, Package r β}
+    {δ γ C : ℝ} {s s' : PrepStage X}
+    (h : PrepMove pkgs δ γ C s s')
+    (hdel : ∀ D : Finset (Fin s.dim → ℤ), D ⊆ s.V →
+      δ * (s.V.card : ℝ) ≤ (D.card : ℝ) →
+      (pkgs s.dim).c⁻¹ * D.card / Real.log D.card ≤
+        δ / 2 * (s.V.card : ℝ)) :
+    δ / 2 * (s.V.card : ℝ) ≤ (s'.V.card : ℝ) := by
+  obtain ⟨D, hDV, hDcard, hdrop, _, _⟩ := h
+  have hd := hdel D hDV hDcard
+  linarith
+
+/-- **Toward `lem:unshifted-preprocessing`** (assembled skeleton).  Under the
+manuscript's numeric thresholds — required only at stages *reachable* from
+the start (`TODO(orchestrator)`: derive them from `γ ≤ δ^K`, `γ ≥ n^{-1/3}`,
+`n` large, exactly as in Manuscript.tex 560–660) — the iteration reaches an
+unshiftedly `(δ,γ)`-irreducible stage `s` with the cardinality estimate
+`(δ/2)^{⌊Φ(s₀)⌋}·|V₀| ≤ |V_s|` (whence `|Ṽ| > n^{1-ε}` after the
+orchestrator's count bound).  Shell non-dividing holds at `s` by
+construction (`s.shell`), and `s.V ⊆ box s.M` (`s.subset`). -/
+theorem unshifted_preprocessing_toward {X : ℕ} {β : ℝ}
+    (pkgs : ∀ r, Package r β) (dmax : ℕ) :
+    ∃ C : ℝ, 0 < C ∧
+      ∀ (δ γ lam : ℝ), 0 < γ → Real.log γ ≤ -1 → 0 ≤ lam →
+        0 ≤ δ → δ ≤ 2 →
+        ∀ s₀ : PrepStage X,
+          (∀ s : PrepStage X,
+            Relation.ReflTransGen (PrepMove pkgs δ γ C) s₀ s →
+            s.dim ≤ dmax ∧
+            (Real.log C + ((pkgs s.dim).D : ℝ) *
+                max 0 (Real.log ((pkgs s.dim).c)⁻¹) + 1 ≤ lam) ∧
+            ∀ D : Finset (Fin s.dim → ℤ), D ⊆ s.V →
+              δ * (s.V.card : ℝ) ≤ (D.card : ℝ) →
+              1 ≤ structureScale D.card ∧
+              1 ≤ (pkgs s.dim).c * structureScale D.card ∧
+              (lam + ((pkgs s.dim).D : ℝ) *
+                  (Real.log 3 + max 0 (Real.log ((pkgs s.dim).c)⁻¹)) + 1 ≤
+                Real.log (structureScale D.card)) ∧
+              (pkgs s.dim).c⁻¹ * D.card / Real.log D.card ≤
+                δ / 2 * (s.V.card : ℝ)) →
+          ∃ s : PrepStage X,
+            Relation.ReflTransGen (PrepMove pkgs δ γ C) s₀ s ∧
+            StageIrreducible pkgs δ γ s ∧
+            (δ / 2) ^ stageMeasure lam s₀ * (s₀.V.card : ℝ) ≤
+              (s.V.card : ℝ) := by
+  obtain ⟨C, hC, hstep⟩ := prep_step pkgs dmax
+  refine ⟨C, hC, ?_⟩
+  intro δ γ lam hγ0 hγ hlam0 hδ0 hδ2 s₀ hcond
+  -- The per-move measure decrease at reachable stages.
+  have hdec : ∀ x y : PrepStage X,
+      Relation.ReflTransGen (PrepMove pkgs δ γ C) s₀ x →
+      PrepMove pkgs δ γ C x y →
+      stageMeasure lam y < stageMeasure lam x := by
+    intro x y hx hxy
+    obtain ⟨_, hlamS, hsup⟩ := hcond x hx
+    exact prepMove_measure_decrease hC hγ0 hγ hlam0 hlamS
+      (fun Dw hw1 hw2 => ⟨(hsup Dw hw1 hw2).1, (hsup Dw hw1 hw2).2.2.1⟩) hxy
+  -- The per-move cardinality retention at reachable stages.
+  have hlow : ∀ x y : PrepStage X,
+      Relation.ReflTransGen (PrepMove pkgs δ γ C) s₀ x →
+      PrepMove pkgs δ γ C x y →
+      δ / 2 * (x.V.card : ℝ) ≤ (y.V.card : ℝ) := by
+    intro x y hx hxy
+    obtain ⟨_, _, hsup⟩ := hcond x hx
+    exact prepMove_card_lower hxy
+      (fun Dw hw1 hw2 => (hsup Dw hw1 hw2).2.2.2)
+  -- The descent step at reachable stages.
+  have hstepgood : ∀ a : PrepStage X,
+      Relation.ReflTransGen (PrepMove pkgs δ γ C) s₀ a →
+      StageIrreducible pkgs δ γ a ∨
+        ∃ b, PrepMove pkgs δ γ C a b ∧
+          stageMeasure lam b < stageMeasure lam a := by
+    intro a hreach
+    by_cases hg : StageIrreducible pkgs δ γ a
+    · exact Or.inl hg
+    · obtain ⟨hdim, hlamS, hsup⟩ := hcond a hreach
+      obtain ⟨b, hb⟩ := hstep δ γ a hdim hg
+        (fun D h1 h2 _hE => ⟨(hsup D h1 h2).1, (hsup D h1 h2).2.1⟩)
+      exact Or.inr ⟨b, hb, hdec a b hreach hb⟩
+  -- Reach an irreducible stage by well-founded descent.
+  obtain ⟨s, hreach, hirr⟩ :=
+    descend_to_good_from (stageMeasure lam)
+      (StageIrreducible pkgs δ γ) (PrepMove pkgs δ γ C) s₀ hstepgood
+  refine ⟨s, hreach, hirr, ?_⟩
+  exact chain_pow_lower (stageMeasure lam) (PrepMove pkgs δ γ C)
+    (fun t => (t.V.card : ℝ)) (δ / 2) (by linarith) (by linarith)
+    (fun t => Nat.cast_nonneg _) hreach hdec hlow
+
 end Nondividing
