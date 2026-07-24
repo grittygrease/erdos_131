@@ -261,6 +261,125 @@ theorem rawStep'_of_suppliers {β : ℝ} (pkgs : ∀ r, Package r β) (D : ℕ)
           _ ≤ η * (ρ ^ K₀ * ((coordinateBox s.M).card : ℝ)) :=
               mul_le_mul_of_nonneg_left hρbox hη0.le
 
+/-- **Composition with the capped increment**: identical to
+`rawStep'_of_suppliers`, but consuming `IrreducibleIncrementCapped` — the
+irreducible intermediate stage has the same dimension as the excessive input
+stage, hence dimension `≤ 2/ζ₀ ≤ Dcap` (`ExcessiveStage.dim_cast_le`). -/
+theorem rawStep''_of_suppliers {β : ℝ} (pkgs : ∀ r, Package r β) (D Dcap : ℕ)
+    {ζ₀ ε δ γ ν K₀ Cdown : ℝ} {n₁ : ℕ} (hζ₀ : 0 < ζ₀)
+    (hDcap : 2 / ζ₀ ≤ (Dcap : ℝ)) (hε : 0 < ε)
+    (hεhalf : ε ≤ 1 / 2) (hK₀ : 0 ≤ K₀) (hCdown : 1 ≤ Cdown) (hn₁ : 2 ≤ n₁)
+    (hprep : PrepSupplier' pkgs D ζ₀ ε δ γ K₀ Cdown n₁)
+    (hinc : IrreducibleIncrementCapped pkgs Dcap ζ₀ ε δ γ ν n₁) :
+    RawStep' D ζ₀ (2 * ε) ν Cdown K₀ (n₁ * n₁) := by
+  intro X s hX hbad hn
+  have hn₁sq : n₁ ≤ n₁ * n₁ := Nat.le_mul_of_pos_left n₁ (by omega)
+  have hn2 : 2 ≤ s.V.card := le_trans (le_trans hn₁ hn₁sq) hn
+  have hnR : (2 : ℝ) ≤ (s.V.card : ℝ) := by exact_mod_cast hn2
+  have hn1R : (1 : ℝ) ≤ (s.V.card : ℝ) := by linarith
+  have hnpos : (0 : ℝ) < (s.V.card : ℝ) := by linarith
+  have hnsqR : ((n₁ : ℝ)) * (n₁ : ℝ) ≤ (s.V.card : ℝ) := by
+    have : ((n₁ * n₁ : ℕ) : ℝ) ≤ (s.V.card : ℝ) := by exact_mod_cast hn
+    push_cast at this
+    linarith
+  have hn₁R : (2 : ℝ) ≤ (n₁ : ℝ) := by exact_mod_cast hn₁
+  have hBpos : (0 : ℝ) < ((coordinateBox s.M).card : ℝ) := by
+    have h1 : 0 < (coordinateBox s.M).card := one_le_card_coordinateBox s.M
+    exact_mod_cast h1
+  have hhalfpow : (n₁ : ℝ) ≤ (s.V.card : ℝ) ^ (1 - ε) := by
+    have h1 : ((n₁ : ℝ) * (n₁ : ℝ)) ^ ((1 : ℝ) / 2) = (n₁ : ℝ) := by
+      rw [show ((n₁ : ℝ) * (n₁ : ℝ)) = (n₁ : ℝ) ^ (2 : ℝ) by
+        rw [show (2 : ℝ) = ((2 : ℕ) : ℝ) by norm_num, Real.rpow_natCast]
+        ring]
+      rw [← Real.rpow_mul (by linarith : (0 : ℝ) ≤ (n₁ : ℝ))]
+      norm_num
+    calc (n₁ : ℝ) = ((n₁ : ℝ) * (n₁ : ℝ)) ^ ((1 : ℝ) / 2) := h1.symm
+      _ ≤ (s.V.card : ℝ) ^ ((1 : ℝ) / 2) :=
+          Real.rpow_le_rpow (by positivity) hnsqR (by norm_num)
+      _ ≤ (s.V.card : ℝ) ^ (1 - ε) :=
+          Real.rpow_le_rpow_of_exponent_le hn1R (by linarith)
+  obtain ⟨s₁, hcase⟩ := hprep X s hX hbad (le_trans hn₁sq hn)
+  rcases hcase with ⟨hlt, hDle, hcard, hboxle⟩ | ⟨hlt, hcard, hboxle⟩ |
+    ⟨heq, hirr, ρ, hρ0, hρ1, hρlow, hρcard, hρbox⟩
+  · refine ⟨s₁, Or.inl ⟨hlt, hDle, ?_, ?_⟩⟩
+    · calc (s.V.card : ℝ) ^ (1 - 2 * ε)
+          ≤ (s.V.card : ℝ) ^ (1 - ε) :=
+            Real.rpow_le_rpow_of_exponent_le hn1R (by linarith)
+        _ ≤ (s₁.V.card : ℝ) := hcard
+    · refine hboxle.trans (Real.rpow_le_rpow_of_exponent_le hn1R ?_)
+      have hed : (0 : ℝ) ≤ (s₁.dim : ℝ) - (s.dim : ℝ) := by
+        have : (s.dim : ℝ) ≤ (s₁.dim : ℝ) := by exact_mod_cast hlt.le
+        linarith
+      have hmul : (1 - 2 * ε) * ((s₁.dim : ℝ) - (s.dim : ℝ)) ≤
+          (1 - ε) * ((s₁.dim : ℝ) - (s.dim : ℝ)) :=
+        mul_le_mul_of_nonneg_right (by linarith) hed
+      linarith
+  · refine ⟨s₁, Or.inr (Or.inl ⟨hlt, ?_, hboxle⟩)⟩
+    calc (s.V.card : ℝ) ^ (1 - 2 * ε)
+        ≤ (s.V.card : ℝ) ^ (1 - ε) :=
+          Real.rpow_le_rpow_of_exponent_le hn1R (by linarith)
+      _ ≤ (s₁.V.card : ℝ) := hcard
+  · -- SAME DIMENSION: the intermediate stage is capped, apply the increment.
+    have hñ : (s.V.card : ℝ) ^ (1 - ε) ≤ (s₁.V.card : ℝ) := by
+      have h1 : (s.V.card : ℝ) ^ (1 - ε) =
+          (s.V.card : ℝ) ^ (-ε) * (s.V.card : ℝ) := by
+        rw [show (1 - ε) = -ε + 1 by ring, Real.rpow_add hnpos,
+          Real.rpow_one]
+      rw [h1]
+      calc (s.V.card : ℝ) ^ (-ε) * (s.V.card : ℝ)
+          ≤ ρ * (s.V.card : ℝ) :=
+            mul_le_mul_of_nonneg_right hρlow hnpos.le
+        _ ≤ (s₁.V.card : ℝ) := hρcard
+    have hn₁s₁ : n₁ ≤ s₁.V.card := by
+      have h1 : (n₁ : ℝ) ≤ (s₁.V.card : ℝ) := le_trans hhalfpow hñ
+      exact_mod_cast h1
+    -- The dimension cap at the intermediate stage.
+    have hcap₁ : s₁.dim ≤ Dcap := by
+      rw [heq]
+      have h2 : (s.dim : ℝ) ≤ (Dcap : ℝ) :=
+        le_trans (hbad.dim_cast_le hζ₀) hDcap
+      exact_mod_cast h2
+    obtain ⟨s₂, _hcard₂', hcase₂⟩ := hinc X s₁ hX hn₁s₁ hcap₁ hirr
+    have hρK1 : ρ ^ K₀ ≤ 1 := Real.rpow_le_one hρ0.le hρ1 hK₀
+    rcases hcase₂ with ⟨hlt₂, hcard₂, hbox₂⟩ | ⟨heq₂, η, hη0, hη1, hηcard, hηbox⟩
+    · refine ⟨s₂, Or.inr (Or.inl ⟨?_, ?_, ?_⟩)⟩
+      · omega
+      · have hstep1 : ((s.V.card : ℝ) ^ (1 - ε)) ^ (1 - ε) ≤
+            (s₁.V.card : ℝ) ^ (1 - ε) :=
+          Real.rpow_le_rpow (Real.rpow_nonneg hnpos.le _) hñ (by linarith)
+        have hstep2 : ((s.V.card : ℝ) ^ (1 - ε)) ^ (1 - ε) =
+            (s.V.card : ℝ) ^ ((1 - ε) * (1 - ε)) :=
+          (Real.rpow_mul hnpos.le _ _).symm
+        have hstep3 : (s.V.card : ℝ) ^ (1 - 2 * ε) ≤
+            (s.V.card : ℝ) ^ ((1 - ε) * (1 - ε)) :=
+          Real.rpow_le_rpow_of_exponent_le hn1R (by nlinarith [sq_nonneg ε])
+        calc (s.V.card : ℝ) ^ (1 - 2 * ε)
+            ≤ (s.V.card : ℝ) ^ ((1 - ε) * (1 - ε)) := hstep3
+          _ = ((s.V.card : ℝ) ^ (1 - ε)) ^ (1 - ε) := hstep2.symm
+          _ ≤ (s₁.V.card : ℝ) ^ (1 - ε) := hstep1
+          _ ≤ (s₂.V.card : ℝ) := hcard₂
+      · have h1 : ((coordinateBox s₂.M).card : ℝ) ≤
+            ((coordinateBox s₁.M).card : ℝ) := by exact_mod_cast hbox₂
+        calc ((coordinateBox s₂.M).card : ℝ)
+            ≤ ((coordinateBox s₁.M).card : ℝ) := h1
+          _ ≤ ρ ^ K₀ * ((coordinateBox s.M).card : ℝ) := hρbox
+          _ ≤ 1 * ((coordinateBox s.M).card : ℝ) :=
+              mul_le_mul_of_nonneg_right hρK1 hBpos.le
+          _ ≤ Cdown * ((coordinateBox s.M).card : ℝ) :=
+              mul_le_mul_of_nonneg_right hCdown hBpos.le
+    · have hσeq : sigma s₁.dim = sigma s.dim := by rw [heq]
+      rw [hσeq] at hηcard
+      refine ⟨s₂, Or.inr (Or.inr ⟨heq₂.trans heq, η, ρ, hη0, hη1, hρ0, hρ1,
+        ?_, ?_⟩)⟩
+      · calc η ^ (sigma s.dim + ζ₀ - ν) * (ρ * (s.V.card : ℝ))
+            ≤ η ^ (sigma s.dim + ζ₀ - ν) * (s₁.V.card : ℝ) :=
+              mul_le_mul_of_nonneg_left hρcard (Real.rpow_nonneg hη0.le _)
+          _ ≤ (s₂.V.card : ℝ) := hηcard
+      · calc ((coordinateBox s₂.M).card : ℝ)
+            ≤ η * ((coordinateBox s₁.M).card : ℝ) := hηbox
+          _ ≤ η * (ρ ^ K₀ * ((coordinateBox s.M).card : ℝ)) :=
+              mul_le_mul_of_nonneg_left hρbox hη0.le
+
 /-! ## The stage potential
 
 The manuscript's global cardinality bookkeeping `|A_j| ≥ n₀^q`
