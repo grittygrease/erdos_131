@@ -1098,4 +1098,80 @@ theorem no_excessive_of_rawStep' {D : ℕ} {ζ₀ ε ν Cdown K₀ cstar ε₀ �
           Real.rpow_le_rpow hN0.le hcardN hν0.le
       _ ≤ descentPotential ζ₀ ν s := hregen
 
+/-! ## Final assembly: `DescentStep` from the primed suppliers -/
+
+/-- Trivial branch: for `ζ₀ ≥ 4/5` there are no excessive stages at all
+(`ExcessiveStage.zeta_lt`), so the descent step holds vacuously. -/
+theorem descentStep_of_large_zeta {ζ₀ : ℝ} (h45 : 4 / 5 ≤ ζ₀) :
+    DescentStep ζ₀ 1 0 := by
+  intro X s _hX hbad _hn
+  exact absurd hbad.zeta_lt (by linarith)
+
+/-- **`DescentStep` from the primed suppliers** (one fixed `ζ₀ < 4/5`).
+Composes `rawStep''_of_suppliers` with the descent driver
+`no_excessive_of_rawStep'`, choosing the cardinality threshold `n₀` by an
+explicit ceiling so the invariant floor holds. -/
+theorem descentStep_of_primed {β : ℝ} (pkgs : ∀ r, Package r β) (D Dcap : ℕ)
+    {ζ₀ ε δ γ ν K₀ Cdown cstar ε₀ Δ : ℝ} {n₁ n₂ : ℕ}
+    (hζ₀ : 0 < ζ₀) (hζ₀45 : ζ₀ < 4 / 5)
+    (hν0 : 0 < ν) (hνζ : ν ≤ ζ₀) (hK₀ : 5 ≤ K₀)
+    (hε : 0 < ε) (hε1 : ε < 1 / 2) (hεε₀ : 2 * ε < ε₀)
+    (hεc : 2 * ε ≤ cstar / 4) (hεΔ : 2 * ε ≤ Δ / 8)
+    (hcstar : 0 < cstar) (hΔ : 0 < Δ) (hD : 2 ≤ D)
+    (hDcapR : 2 / ζ₀ ≤ (D : ℝ)) (hDcap2 : 2 / ζ₀ ≤ (Dcap : ℝ))
+    (hgap : ∀ r, 2 ≤ r → r ≤ D → sigma (r - 1) + Δ ≤ sigma r)
+    (hnum : ∀ (d e : ℕ), 1 ≤ d → d < e → e ≤ D →
+      ∀ ζ : ℝ, ζ₀ ≤ ζ → ζ ≤ 1 - sigma d →
+        ∀ ε' : ℝ, 0 < ε' → ε' < ε₀ →
+          (sigma e + ζ) * (1 / (sigma d + ζ) - (1 - ε') * ((e : ℝ) - d)) ≤
+            1 - cstar)
+    (hCdown : 1 ≤ Cdown)
+    (habs : Cdown ^ 2 ≤ ((n₁ * n₁ : ℕ) : ℝ) ^ min (cstar / 10) (Δ / 8))
+    (hn₁ : 2 ≤ n₁)
+    (hn₂pow : (n₂ : ℝ) ≤ ((n₁ : ℝ) * (n₁ : ℝ)) ^ ((1 : ℝ) - ε))
+    (hprep : PrepSupplier' pkgs D ζ₀ ε δ γ K₀ Cdown n₁)
+    (hinc : IrreducibleIncrementCapped pkgs Dcap ζ₀ ε δ γ ν n₁ n₂) :
+    ∃ n₀ : ℕ, DescentStep ζ₀ 1 n₀ := by
+  classical
+  -- The raw step at `ε' = 2ε`, threshold `m = n₁²`.
+  have hraw : RawStep' D ζ₀ (2 * ε) ν Cdown K₀ (n₁ * n₁) :=
+    rawStep''_of_suppliers pkgs D Dcap hζ₀ hDcap2 hε (by linarith)
+      hK₀ hCdown hn₁ hn₂pow hprep hinc
+  -- Choose the driver threshold `n₀` by an explicit ceiling.
+  set cg : ℝ := min (cstar / 10) (Δ / 8) with hcgdef
+  have hcg : 0 < cg := lt_min (by positivity) (by positivity)
+  set B₀ : ℕ := ⌊1 / cg⌋₊ with hB₀def
+  set E : ℝ := ν * (ν * (1 - 2 * ε)) ^ B₀ * (1 - 2 * ε) with hEdef
+  have hE0 : 0 < E := by
+    have h1 : (0 : ℝ) < 1 - 2 * ε := by linarith
+    have h2 : (0 : ℝ) < ν * (1 - 2 * ε) := mul_pos hν0 h1
+    have h3 : (0 : ℝ) < (ν * (1 - 2 * ε)) ^ B₀ := pow_pos h2 _
+    positivity
+  set base : ℝ := ((max (n₁ * n₁) 2 : ℕ) : ℝ) with hbasedef
+  have hbase1 : (1 : ℝ) ≤ base := by
+    rw [hbasedef]
+    have : (1 : ℕ) ≤ max (n₁ * n₁) 2 := by omega
+    exact_mod_cast this
+  have hbase0 : (0 : ℝ) < base := by linarith
+  set n₀ : ℕ := max 1 ⌈base ^ (1 / E)⌉₊ with hn₀def
+  have hn₀1 : 1 ≤ n₀ := le_max_left _ _
+  have hfloor : base ≤ (n₀ : ℝ) ^ E := by
+    have hceil : base ^ (1 / E) ≤ (n₀ : ℝ) := by
+      have h1 : (⌈base ^ (1 / E)⌉₊ : ℝ) ≤ (n₀ : ℝ) := by
+        have : ⌈base ^ (1 / E)⌉₊ ≤ n₀ := le_max_right _ _
+        exact_mod_cast this
+      exact le_trans (Nat.le_ceil _) h1
+    calc base = (base ^ (1 / E)) ^ E := by
+          rw [← Real.rpow_mul hbase0.le, one_div,
+            inv_mul_cancel₀ (ne_of_gt hE0), Real.rpow_one]
+      _ ≤ (n₀ : ℝ) ^ E :=
+          Real.rpow_le_rpow (Real.rpow_nonneg hbase0.le _) hceil hE0.le
+  -- Run the driver.
+  refine ⟨n₀, ?_⟩
+  apply descentStep_of_no_excessive
+  intro X s hX hbad hn
+  exact no_excessive_of_rawStep' hζ₀ hζ₀45 hν0 hνζ hK₀
+    (by linarith) (by linarith) hεε₀ hεc hεΔ hcstar hΔ hD hDcapR hgap hnum
+    hCdown habs hraw n₀ hn₀1 hfloor X s hX hbad hn
+
 end Nondividing
