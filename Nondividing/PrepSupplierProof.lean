@@ -990,4 +990,117 @@ theorem prepSupplier_of_numerics {β : ℝ} (pkgs : ∀ r, Package r β)
     hγK₀ hsminK₀ hscale hcsmin hCupB hdel hexp1 (hdown1 X C)
     (fun t h1 h2 h3 => hCstep δ γ t h1 h2 h3)
 
+/-! ## Discharging the numeric bundle: analytic engines
+
+The scale floor `smin ≤ structureScale m = m/(log m)²` for all
+`m ≥ δ·(δ/2)^{imax}·n` reduces, via monotonicity of `x ↦ x/(log x)²` on
+`[e², ∞)`, to a single evaluation at the left endpoint; the remaining
+clauses are `(log n)² = o(n^a)` facts. -/
+
+/-- `log t ≤ 2(√t − 1)` for `t ≥ 1` (from `log x ≤ x − 1` at `√t`). -/
+theorem log_le_two_mul_sqrt_sub_one {t : ℝ} (ht : 1 ≤ t) :
+    Real.log t ≤ 2 * (Real.sqrt t - 1) := by
+  have ht0 : (0 : ℝ) < t := lt_of_lt_of_le one_pos ht
+  have hs0 : 0 < Real.sqrt t := Real.sqrt_pos.mpr ht0
+  have h1 : Real.log (Real.sqrt t) ≤ Real.sqrt t - 1 :=
+    Real.log_le_sub_one_of_pos hs0
+  have h2 : Real.log t = 2 * Real.log (Real.sqrt t) := by
+    rw [← Real.mul_self_sqrt ht0.le,
+      Real.log_mul (ne_of_gt hs0) (ne_of_gt hs0)]
+    rw [Real.mul_self_sqrt ht0.le]
+    ring
+  linarith
+
+/-- **Monotonicity of `x/(log x)²` on `[e², ∞)`**: the analytic heart of the
+scale-floor supplier.  For `e² ≤ a ≤ b`, writing `t = b/a` and `s = √t`,
+`log b = log a + log t ≤ log a + 2(s−1) ≤ s·log a`, whence
+`(log b)² ≤ t·(log a)²`. -/
+theorem div_log_sq_mono {a b : ℝ} (ha : Real.exp 2 ≤ a) (hab : a ≤ b) :
+    a / (Real.log a) ^ 2 ≤ b / (Real.log b) ^ 2 := by
+  have ha0 : (0 : ℝ) < a := lt_of_lt_of_le (Real.exp_pos 2) ha
+  have hb0 : (0 : ℝ) < b := lt_of_lt_of_le ha0 hab
+  have hla : (2 : ℝ) ≤ Real.log a := by
+    have := Real.log_le_log (Real.exp_pos 2) ha
+    rwa [Real.log_exp] at this
+  have hlab : Real.log a ≤ Real.log b := Real.log_le_log ha0 hab
+  set t : ℝ := b / a with htdef
+  have ht1 : (1 : ℝ) ≤ t := (one_le_div ha0).mpr hab
+  have ht0 : (0 : ℝ) < t := lt_of_lt_of_le one_pos ht1
+  have hbt : b = a * t := by
+    rw [htdef, mul_div_cancel₀ _ (ne_of_gt ha0)]
+  set s : ℝ := Real.sqrt t with hsdef
+  have hs1 : (1 : ℝ) ≤ s := by
+    rw [hsdef, show (1 : ℝ) = Real.sqrt 1 from Real.sqrt_one.symm]
+    exact Real.sqrt_le_sqrt ht1
+  have hss : s * s = t := Real.mul_self_sqrt ht0.le
+  have hlogt : Real.log t ≤ 2 * (s - 1) := log_le_two_mul_sqrt_sub_one ht1
+  have hlogt0 : 0 ≤ Real.log t := Real.log_nonneg ht1
+  have hlogb : Real.log b = Real.log a + Real.log t := by
+    rw [hbt, Real.log_mul (ne_of_gt ha0) (ne_of_gt ht0)]
+  have h3 : Real.log a + Real.log t ≤ Real.log a * s := by
+    nlinarith
+  have h4 : (0 : ℝ) ≤ Real.log a + Real.log t := by linarith
+  have hkey : (Real.log b) ^ 2 ≤ (Real.log a) ^ 2 * t := by
+    calc (Real.log b) ^ 2 = (Real.log a + Real.log t) ^ 2 := by rw [hlogb]
+      _ ≤ (Real.log a * s) ^ 2 := pow_le_pow_left₀ h4 h3 2
+      _ = (Real.log a) ^ 2 * (s * s) := by ring
+      _ = (Real.log a) ^ 2 * t := by rw [hss]
+  have hla2 : (0 : ℝ) < (Real.log a) ^ 2 := by positivity
+  have hlb2 : (0 : ℝ) < (Real.log b) ^ 2 := by
+    have : (2 : ℝ) ≤ Real.log b := le_trans hla hlab
+    positivity
+  rw [div_le_div_iff₀ hla2 hlb2]
+  calc a * (Real.log b) ^ 2 ≤ a * ((Real.log a) ^ 2 * t) :=
+        mul_le_mul_of_nonneg_left hkey ha0.le
+    _ = (a * t) * (Real.log a) ^ 2 := by ring
+    _ = b * (Real.log a) ^ 2 := by rw [← hbt]
+
+/-- Scale-floor bridge: `x/(log x)² ≤ structureScale m` whenever
+`e² ≤ x ≤ m`. -/
+theorem le_structureScale {x : ℝ} {m : ℕ} (hx : Real.exp 2 ≤ x)
+    (hxm : x ≤ (m : ℝ)) : x / (Real.log x) ^ 2 ≤ structureScale m :=
+  div_log_sq_mono hx hxm
+
+/-- `n^a/(log n)² → ∞` for every `a > 0` (via `x/(log x)² → ∞` composed
+with `x ↦ x^a`). -/
+theorem tendsto_rpow_div_log_sq {a : ℝ} (ha : 0 < a) :
+    Filter.Tendsto (fun n : ℕ => (n : ℝ) ^ a / (Real.log n) ^ 2)
+      Filter.atTop Filter.atTop := by
+  have h1 : Filter.Tendsto (fun n : ℕ => (n : ℝ) ^ a)
+      Filter.atTop Filter.atTop :=
+    (tendsto_rpow_atTop ha).comp tendsto_natCast_atTop_atTop
+  have h2 : Filter.Tendsto
+      (fun n : ℕ => ((n : ℝ) ^ a) / (Real.log ((n : ℝ) ^ a)) ^ 2)
+      Filter.atTop Filter.atTop :=
+    (tendsto_id_div_log_pow_atTop 2).comp h1
+  have h3 : Filter.Tendsto
+      (fun n : ℕ => (1 / a ^ 2) * ((n : ℝ) ^ a / (Real.log n) ^ 2))
+      Filter.atTop Filter.atTop := by
+    refine h2.congr' ?_
+    filter_upwards [Filter.eventually_ge_atTop 1] with n hn
+    have hn0 : (0 : ℝ) < (n : ℝ) := by
+      exact_mod_cast (by omega : 0 < n)
+    rw [Real.log_rpow hn0]
+    rw [mul_pow]
+    have ha2 : (a : ℝ) ^ 2 ≠ 0 := by positivity
+    field_simp
+  have h4 := h3.const_mul_atTop (show (0 : ℝ) < a ^ 2 by positivity)
+  refine h4.congr ?_
+  intro n
+  have ha2 : (a : ℝ) ^ 2 ≠ 0 := by positivity
+  field_simp
+
+/-- Eventual absorption of `(log n)²` into any positive power:
+`c·(log n)² ≤ d·n^a` for `n` large. -/
+theorem eventually_mul_log_sq_le {c d a : ℝ} (hd : 0 < d) (ha : 0 < a) :
+    ∀ᶠ n : ℕ in Filter.atTop, c * (Real.log n) ^ 2 ≤ d * (n : ℝ) ^ a := by
+  filter_upwards [(tendsto_rpow_div_log_sq ha).eventually_ge_atTop (c / d),
+    Filter.eventually_ge_atTop 3] with n h1 h2
+  have hn1 : (1 : ℝ) < (n : ℝ) := by
+    exact_mod_cast (by omega : 1 < n)
+  have hlog : 0 < Real.log n := Real.log_pos hn1
+  have hsq : 0 < (Real.log n) ^ 2 := by positivity
+  rw [div_le_div_iff₀ hd hsq] at h1
+  linarith
+
 end Nondividing
