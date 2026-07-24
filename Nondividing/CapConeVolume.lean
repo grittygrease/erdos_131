@@ -84,4 +84,58 @@ theorem volume_cone {d : ℕ} {T : ℝ} (hT : 0 ≤ T) (E : Set (Fin d → ℝ))
   rw [cone_eq_smul hT E, Measure.addHaar_smul_of_nonneg volume hT,
     Module.finrank_fin_fun]
 
+/-! ## 3. Shell containment -/
+
+/-- **Shell points lift into the cone**: if the shell point `v` has
+`X ≤ λ(v) ≤ 2X` and its projective normalization lies in `Ω'`, then the real
+point of `v` lies in the truncated cone `cone (2X) Ω'` — indeed
+`v = λ(v) • π(v)` with `0 ≤ λ(v) ≤ 2X`. -/
+theorem realPoint_mem_cone {d : ℕ} {a : Fin d → ℤ} {X : ℕ} {v : Fin d → ℤ}
+    {Ω' : Set (Fin d → ℝ)} (hX : 1 ≤ X)
+    (hlo : (X : ℤ) ≤ intFunctional a v) (hhi : intFunctional a v ≤ 2 * X)
+    (hmem : projNorm a v ∈ Ω') :
+    External.realPoint v ∈ cone (2 * (X : ℝ)) Ω' := by
+  have hpos : (0 : ℤ) < intFunctional a v :=
+    lt_of_lt_of_le (by exact_mod_cast hX) hlo
+  have hne : ((intFunctional a v : ℤ) : ℝ) ≠ 0 := by
+    exact_mod_cast ne_of_gt hpos
+  refine ⟨projNorm a v, hmem, ((intFunctional a v : ℤ) : ℝ), ?_, ?_, ?_⟩
+  · exact_mod_cast le_of_lt hpos
+  · exact_mod_cast hhi
+  · rw [projNorm, smul_inv_smul₀ hne]
+
+/-! ## 4. Convexity of cones over convex sets -/
+
+/-- The cone over a convex set is convex (the origin joins everything):
+a convex combination `p•(t₁•y₁) + q•(t₂•y₂)` equals `s•(w₁•y₁ + w₂•y₂)` with
+`s = p·t₁ + q·t₂ ∈ [0, T]` and weights `wᵢ` summing to `1` (degenerate case
+`s = 0` gives the apex). -/
+theorem cone_convex {d : ℕ} {T : ℝ} (hT : 0 ≤ T) {E : Set (Fin d → ℝ)}
+    (hE : Convex ℝ E) : Convex ℝ (cone T E) := by
+  rintro x ⟨y₁, hy₁, t₁, ht₁0, ht₁T, rfl⟩ x' ⟨y₂, hy₂, t₂, ht₂0, ht₂T, rfl⟩
+    p q hp hq hpq
+  set s : ℝ := p * t₁ + q * t₂ with hs_def
+  have hs0 : 0 ≤ s := by positivity
+  have hsT : s ≤ T := by nlinarith
+  rcases eq_or_lt_of_le hs0 with hs | hs
+  · -- `s = 0`: both scalar weights vanish and the combination is the apex.
+    have h1 : p * t₁ = 0 := by nlinarith
+    have h2 : q * t₂ = 0 := by nlinarith
+    have hzero : p • t₁ • y₁ + q • t₂ • y₂ = (0 : Fin d → ℝ) := by
+      rw [smul_smul, smul_smul, h1, h2, zero_smul, zero_smul, add_zero]
+    rw [hzero]
+    exact zero_mem_cone hT ⟨y₁, hy₁⟩
+  · -- `s > 0`: renormalize the weights inside `E`.
+    have hsne : s ≠ 0 := ne_of_gt hs
+    have hw1 : 0 ≤ p * t₁ / s := div_nonneg (mul_nonneg hp ht₁0) hs0
+    have hw2 : 0 ≤ q * t₂ / s := div_nonneg (mul_nonneg hq ht₂0) hs0
+    have hwsum : p * t₁ / s + q * t₂ / s = 1 := by
+      field_simp
+      rw [hs_def]
+    refine ⟨(p * t₁ / s) • y₁ + (q * t₂ / s) • y₂,
+      hE hy₁ hy₂ hw1 hw2 hwsum, s, hs0, hsT, ?_⟩
+    have e1 : s * (p * t₁ / s) = p * t₁ := by field_simp
+    have e2 : s * (q * t₂ / s) = q * t₂ := by field_simp
+    rw [smul_add, smul_smul, smul_smul, smul_smul, smul_smul, e1, e2]
+
 end Nondividing
