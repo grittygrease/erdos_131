@@ -1746,4 +1746,223 @@ theorem stage_convexPosition_of_thresholds {d : ℕ} {β : ℝ}
       · exact (Finset.sdiff_subset).trans hChatsub)
     hnq_eval hidxT hidxξ hcentre
 
+/-! ## 8. Assembly: `IrreducibleIncrement` from numeric thresholds only
+
+The structural clauses of the per-stage supplier of
+`irreducibleIncrement_of_convexPosition` are discharged here:
+
+* the coefficient-vector form of the stage functional
+  (`addMonoidHom_eq_intFunctional` — every `→+` hom on `Fin d → ℤ` is an
+  `intFunctional`);
+* `integerRealSpan V = ⊤` (`stage_span_of_thresholds`, via
+  `projective_span_package` with the core nonemptiness `one_le_core_card`);
+* `IndexedMuConvexPosition` (`stage_convexPosition_of_thresholds`, §7).
+
+What remains in the supplier of `irreducibleIncrement_of_numerics` is purely
+numeric: the parameter regime `0 < μ < min(1, μ₀ d)`, `δ ≤ μ^{1+ε}`,
+`n ≥ n₀(d,μ)`, the eligibility/scale clause on `δ`-large subsets
+(manuscript `s(δn)⁻¹ = o(γ)`), the scale/gap thresholds of §7 (all of the
+form "`n` large relative to `μ, δ, γ`" in the manuscript hierarchy), and the
+absorption numerics for `η ∈ [μ, μ^τ]`. -/
+
+/-- Every additive-monoid hom `(Fin d → ℤ) →+ ℤ` is the integer functional of
+its coefficient vector `i ↦ lam (Pi.single i 1)`. -/
+theorem addMonoidHom_eq_intFunctional {d : ℕ} (lam : (Fin d → ℤ) →+ ℤ)
+    (v : Fin d → ℤ) :
+    lam v = intFunctional (fun i => lam (Pi.single i 1)) v := by
+  rw [intFunctional_apply]
+  have hv : v = ∑ i, Pi.single i (v i) := (Finset.univ_sum_single v).symm
+  calc lam v = lam (∑ i, Pi.single i (v i)) := by rw [← hv]
+    _ = ∑ i, lam (Pi.single i (v i)) := map_sum lam _ _
+    _ = ∑ i, lam (Pi.single i 1) * v i := by
+        refine Finset.sum_congr rfl fun i _ => ?_
+        have h1 : Pi.single i (v i) =
+            v i • (Pi.single i 1 : Fin d → ℤ) := by
+          rw [← Pi.single_smul, smul_eq_mul, mul_one]
+        rw [h1, map_zsmul, smul_eq_mul]
+        ring
+
+/-- **Core nonemptiness.**  Once the progression occupies a `γ`-fraction of the
+box and `γ|B| > 1`, the progression has at least two points; since the
+`cs`-dilate injects (translated) into `subsetSums C₀`, the core `C₀` cannot be
+empty. -/
+theorem one_le_core_card {d : ℕ} {β : ℝ} (pkg : Package d β)
+    {C : Finset (Fin d → ℤ)} {M : Fin d → ℕ} (hE : Eligible β pkg.m₀ C M)
+    (hcs1 : 1 ≤ pkg.c * External.structureScale C.card) {γ : ℝ}
+    (hγB : 1 < γ * ((coordinateBox M).card : ℝ))
+    (hPlow : γ * ((coordinateBox M).card : ℝ) ≤
+      ((pkg.out C M hE).P.carrier.card : ℝ)) :
+    1 ≤ (pkg.out C M hE).C₀.card := by
+  classical
+  set o := pkg.out C M hE with ho
+  by_contra hc0
+  have hC₀e : o.C₀ = ∅ := Finset.card_eq_zero.mp (by omega)
+  have hsub1 : subsetSums o.C₀ ⊆ {0} := by
+    intro x hx
+    obtain ⟨S, hS, hsum⟩ := mem_subsetSums.mp hx
+    rw [hC₀e, Finset.subset_empty] at hS
+    rw [Finset.mem_singleton, ← hsum, hS, Finset.sum_empty]
+  have hcar2 : 2 ≤ o.P.carrier.card := by
+    have h1 : (1 : ℝ) < (o.P.carrier.card : ℝ) := lt_of_lt_of_le hγB hPlow
+    exact_mod_cast Nat.lt_iff_add_one_le.mp (by exact_mod_cast h1)
+  have hcarsub : o.P.carrier ⊆
+      o.P.dilatedCarrier (pkg.c * External.structureScale C.card) := by
+    rw [GAP.carrier, GAP.dilatedCarrier]
+    exact Finset.image_subset_image
+      (o.P.coeffBox_subset_dilatedCoeffBox hcs1)
+  have hmap : (o.P.dilatedCarrier
+      (pkg.c * External.structureScale C.card)).card ≤
+      (subsetSums o.C₀).card := by
+    refine Finset.card_le_card_of_injOn (fun z => o.q + z)
+      (fun z hz => o.incl z hz) ?_
+    intro z₁ _ z₂ _ hz
+    exact add_left_cancel hz
+  have hone : (subsetSums o.C₀).card ≤ 1 :=
+    le_trans (Finset.card_le_card hsub1) (by simp)
+  have := le_trans (Finset.card_le_card hcarsub) hmap
+  omega
+
+/-- **Stage span** (`lem:projective-span` at the stage level): an unshiftedly
+irreducible eligible stage set spans `ℝ^d` once the scale product clears the
+`6^d` threshold and the progression fraction exceeds one point. -/
+theorem stage_span_of_thresholds {d : ℕ} {β : ℝ} (pkg : Package d β)
+    (hd : 1 ≤ d) {V : Finset (Fin d → ℤ)} {M : Fin d → ℕ} {δ γ : ℝ}
+    (hirr : UnshiftedIrreducible pkg δ γ V M)
+    (hE : Eligible β pkg.m₀ V M) (hδ1 : δ ≤ 1) (hγ : 0 < γ)
+    (hs : 1 ≤ External.structureScale V.card)
+    (hcs : 1 ≤ pkg.c * External.structureScale V.card)
+    (hγB : 1 < γ * ((coordinateBox M).card : ℝ))
+    (hthresh : (6 : ℝ) ^ d < pkg.c ^ d *
+      (External.structureScale V.card * γ)) :
+    integerRealSpan V = ⊤ := by
+  obtain ⟨he, hPlow⟩ := hirr.self hδ1 (Nat.cast_nonneg _) hE
+  exact projective_span_package hd pkg hE hγ he hs hcs
+    (one_le_core_card pkg hE hcs hγB hPlow) hPlow hthresh
+
+/-- **`IrreducibleIncrement` from numeric thresholds.**  All structural
+clauses of the per-stage supplier (functional form, span, `μ`-convex
+position) are discharged; what remains is the numeric regime listed in the
+section header.  The constants `tau, K, C, μ₀, cw, n₀` are produced by the
+pipeline. -/
+theorem irreducibleIncrement_of_numerics {β : ℝ}
+    (pkgs : ∀ r, Package r β) (eps : ℝ) (heps : 0 < eps) :
+    ∃ (tau K C μ₀ cw : ℕ → ℝ) (n₀ : ℕ → ℝ → ℕ),
+      (∀ d, 0 < tau d ∧ tau d < 1 ∧ 0 < K d ∧ 0 < C d ∧ 0 < μ₀ d ∧
+        0 < cw d) ∧
+      ∀ (ζ₀ ε δ γ ν : ℝ) (n₁ : ℕ), 2 ≤ n₁ →
+      (∀ (X : ℕ) (s : PrepStage X), 1 ≤ X → n₁ ≤ s.V.card →
+        StageIrreducible pkgs δ γ s →
+        ∃ μ : ℝ,
+          0 < μ ∧ μ < 1 ∧ μ < μ₀ s.dim ∧
+          n₀ s.dim μ ≤ s.V.card ∧
+          0 < γ ∧ 0 ≤ δ ∧ δ ≤ μ ^ ((1 : ℝ) + eps) ∧
+          8 ≤ μ * (s.V.card : ℝ) ∧
+          δ * (s.V.card : ℝ) ≤ (s.V.card : ℝ) - 1 ∧
+          (∀ W : Finset (Fin s.dim → ℤ), W ⊆ s.V →
+            δ * (s.V.card : ℝ) ≤ (W.card : ℝ) →
+            Eligible β (pkgs s.dim).m₀ W s.M ∧
+            1 ≤ External.structureScale W.card ∧
+            1 ≤ (pkgs s.dim).c * External.structureScale W.card ∧
+            K s.dim < External.structureScale W.card * γ) ∧
+          1 < γ * ((coordinateBox s.M).card : ℝ) ∧
+          (6 : ℝ) ^ s.dim < (pkgs s.dim).c ^ s.dim *
+            (External.structureScale s.V.card * γ) ∧
+          2 ≤ (pkgs s.dim).c * External.structureScale (s.V.card - 1) ∧
+          (6 : ℝ) ^ s.dim < (pkgs s.dim).c ^ s.dim *
+            (External.structureScale (s.V.card - 1) * γ) ∧
+          Real.sqrt (s.dim * (s.V.card : ℝ)) * 3 ≤
+            (pkgs s.dim).c * External.structureScale (s.V.card - 1) / 2 ∧
+          (12 / min (pkgs s.dim).c 8) ^ s.dim * γ⁻¹ + 1 ≤
+            μ * (s.V.card : ℝ) / 8 ∧
+          0 < μ * (s.V.card : ℝ) / 24 - 1 -
+            ((pkgs s.dim).c⁻¹ * ((s.V.card - 1 : ℕ) : ℝ) /
+                Real.log ((s.V.card - 1 : ℕ) : ℝ) +
+              External.structureScale (s.V.card - 1)) / 2 -
+            2 * (δ * (s.V.card : ℝ)) ∧
+          (12 / min (pkgs s.dim).c 8) ^ s.dim * γ⁻¹ + 1 +
+            (((pkgs s.dim).c⁻¹ * ((s.V.card - 1 : ℕ) : ℝ) /
+                Real.log ((s.V.card - 1 : ℕ) : ℝ) +
+              External.structureScale (s.V.card - 1)) / 2 +
+              External.structureScale (s.V.card - 1)) ≤
+            cw s.dim * γ * (μ * (s.V.card : ℝ) / 24 - 1 -
+              ((pkgs s.dim).c⁻¹ * ((s.V.card - 1 : ℕ) : ℝ) /
+                  Real.log ((s.V.card - 1 : ℕ) : ℝ) +
+                External.structureScale (s.V.card - 1)) / 2 -
+              2 * (δ * (s.V.card : ℝ))) ∧
+          (∀ η : ℝ, μ ≤ η → η ≤ μ ^ tau s.dim →
+            C s.dim * η < 1 ∧
+            (C s.dim * η) ^ (sigma s.dim + ζ₀ - ν) ≤
+              η ^ (((s.dim : ℝ) - 2) / (s.dim : ℝ) + eps) ∧
+            (n₁ : ℝ) ≤ η ^ (((s.dim : ℝ) - 2) / (s.dim : ℝ) + eps) *
+              (s.V.card : ℝ))) →
+      IrreducibleIncrement pkgs ζ₀ ε δ γ ν n₁ := by
+  classical
+  obtain ⟨tau, K₁, C, μ₀, n₀, hpos, hmainIC⟩ :=
+    irreducibleIncrement_of_convexPosition (β := β) pkgs eps heps
+  have hconvAll := fun r : ℕ =>
+    stage_convexPosition_of_thresholds (pkgs (r + 1)) (Nat.le_add_left 1 r)
+  choose cw₀ K₂ hcw₀ hK₂ hconvmain using hconvAll
+  refine ⟨tau, fun d => max (K₁ d) (K₂ (d - 1)), C, μ₀,
+    fun d => cw₀ (d - 1), n₀, ?_, ?_⟩
+  · intro d
+    obtain ⟨h1, h2, h3, h4, h5⟩ := hpos d
+    exact ⟨h1, h2, lt_max_of_lt_left h3, h4, h5, hcw₀ _⟩
+  · intro ζ₀ ε δ γ ν n₁ hn₁ hsupnum
+    refine hmainIC ζ₀ ε δ γ ν n₁ hn₁ ?_
+    intro X s hX hn hirr
+    obtain ⟨d, V, M, lam, hsub, hshell⟩ := s
+    obtain ⟨μ, hμ0, hμ1, hμμ₀, hn₀le, hγ, hδ0, hδμ, hμn8, hδn1, hWsup,
+      hγB, h6dV, h2cs, h6d, hsqrt, hidx8, hgapT, hεκT, habs⟩ :=
+      hsupnum X ⟨d, V, M, lam, hsub, hshell⟩ hX hn hirr
+    rcases d with _ | r
+    · -- Dimension 0: the box has one point, contradicting `n₁ ≥ 2`.
+      exfalso
+      have hbox1 : (coordinateBox M).card = 1 := by
+        rw [card_coordinateBox]
+        simp
+      have hV1 : V.card ≤ 1 := hbox1 ▸ Finset.card_le_card hsub
+      have hncard' : n₁ ≤ V.card := hn
+      omega
+    · -- Dimension `r + 1`.
+      set ℓ : Fin (r + 1) → ℤ := fun i => lam (Pi.single i 1) with hℓ_def
+      have hlam : ∀ v, lam v = intFunctional ℓ v := fun v =>
+        addMonoidHom_eq_intFunctional lam v
+      have hirr' : UnshiftedIrreducible (pkgs (r + 1)) δ γ V M := hirr
+      have hshell' : ShellNonDividing
+          (fun v => (intFunctional ℓ v : ℤ)) X V := by
+        have hfe : (fun v => lam v) = fun v => (intFunctional ℓ v : ℤ) :=
+          funext hlam
+        rwa [hfe] at hshell
+      -- Eligibility and scales of the full stage set.
+      have hδVn : δ * (V.card : ℝ) ≤ (V.card : ℝ) := by linarith
+      obtain ⟨hE_V, hsV, hcsV, _⟩ := hWsup V Finset.Subset.rfl hδVn
+      -- `δ ≤ 1` from the regime.
+      have hδ1 : δ ≤ 1 := by
+        have h1 : μ ^ ((1 : ℝ) + eps) < 1 :=
+          Real.rpow_lt_one hμ0.le hμ1 (by linarith)
+        linarith
+      -- Span of the stage set.
+      have hspan : integerRealSpan V = ⊤ :=
+        stage_span_of_thresholds (pkgs (r + 1)) (Nat.le_add_left 1 r)
+          hirr' hE_V hδ1 hγ hsV hcsV hγB h6dV
+      -- μ-convex position from §7.
+      have hconv : IndexedMuConvexPosition μ
+          (fun v : {x // x ∈ V} => projNorm ℓ v.1) :=
+        hconvmain r ℓ X V M δ γ μ hX hshell' hsub hirr' hγ hδ0 hμ1.le
+          hμn8 hδn1
+          (fun D hDV hDcard =>
+            ⟨(hWsup D hDV hDcard).1,
+              (hWsup D hDV hDcard).2.1,
+              (hWsup D hDV hDcard).2.2.1,
+              lt_of_le_of_lt (le_max_right (K₁ (r + 1)) (K₂ r))
+                (hWsup D hDV hDcard).2.2.2⟩)
+          h2cs hγB h6d hsqrt hidx8 hgapT hεκT
+      exact ⟨ℓ, μ, hlam, hμ0, hμ1, hμμ₀, hn₀le, hγ, hδμ, hspan,
+        (fun W hWV hWcard =>
+          ⟨(hWsup W hWV hWcard).1, (hWsup W hWV hWcard).2.1,
+            (hWsup W hWV hWcard).2.2.1,
+            lt_of_le_of_lt (le_max_left (K₁ (r + 1)) (K₂ r))
+              (hWsup W hWV hWcard).2.2.2⟩),
+        hconv, habs⟩
+
 end Nondividing
