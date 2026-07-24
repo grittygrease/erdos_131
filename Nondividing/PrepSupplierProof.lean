@@ -920,4 +920,74 @@ theorem prep_supplier_step {X : ℕ} {β : ℝ} {pkgs : ∀ r, Package r β}
         _ ≤ ((coordinateBox s.M).card : ℝ) * nP⁻¹ :=
             mul_le_mul_of_nonneg_right h2 (inv_nonneg.mpr hnP0.le)
 
+/-! ## The assembled supplier -/
+
+/-- **Per-cardinality numeric threshold bundle** for `prep_supplier_step`,
+recorded at a stage with `n = |V|`, ambient dimension `d₀` and box
+cardinality `B₀`.  The witnesses are the scale floor `smin`, the up-move
+constant `Cup`, the U-cap driver `T`, and the three caps
+`Ucap/Scap/imax`; the seventeen clauses are exactly the hypotheses of
+`prep_supplier_step`.  All clauses except the ninth (`hn₁out`, the uniform
+output threshold — see `prep_supplier_step`) are the manuscript's
+"`n` sufficiently large" numerics (Manuscript.tex 560–660). -/
+def PrepNumerics {β : ℝ} (pkgs : ∀ r, Package r β) (Dcap : ℕ)
+    (ε δ γ K₀ : ℝ) (n₁ n d₀ B₀ : ℕ) : Prop :=
+  ∃ (smin Cup T : ℝ) (Ucap Scap imax : ℕ),
+    1 ≤ Cup ∧ 1 < T ∧ Cup * T ≤ smin ∧
+    (B₀ : ℝ) < T ^ (Ucap + 1) ∧
+    Cup ^ Ucap * (B₀ : ℝ) < (1 / γ) ^ (Scap + 1) ∧
+    Scap + 2 * Ucap + d₀ ≤ imax ∧
+    d₀ + Ucap ≤ Dcap ∧
+    (n : ℝ) ^ (-ε) ≤ (δ / 2) ^ imax ∧
+    (n₁ : ℝ) ≤ (δ / 2) ^ imax * (n : ℝ) ∧
+    (n : ℝ) ^ (1 - ε) * Cup ^ Ucap ≤ smin ∧
+    γ ≤ (δ / 2) ^ K₀ ∧
+    Cup ≤ (δ / 2) ^ (2 * K₀) * smin ∧
+    (∀ m : ℕ, δ * ((δ / 2) ^ imax * (n : ℝ)) ≤ (m : ℝ) →
+      1 ≤ structureScale m ∧ smin ≤ structureScale m) ∧
+    (∀ r, r ≤ Dcap → 1 ≤ (pkgs r).c * smin) ∧
+    (∀ r, r ≤ Dcap → ((3 : ℝ) * max 1 (pkgs r).c⁻¹) ^ (pkgs r).D ≤ Cup) ∧
+    (∀ r, r ≤ Dcap →
+      (pkgs r).c⁻¹ ≤ δ / 2 *
+        Real.log (δ * ((δ / 2) ^ imax * (n : ℝ)))) ∧
+    Real.exp 1 ≤ δ * ((δ / 2) ^ imax * (n : ℝ))
+
+/-- **The preprocessing supplier from the numeric bundle.**  Given
+
+* the sharp down-move box estimate `hdown1`
+  (`TODO(orchestrator)`: the manuscript only proves `|B'| ≪ C·|B|` for a
+  down identification, cf. `dimension_move`; `PrepSupplier`'s down branch
+  demands the clean `|B'| ≤ |B|`), and
+* the numeric bundle `hnum` at every excessive-stage datum
+  (all clauses are the manuscript's large-`n` numerics except the uniform
+  output threshold `n₁ ≤ (δ/2)^{imax}·n`, cf. `prep_supplier_step`),
+
+the full `PrepSupplier` predicate holds: the E1 one-step lemma
+(`prep_step`) supplies the moves, and the invariant descent over good
+chains closes the eligibility/cutoff/γ-power accounting. -/
+theorem prepSupplier_of_numerics {β : ℝ} (pkgs : ∀ r, Package r β)
+    (Dcap : ℕ) (ζ₀ ε δ γ K₀ : ℝ) (n₁ : ℕ)
+    (hζ₀ : 0 < ζ₀) (hδ0 : 0 < δ) (hδ1 : δ ≤ 1) (hγ0 : 0 < γ) (hγ1 : γ < 1)
+    (hK₀ : 0 ≤ K₀)
+    (hdown1 : ∀ (X : ℕ) (C : ℝ) (x y : PrepStage X),
+      PrepMove pkgs δ γ C x y → y.dim < x.dim →
+      (coordinateBox y.M).card ≤ (coordinateBox x.M).card)
+    (hnum : ∀ n d₀ B₀ : ℕ, n₁ ≤ n →
+      (B₀ : ℝ) ^ (sigma d₀ + ζ₀) < (n : ℝ) → n ≤ B₀ → 1 ≤ d₀ →
+      (d₀ : ℝ) ≤ 2 / ζ₀ →
+      PrepNumerics pkgs Dcap ε δ γ K₀ n₁ n d₀ B₀) :
+    PrepSupplier pkgs Dcap ζ₀ ε δ γ K₀ n₁ := by
+  intro X s _hX hbad hn
+  obtain ⟨C, _hC0, hCstep⟩ := prep_step (X := X) pkgs Dcap
+  obtain ⟨smin, Cup, T, Ucap, Scap, imax,
+    hCup, hT, hsminT, hUcapT, hScapγ, himax, hdimD, hρε, hn₁out, hupbox,
+    hγK₀, hsminK₀, hscale, hcsmin, hCupB, hdel, hexp1⟩ :=
+    hnum s.V.card s.dim (coordinateBox s.M).card hn hbad
+      (stage_card_le_box s) (hbad.one_le_dim hζ₀.le)
+      (hbad.dim_cast_le hζ₀)
+  exact prep_supplier_step Dcap s hζ₀ hδ0 hδ1 hγ0 hγ1 hK₀ hbad
+    hCup hT hsminT hUcapT hScapγ himax hdimD hρε hn₁out hupbox
+    hγK₀ hsminK₀ hscale hcsmin hCupB hdel hexp1 (hdown1 X C)
+    (fun t h1 h2 h3 => hCstep δ γ t h1 h2 h3)
+
 end Nondividing
