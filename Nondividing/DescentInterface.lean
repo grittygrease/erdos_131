@@ -799,4 +799,265 @@ theorem down_step_facts {D : ℕ} {ζ₀ Δ c ε Cdown : ℝ} {n₁ : ℕ}
         rw [mul_comm, Real.rpow_mul (by linarith), hexact]
     _ ≤ (s'.V.card : ℝ) := hcard
 
+/-! ## The potential-carrying descent driver
+
+`no_excessive_of_rawStep'`: from the primed one-step data, **no excessive
+stage of large cardinality exists**.  The lexicographic measure is
+`(excessBudget, |box|)`; the cardinality floor is carried by the invariant
+`Φ(s) ≥ n₀^{e(budget)}` with `e(b) = ν·θ^{B₀−b}`, `θ = ν(1−ε)`: dimension
+moves lose exactly a `θ`-power (retention `|V'| ≥ |V|^{1−ε}` then potential
+regeneration `Φ' ≥ |V'|^ν`), matched by the budget's strict drop
+(`e(b)·θ = e(b−1)`); same-dimensional moves keep the potential
+(`descentPotential_mono_sameDim`). -/
+
+theorem no_excessive_of_rawStep' {D : ℕ} {ζ₀ ε ν Cdown K₀ cstar ε₀ Δ : ℝ}
+    {m : ℕ}
+    (hζ₀ : 0 < ζ₀) (hζ₀45 : ζ₀ < 4 / 5)
+    (hν0 : 0 < ν) (hνζ : ν ≤ ζ₀) (hK₀ : 5 ≤ K₀)
+    (hε : 0 < ε) (hε1 : ε < 1) (hεε₀ : ε < ε₀) (hεc : ε ≤ cstar / 4)
+    (hεΔ : ε ≤ Δ / 8)
+    (hcstar : 0 < cstar) (hΔ : 0 < Δ) (hD : 2 ≤ D)
+    (hDcap : 2 / ζ₀ ≤ (D : ℝ))
+    (hgap : ∀ r, 2 ≤ r → r ≤ D → sigma (r - 1) + Δ ≤ sigma r)
+    (hnum : ∀ (d e : ℕ), 1 ≤ d → d < e → e ≤ D →
+      ∀ ζ : ℝ, ζ₀ ≤ ζ → ζ ≤ 1 - sigma d →
+        ∀ ε' : ℝ, 0 < ε' → ε' < ε₀ →
+          (sigma e + ζ) * (1 / (sigma d + ζ) - (1 - ε') * ((e : ℝ) - d)) ≤
+            1 - cstar)
+    (hCdown : 1 ≤ Cdown)
+    (habs : Cdown ^ 2 ≤ (m : ℝ) ^ min (cstar / 10) (Δ / 8))
+    (hraw : RawStep' D ζ₀ ε ν Cdown K₀ m)
+    (n₀ : ℕ) (hn₀1 : 1 ≤ n₀)
+    (hfloor : ((max m 2 : ℕ) : ℝ) ≤ (n₀ : ℝ) ^
+      (ν * (ν * (1 - ε)) ^ (⌊1 / min (cstar / 10) (Δ / 8)⌋₊) * (1 - ε))) :
+    ∀ (X : ℕ) (s : PrepStage X), 1 ≤ X → ExcessiveStage ζ₀ s →
+      n₀ ≤ s.V.card → False := by
+  classical
+  set cg : ℝ := min (cstar / 10) (Δ / 8) with hcgdef
+  have hcg : 0 < cg := lt_min (by positivity) (by positivity)
+  have hcgΔ : cg ≤ Δ / 8 := min_le_right _ _
+  have hcgstar : cg ≤ cstar / 10 := min_le_left _ _
+  set θ : ℝ := ν * (1 - ε) with hθdef
+  have hθ0 : 0 < θ := by
+    rw [hθdef]; exact mul_pos hν0 (by linarith)
+  have hθ1 : θ ≤ 1 := by
+    rw [hθdef]
+    have hν1 : ν ≤ 1 := by linarith
+    nlinarith
+  set B₀ : ℕ := ⌊1 / cg⌋₊ with hB₀def
+  set e : ℕ → ℝ := fun b => ν * θ ^ (B₀ - b) with hedef
+  have he_pos : ∀ b, 0 < e b := fun b => mul_pos hν0 (pow_pos hθ0 _)
+  have he_le_ν : ∀ b, e b ≤ ν := by
+    intro b
+    rw [hedef]
+    calc ν * θ ^ (B₀ - b) ≤ ν * 1 :=
+          mul_le_mul_of_nonneg_left (pow_le_one₀ hθ0.le hθ1) hν0.le
+      _ = ν := mul_one ν
+  have he_mono : ∀ {b b' : ℕ}, b' ≤ b → e b' ≤ e b := by
+    intro b b' hbb
+    rw [hedef]
+    exact mul_le_mul_of_nonneg_left
+      (pow_le_pow_of_le_one hθ0.le hθ1 (by omega)) hν0.le
+  set N : ℝ := (n₀ : ℝ) with hNdef
+  have hN1 : (1 : ℝ) ≤ N := by rw [hNdef]; exact_mod_cast hn₀1
+  have hN0 : (0 : ℝ) < N := by linarith
+  set E : ℝ := ν * θ ^ B₀ * (1 - ε) with hEdef
+  have hEe0 : E = e 0 * (1 - ε) := by rw [hEdef, hedef]; norm_num
+  have hE_le : ∀ b, E ≤ e b := by
+    intro b
+    have h1 : e 0 * (1 - ε) ≤ e 0 * 1 :=
+      mul_le_mul_of_nonneg_left (by linarith) (he_pos 0).le
+    rw [hEe0]
+    calc e 0 * (1 - ε) ≤ e 0 := by linarith
+      _ ≤ e b := he_mono (Nat.zero_le b)
+  have hfloorE : ((max m 2 : ℕ) : ℝ) ≤ N ^ E := by rw [hNdef]; exact hfloor
+  -- Budget is uniformly bounded at excessive stages.
+  have hbudget_le : ∀ {Y : ℕ} (t : PrepStage Y), ExcessiveStage ζ₀ t →
+      excessBudget cg t ≤ B₀ := by
+    intro Y t hbad
+    have hζpos : 0 < stageExcess t := by
+      have := hbad.zeta_lt_stageExcess hζ₀.le
+      linarith
+    apply Nat.floor_mono
+    rw [div_le_div_iff_of_pos_right hcg]
+    linarith
+  -- The main descent.
+  intro X s hX hbad hn
+  refine descend_lex
+    (α := Σ Y : ℕ, PrepStage Y)
+    (fun p => 1 ≤ p.1 ∧ ExcessiveStage ζ₀ p.2 ∧
+      N ^ e (excessBudget cg p.2) ≤ descentPotential ζ₀ ν p.2)
+    (fun p => excessBudget cg p.2)
+    (fun p => (coordinateBox p.2.M).card)
+    ?_ ⟨X, s⟩ ⟨hX, hbad, ?_⟩
+  · -- The descent step.
+    rintro ⟨Y, t⟩ ⟨hY, hbadt, hinv⟩
+    -- Cardinality floor at the current stage.
+    have hθt : 0 ≤ sigma t.dim + ζ₀ - ν := by
+      have := sigma_pos t.dim
+      linarith
+    have hcardfloor : N ^ E ≤ (t.V.card : ℝ) := by
+      calc N ^ E ≤ N ^ e (excessBudget cg t) :=
+            Real.rpow_le_rpow_of_exponent_le hN1 (hE_le _)
+        _ ≤ descentPotential ζ₀ ν t := hinv
+        _ ≤ (t.V.card : ℝ) := descentPotential_le_card ζ₀ ν t hθt
+    have hm_le : m ≤ t.V.card := by
+      have h1 : ((max m 2 : ℕ) : ℝ) ≤ (t.V.card : ℝ) :=
+        le_trans hfloorE hcardfloor
+      have h2 : (max m 2 : ℕ) ≤ t.V.card := by exact_mod_cast h1
+      omega
+    have h2_le : 2 ≤ t.V.card := by
+      have h1 : ((max m 2 : ℕ) : ℝ) ≤ (t.V.card : ℝ) :=
+        le_trans hfloorE hcardfloor
+      have h2 : (max m 2 : ℕ) ≤ t.V.card := by exact_mod_cast h1
+      omega
+    have htpos : (0 : ℝ) < (t.V.card : ℝ) := by
+      have : (0 : ℕ) < t.V.card := by omega
+      exact_mod_cast this
+    have ht1R : (1 : ℝ) ≤ (t.V.card : ℝ) := by
+      have : (1 : ℕ) ≤ t.V.card := by omega
+      exact_mod_cast this
+    -- Apply the raw step.
+    obtain ⟨t', hcase⟩ := hraw Y t hY hbadt hm_le
+    -- Common dimension-move processing.
+    have hdimmove : ∀ (hcard : (t.V.card : ℝ) ^ (1 - ε) ≤ (t'.V.card : ℝ)),
+        (2 : ℕ) ≤ t'.V.card ∧
+        (ExcessiveStage ζ₀ t' →
+          N ^ (e (excessBudget cg t) * θ) ≤ descentPotential ζ₀ ν t') := by
+      intro hcard
+      have hb := hbudget_le t hbadt
+      have hV'floor : N ^ (e (excessBudget cg t) * (1 - ε)) ≤
+          (t'.V.card : ℝ) := by
+        have h1 : N ^ e (excessBudget cg t) ≤ (t.V.card : ℝ) :=
+          le_trans hinv (descentPotential_le_card ζ₀ ν t hθt)
+        calc N ^ (e (excessBudget cg t) * (1 - ε))
+            = (N ^ e (excessBudget cg t)) ^ (1 - ε) :=
+              Real.rpow_mul hN0.le _ _
+          _ ≤ (t.V.card : ℝ) ^ (1 - ε) :=
+              Real.rpow_le_rpow (Real.rpow_nonneg hN0.le _) h1 (by linarith)
+          _ ≤ (t'.V.card : ℝ) := hcard
+      constructor
+      · -- `|V'| ≥ 2`.
+        have h2 : (2 : ℝ) ≤ N ^ (e (excessBudget cg t) * (1 - ε)) := by
+          have hEb : E ≤ e (excessBudget cg t) * (1 - ε) := by
+            rw [hEe0]
+            exact mul_le_mul_of_nonneg_right (he_mono (Nat.zero_le _))
+              (by linarith)
+          calc (2 : ℝ) ≤ ((max m 2 : ℕ) : ℝ) := by
+                have : (2 : ℕ) ≤ max m 2 := le_max_right _ _
+                exact_mod_cast this
+            _ ≤ N ^ E := hfloorE
+            _ ≤ N ^ (e (excessBudget cg t) * (1 - ε)) :=
+                Real.rpow_le_rpow_of_exponent_le hN1 hEb
+        have h3 : (2 : ℝ) ≤ (t'.V.card : ℝ) := le_trans h2 hV'floor
+        exact_mod_cast h3
+      · -- Potential regeneration.
+        intro hbad'
+        have hregen := rpow_le_descentPotential hζ₀ hν0.le hbad'
+        calc N ^ (e (excessBudget cg t) * θ)
+            = N ^ (e (excessBudget cg t) * (1 - ε) * ν) := by
+              rw [hθdef]; ring_nf
+          _ = (N ^ (e (excessBudget cg t) * (1 - ε))) ^ ν :=
+              Real.rpow_mul hN0.le _ _
+          _ ≤ (t'.V.card : ℝ) ^ ν :=
+              Real.rpow_le_rpow (Real.rpow_nonneg hN0.le _) hV'floor hν0.le
+          _ ≤ descentPotential ζ₀ ν t' := hregen
+    -- The budget-drop exponent identity.
+    have hexp_drop : ∀ b : ℕ, 1 ≤ b → b ≤ B₀ →
+        e b * θ = e (b - 1) := by
+      intro b hb1 hbB
+      rw [hedef]
+      have harith : B₀ - (b - 1) = (B₀ - b) + 1 := by omega
+      simp only []
+      rw [harith, pow_succ]
+      ring
+    rcases hcase with ⟨hlt, hDle, hcard, hboxle⟩ | ⟨hlt, hcard, hboxle⟩ |
+      ⟨heq, η, ρ, hη0, hη1, hρ0, hρ1, hcard, hbox⟩
+    · -- UP-MOVE.
+      obtain ⟨hV'2, hregen⟩ := hdimmove hcard
+      have hcount := up_step_facts hζ₀ hcstar hnum hbadt hε (by linarith)
+        hεε₀ hεc hV'2 hlt hDle hcard hboxle
+      have hbox2' : 2 ≤ (coordinateBox t'.M).card :=
+        le_trans hV'2 (stage_card_le_box t')
+      have hB'1 : (1 : ℝ) ≤ ((coordinateBox t'.M).card : ℝ) := by
+        have : (1 : ℕ) ≤ (coordinateBox t'.M).card := by omega
+        exact_mod_cast this
+      have hζlt : ζ₀ < stageExcess t := hbadt.zeta_lt_stageExcess hζ₀.le
+      have hbad' : ExcessiveStage ζ₀ t' := by
+        unfold ExcessiveStage
+        calc ((coordinateBox t'.M).card : ℝ) ^ (sigma t'.dim + ζ₀)
+            ≤ ((coordinateBox t'.M).card : ℝ) ^
+                (sigma t'.dim + stageExcess t + cstar / 10) :=
+              Real.rpow_le_rpow_of_exponent_le hB'1 (by linarith)
+          _ < (t'.V.card : ℝ) := hcount
+      have hgain : stageExcess t + cg ≤ stageExcess t' := by
+        have h1 := lt_stageExcess_of_rpow_lt hbox2' hcount
+        have h2 : stageExcess t + cstar / 10 < stageExcess t' := by
+          linarith
+        linarith
+      have hbdrop : excessBudget cg t' < excessBudget cg t :=
+        excessBudget_lt_of_gain hcg
+          (le_trans (hbad'.stageExcess_le_one hζ₀.le) (by norm_num)) hgain
+      have hb1 : 1 ≤ excessBudget cg t := by omega
+      have hbB₀ := hbudget_le t hbadt
+      refine ⟨⟨Y, t'⟩, ⟨hY, hbad', ?_⟩, Or.inl hbdrop⟩
+      calc N ^ e (excessBudget cg t')
+          ≤ N ^ e (excessBudget cg t - 1) :=
+            Real.rpow_le_rpow_of_exponent_le hN1 (he_mono (by omega))
+        _ = N ^ (e (excessBudget cg t) * θ) := by
+            rw [hexp_drop _ hb1 hbB₀]
+        _ ≤ descentPotential ζ₀ ν t' := hregen hbad'
+    · -- DOWN-MOVE.
+      obtain ⟨hV'2, hregen⟩ := hdimmove hcard
+      have hcount := down_step_facts hζ₀ hD hDcap hΔ hgap hbadt hcg hcgΔ
+        hε hεΔ hCdown (by rw [hcgdef] at habs ⊢; exact habs) hm_le hV'2
+        hlt hcard hboxle
+      have hbox2' : 2 ≤ (coordinateBox t'.M).card :=
+        le_trans hV'2 (stage_card_le_box t')
+      have hB'1 : (1 : ℝ) ≤ ((coordinateBox t'.M).card : ℝ) := by
+        have : (1 : ℕ) ≤ (coordinateBox t'.M).card := by omega
+        exact_mod_cast this
+      have hζlt : ζ₀ < stageExcess t := hbadt.zeta_lt_stageExcess hζ₀.le
+      have hbad' : ExcessiveStage ζ₀ t' := by
+        unfold ExcessiveStage
+        calc ((coordinateBox t'.M).card : ℝ) ^ (sigma t'.dim + ζ₀)
+            ≤ ((coordinateBox t'.M).card : ℝ) ^
+                (sigma t'.dim + stageExcess t + cg) :=
+              Real.rpow_le_rpow_of_exponent_le hB'1 (by linarith)
+          _ < (t'.V.card : ℝ) := hcount
+      have hgain : stageExcess t + cg ≤ stageExcess t' := by
+        have h1 := lt_stageExcess_of_rpow_lt hbox2' hcount
+        linarith
+      have hbdrop : excessBudget cg t' < excessBudget cg t :=
+        excessBudget_lt_of_gain hcg
+          (le_trans (hbad'.stageExcess_le_one hζ₀.le) (by norm_num)) hgain
+      have hb1 : 1 ≤ excessBudget cg t := by omega
+      have hbB₀ := hbudget_le t hbadt
+      refine ⟨⟨Y, t'⟩, ⟨hY, hbad', ?_⟩, Or.inl hbdrop⟩
+      calc N ^ e (excessBudget cg t')
+          ≤ N ^ e (excessBudget cg t - 1) :=
+            Real.rpow_le_rpow_of_exponent_le hN1 (he_mono (by omega))
+        _ = N ^ (e (excessBudget cg t) * θ) := by
+            rw [hexp_drop _ hb1 hbB₀]
+        _ ≤ descentPotential ζ₀ ν t' := hregen hbad'
+    · -- SAME-DIMENSIONAL MOVE.
+      obtain ⟨hbad', hmono, hboxlt, hΦmono⟩ := sameDim_step_facts hζ₀ hν0
+        hνζ hK₀ hbadt heq hη0 hη1 hρ0 hρ1 hcard hbox
+      have hble : excessBudget cg t' ≤ excessBudget cg t :=
+        excessBudget_le_of_mono hcg hmono
+      refine ⟨⟨Y, t'⟩, ⟨hY, hbad', ?_⟩, Or.inr ⟨hble, hboxlt⟩⟩
+      calc N ^ e (excessBudget cg t')
+          ≤ N ^ e (excessBudget cg t) :=
+            Real.rpow_le_rpow_of_exponent_le hN1 (he_mono hble)
+        _ ≤ descentPotential ζ₀ ν t := hinv
+        _ ≤ descentPotential ζ₀ ν t' := hΦmono
+  · -- The initial invariant.
+    have hregen := rpow_le_descentPotential hζ₀ hν0.le hbad
+    have hcardN : N ≤ (s.V.card : ℝ) := by rw [hNdef]; exact_mod_cast hn
+    calc N ^ e (excessBudget cg s)
+        ≤ N ^ ν := Real.rpow_le_rpow_of_exponent_le hN1 (he_le_ν _)
+      _ ≤ (s.V.card : ℝ) ^ ν :=
+          Real.rpow_le_rpow hN0.le hcardN hν0.le
+      _ ≤ descentPotential ζ₀ ν s := hregen
+
 end Nondividing
