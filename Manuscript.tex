@@ -55,11 +55,8 @@
 {A Projective Approach to Non-Dividing Sets}
 
 % Replace ``Anonymous'' by the final author information for a non-anonymous submission.
-\author{Anonymous}
+\author{Theofil Xeff}
 \date{}
-\subjclass[2020]{11B30, 11B75, 52C07}
-\keywords{non-dividing sets, subset sums, generalized arithmetic progressions,
-convex position, density increment, formal verification}
 
 \begin{document}
 
@@ -127,55 +124,60 @@ One has
 
 \subsection{Outline of the proof}
 
-A dyadic pigeonhole argument places a positive proportion (up to a
-logarithmic factor) of a non-dividing set in a shell $X\le a\le2X$.  We
-work throughout with the following $d$-dimensional generalization: a set
-$V$ in a symmetric box $B\subseteq\Z^d$, together with an integer linear
-functional $\lambda$ taking values in $[X,2X]$ on $V$, such that
-$\lambda(a)$ never divides $\sum_{v\in S}\lambda(v)$ for $a\in V$ and
-nonempty $S\subseteq V\setminus\{a\}$.  The point of this formulation is
-that the forbidden relations involve only the values of $\lambda$, so
-they are preserved exactly by two operations: passing to subsets, and
-applying the coefficient identification of a proper homogeneous
-generalized arithmetic progression (GAP) containing $V$.
+Every non-dividing set is non-averaging: an averaging relation
+$\sum_{s\in S}s=|S|a$ is already forbidden modulo $a$.  The previous
+upper bound $F(N)\le N^{1/4+o(1)}$ came from this observation alone,
+combined with the sharp non-averaging theorem of
+Pham--Zakharov~\cite{PhamZakharov}.  Since the exponent $1/4$ is best
+possible for non-averaging sets, any further progress must use the
+forbidden divisibilities in an essential way, and the difficulty is
+that divisibility, unlike averaging, is destroyed by translation.
 
-The homogeneous subset-sum structure theorem of
-Conlon--Fox--Pham~\cite{CFPHomogeneous}, in the form recorded by
-Pham--Zakharov~\cite{PhamZakharov}, places such a set in a proper GAP
-whose subset sums fill a large translated copy of the GAP.  Iterating
-coefficient identifications (Section~\ref{sec:technical-package})
-produces an \emph{irreducible} pair $(V,B)$: every large subset has full
-structural dimension and a structural GAP occupying a fixed proportion of
-the box.
+Our starting point is that divisibility survives a different family of
+operations.  A dyadic pigeonhole places a large part of the set in a
+shell $X\le a\le2X$, at the cost of a logarithmic factor.  We then work
+in $\Z^d$, with a set $V$ in a symmetric box $B$ and an integer linear
+functional $\lambda$ taking values in $[X,2X]$ on $V$, and forbid
+$\lambda(a)\mid\sum_{v\in S}\lambda(v)$ for $a\in V$ and nonempty
+$S\subseteq V\setminus\{a\}$.  Because these relations see only the
+values of $\lambda$, they are preserved exactly when we pass to a subset
+or apply the coefficient identification of a proper homogeneous
+generalized arithmetic progression (GAP) containing $V$; these two
+operations turn out to be all we need.
 
-The new ingredient is the projective normalization
-$\pi(v)=v/\lambda(v)$, which maps the shell into the affine hyperplane
-$\{\lambda=1\}$ of dimension $d-1$.  We show
-(Theorem~\ref{thm:projective-convexity}) that for an irreducible pair the
-family $\pi(V)$ must be in approximate convex position.  If not, a
-duality argument gives a bounded positive representation
-$Ta=\sum_{v\ne a}\theta_vv$ of a multiple of some $a\in V$ by the
-remaining elements.  Zonotope rounding converts this representation into
-genuine subset sums filling a \emph{tube}: all points of a small-index
-structural lattice in a box around $Ta$.  The index bound places a
-positive multiple $m_0a$ inside the tube, so $m_0\lambda(a)$ is a subset
-sum of the values $\lambda(v)$, $v\ne a$ --- precisely a forbidden
-relation.
+The structural input is the homogeneous subset-sum theorem of
+Conlon--Fox--Pham~\cite{CFPHomogeneous}, in the form recorded in
+\cite{PhamZakharov}, which places $V$ in a proper GAP whose subset sums
+fill a large translated copy of that GAP.  Iterating coefficient
+identifications (Section~\ref{sec:technical-package}), we may assume the
+pair $(V,B)$ is \emph{irreducible}: every large subset of $V$ has full
+structural dimension, and its structural GAP occupies a fixed proportion
+of the box.
 
-Approximate convex position feeds the density-increment engine of
-Pham--Zakharov: their convex-density lemma, applied in the
-$(d-1)$-dimensional hyperplane, produces a small cap containing many
-points, and lifting the cap back to the lattice
-(Lemma~\ref{lem:cap-lifting}) shrinks the box by the cap volume.  Because
-the convex geometry now lives in dimension $d-1$ rather than $d$, the
-critical exponent is the sharp non-averaging exponent one dimension
-lower: with $\sigma_1=\frac15$, $\sigma_2=\frac14$ and
-$\sigma_d=\frac{d-2}d$ for $d\ge3$, the iteration
-(Theorem~\ref{thm:projective-main}) shows
-$|V|\le|B|^{\sigma_d+o(1)}$, and the case $d=1$ gives
-Theorem~\ref{thm:main}.  We also note that every non-dividing set is
-non-averaging: an averaging relation $\sum_{s\in S}s=|S|a$ is already
-forbidden modulo $a$.
+The new idea enters here.  Normalizing $\pi(v)=v/\lambda(v)$ sends the
+shell into the affine hyperplane $\{\lambda=1\}$, of dimension $d-1$,
+and we prove (Theorem~\ref{thm:projective-convexity}) that for an
+irreducible pair the projected family $\pi(V)$ must be in approximate
+convex position.  Suppose it is not.  A duality argument produces some
+$a\in V$ and a bounded positive representation
+$Ta=\sum_{v\ne a}\theta_vv$ by the remaining elements; zonotope rounding
+converts this identity into genuine subset sums, which fill a
+\emph{tube}: every point of a small-index structural lattice in a box
+around $Ta$.  The index is small enough that some positive multiple
+$m_0a$ lands in the tube, making $m_0\lambda(a)$ a subset sum of the
+values $\lambda(v)$ with $v\ne a$ (exactly a forbidden relation).
+
+The rest is a density increment in the style of Pham--Zakharov, run one
+dimension lower.  Their convex-density lemma, applied in the hyperplane,
+finds a small cap containing many of the points $\pi(v)$, and lifting
+the cap back to the lattice (Lemma~\ref{lem:cap-lifting}) shrinks the
+box by the volume of the cap.  This gain of one dimension is what moves
+the exponent: setting $\sigma_1=\frac15$, $\sigma_2=\frac14$ and
+$\sigma_d=\frac{d-2}d$ for $d\ge3$, so that for $d\ge2$ the number
+$\sigma_d$ is the sharp non-averaging exponent in dimension $d-1$, the
+iteration (Theorem~\ref{thm:projective-main}) shows that a shell
+non-dividing set satisfies $|V|\le|B|^{\sigma_d+o(1)}$.  The case $d=1$
+is Theorem~\ref{thm:main}.
 
 \subsection{Formal verification}
 \label{sec:formalization}
@@ -2050,7 +2052,7 @@ Cambridge University Press, Cambridge, 2014.
 % ancillary-files mechanism).
 \bibitem{Formalization}
 Lean~4 formalization of the present paper,
-\url{https://github.com/felixhoff/erdos_131}.
+\url{https://github.com/theofilxeff/erdos_131}.
 
 \end{thebibliography}
 
