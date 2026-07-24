@@ -768,4 +768,273 @@ theorem descentSupplier_of_rawStep
   exact ⟨c, n₁, hc,
     descentStep_of_countingStep hζ₀ hc.le hn₁ (hmain ε hε hεle n₁ hn₁ hraw)⟩
 
+/-! ## Splitting `RawStep`: preprocessing supplier + irreducible increment
+
+`RawStep` is the manuscript's one-step analysis.  It decomposes into the
+*preprocessing* half (`unshifted_preprocessing_toward`: reach an unshiftedly
+`(δ,γ)`-irreducible stage, with the three-case counting bookkeeping) and the
+*pipeline* half (projective convexity + weighted density + cap lifting at the
+irreducible stage).  Here we define the two supplier predicates and prove the
+composition, including the manuscript's same-dimensional ratio computation
+`|A'|/|B'|^p ≥ η^{a−p}·ρ^{1−K₀p} > 1` (Manuscript.tex 1993–2016). -/
+
+/-- **Same-dimensional ratio numerology** (Manuscript.tex 1993–2016): from
+`A' ≥ ρ·η^a·n`, `B' ≤ η·ρ^K·B`, `B^p = n` with `a < p`, `Kp ≥ 1`,
+`0 < η < 1`, `0 < ρ ≤ 1`, the new pair strictly beats the old exponent:
+`B'^p < A'`.  (The manuscript's `η^{a−p}ρ^{1−Kp} → ∞` in exact form; the
+implicit constants are absorbed by the supplier.) -/
+theorem sameDim_ratio_lt {n A' B B' η ρ a K p : ℝ}
+    (hB1 : 1 ≤ B) (hn : B ^ p = n) (hp0 : 0 < p)
+    (hη0 : 0 < η) (hη1 : η < 1) (hρ0 : 0 < ρ) (hρ1 : ρ ≤ 1)
+    (hap : a < p) (hKp : 1 ≤ K * p) (hB'0 : 0 ≤ B')
+    (hA' : ρ * η ^ a * n ≤ A') (hB' : B' ≤ η * ρ ^ K * B) :
+    B' ^ p < A' := by
+  have hB0 : (0 : ℝ) < B := lt_of_lt_of_le one_pos hB1
+  have hnpos : 0 < n := hn ▸ Real.rpow_pos_of_pos hB0 p
+  have hηa : 0 < η ^ a := Real.rpow_pos_of_pos hη0 a
+  have hρK : (0 : ℝ) < ρ ^ K := Real.rpow_pos_of_pos hρ0 K
+  have h1 : B' ^ p ≤ (η * ρ ^ K * B) ^ p :=
+    Real.rpow_le_rpow hB'0 hB' hp0.le
+  have h2 : (η * ρ ^ K * B) ^ p = η ^ p * ρ ^ (K * p) * n := by
+    rw [Real.mul_rpow (by positivity) hB0.le, Real.mul_rpow hη0.le hρK.le,
+      ← Real.rpow_mul hρ0.le, hn]
+  have h3 : η ^ p * ρ ^ (K * p) < ρ * η ^ a := by
+    have e1 : η ^ a * η ^ (p - a) = η ^ p := by
+      rw [← Real.rpow_add hη0]; congr 1; ring
+    have e2 : ρ ^ (1 : ℝ) * ρ ^ (K * p - 1) = ρ ^ (K * p) := by
+      rw [← Real.rpow_add hρ0]; congr 1; ring
+    rw [Real.rpow_one] at e2
+    have hη2 : η ^ (p - a) < 1 :=
+      Real.rpow_lt_one hη0.le hη1 (by linarith)
+    have hρ2 : ρ ^ (K * p - 1) ≤ 1 :=
+      Real.rpow_le_one hρ0.le hρ1 (by linarith)
+    have hsmall : η ^ (p - a) * ρ ^ (K * p - 1) < 1 := by
+      have hstep : η ^ (p - a) * ρ ^ (K * p - 1) ≤ η ^ (p - a) * 1 :=
+        mul_le_mul_of_nonneg_left hρ2 (Real.rpow_pos_of_pos hη0 _).le
+      rw [mul_one] at hstep
+      exact lt_of_le_of_lt hstep hη2
+    calc η ^ p * ρ ^ (K * p)
+        = (η ^ a * ρ) * (η ^ (p - a) * ρ ^ (K * p - 1)) := by
+          rw [← e1, ← e2]; ring
+      _ < (η ^ a * ρ) * 1 :=
+          mul_lt_mul_of_pos_left hsmall (by positivity)
+      _ = ρ * η ^ a := by ring
+  calc B' ^ p ≤ η ^ p * ρ ^ (K * p) * n := h1.trans_eq h2
+    _ < ρ * η ^ a * n := mul_lt_mul_of_pos_right h3 hnpos
+    _ ≤ A' := hA'
+
+/-- **Preprocessing supplier** (`TODO(orchestrator)`: discharge from
+`unshifted_preprocessing_toward` + the manuscript's chain numerics,
+Manuscript.tex 560–660/1869–1903).  From an excessive stage, the preprocessing
+iteration reaches a stage `s'` with `|V'| ≥ n₁` and one of:
+
+* **up-move** (`dim < dim' ≤ D`): retention `|V'| ≥ n^{1−ε}` and the box
+  estimate `|B'| ≤ n^{1/(σ_d+ζ) − (1−ε)(dim'−dim)}`;
+* **down-move** (`dim' < dim`): retention `|V'| ≥ n^{1−ε}`, `|B'| ≤ |B|`;
+* **same dimension**: `s'` unshiftedly `(δ,γ)`-irreducible with cardinality
+  ratio `ρ ≥ n^{−ε}` and box decay `|B'| ≤ ρ^{K₀}|B|` (manuscript:
+  `|B̃| ≪ ρ^{K₀}|B|`, constants absorbed). -/
+def PrepSupplier {β : ℝ} (pkgs : ∀ r, Package r β) (D : ℕ)
+    (ζ₀ ε δ γ K₀ : ℝ) (n₁ : ℕ) : Prop :=
+  ∀ (X : ℕ) (s : PrepStage X), 1 ≤ X →
+    ExcessiveStage ζ₀ s → n₁ ≤ s.V.card →
+    ∃ s' : PrepStage X, n₁ ≤ s'.V.card ∧
+      ((s.dim < s'.dim ∧ s'.dim ≤ D ∧
+          (s.V.card : ℝ) ^ (1 - ε) ≤ (s'.V.card : ℝ) ∧
+          ((coordinateBox s'.M).card : ℝ) ≤
+            (s.V.card : ℝ) ^ (1 / (sigma s.dim + stageExcess s) -
+              (1 - ε) * ((s'.dim : ℝ) - (s.dim : ℝ)))) ∨
+        (s'.dim < s.dim ∧
+          (s.V.card : ℝ) ^ (1 - ε) ≤ (s'.V.card : ℝ) ∧
+          (coordinateBox s'.M).card ≤ (coordinateBox s.M).card) ∨
+        (s'.dim = s.dim ∧ StageIrreducible pkgs δ γ s' ∧
+          ∃ ρ : ℝ, 0 < ρ ∧ ρ ≤ 1 ∧
+            (s.V.card : ℝ) ^ (-ε) ≤ ρ ∧
+            ρ * (s.V.card : ℝ) ≤ (s'.V.card : ℝ) ∧
+            ((coordinateBox s'.M).card : ℝ) ≤
+              ρ ^ K₀ * ((coordinateBox s.M).card : ℝ)))
+
+/-- **Irreducible-stage increment** (`TODO(orchestrator)`: discharge from
+`projective_convexity_assembled` + `weighted_density` +
+`cap_lifting_deficient`/`cap_cone_count`, Manuscript.tex 1941–2024).  At an
+unshiftedly `(δ,γ)`-irreducible stage, the projective pipeline yields `s'`
+with `|V'| ≥ n₁` and either
+
+* a **dimension-lowering cap** (`dim' < dim`): `|V'| ≥ |V|^{1−ε}` and
+  `|B'| ≤ |B|`; or
+* a **same-dimensional cap**: a volume ratio `η ∈ (0,1)` with retention
+  `|V'| ≥ η^{σ_d+ζ₀−ν}·|V|` (manuscript: `η^{κ_{d−1}+ε}`, and
+  `κ_{d−1}+ε ≤ σ_d+ζ₀−ν` by the choice of `ε`, `ν`) and box decay
+  `|B'| ≤ η·|B|`. -/
+def IrreducibleIncrement {β : ℝ} (pkgs : ∀ r, Package r β)
+    (ζ₀ ε δ γ ν : ℝ) (n₁ : ℕ) : Prop :=
+  ∀ (X : ℕ) (s : PrepStage X), 1 ≤ X → n₁ ≤ s.V.card →
+    StageIrreducible pkgs δ γ s →
+    ∃ s' : PrepStage X, n₁ ≤ s'.V.card ∧
+      ((s'.dim < s.dim ∧
+          (s.V.card : ℝ) ^ (1 - ε) ≤ (s'.V.card : ℝ) ∧
+          (coordinateBox s'.M).card ≤ (coordinateBox s.M).card) ∨
+        (s'.dim = s.dim ∧ ∃ η : ℝ, 0 < η ∧ η < 1 ∧
+          η ^ (sigma s.dim + ζ₀ - ν) * (s.V.card : ℝ) ≤ (s'.V.card : ℝ) ∧
+          ((coordinateBox s'.M).card : ℝ) ≤
+            η * ((coordinateBox s.M).card : ℝ)))
+
+/-- **Composition: raw step from the two suppliers** (at `2ε`).  The up/down
+preprocessing branches pass through (weakening `1−ε` to `1−2ε`); in the
+same-dimensional branch the increment is applied at the irreducible stage and
+converted by `sameDim_ratio_lt`; a dimension-lowering cap composes the two
+retentions `((n^{1−ε})^{1−ε} ≥ n^{1−2ε})`. -/
+theorem rawStep_of_suppliers {β : ℝ} (pkgs : ∀ r, Package r β) (D : ℕ)
+    {ζ₀ ε δ γ ν K₀ : ℝ} {n₁ : ℕ} (hζ₀ : 0 < ζ₀) (hε : 0 < ε)
+    (hεhalf : ε ≤ 1 / 2) (hν : 0 < ν) (hK₀ : 5 ≤ K₀) (hn₁ : 2 ≤ n₁)
+    (hprep : PrepSupplier pkgs D ζ₀ ε δ γ K₀ n₁)
+    (hinc : IrreducibleIncrement pkgs ζ₀ ε δ γ ν n₁) :
+    RawStep D ζ₀ (2 * ε) n₁ := by
+  intro X s hX hbad hn
+  have hn2 : 2 ≤ s.V.card := le_trans hn₁ hn
+  have hnR : (2 : ℝ) ≤ (s.V.card : ℝ) := by exact_mod_cast hn2
+  have hn1R : (1 : ℝ) ≤ (s.V.card : ℝ) := by linarith
+  have hnpos : (0 : ℝ) < (s.V.card : ℝ) := by linarith
+  have hbox2 : 2 ≤ (coordinateBox s.M).card := hbad.two_le_box hζ₀.le
+  have hB2 : (2 : ℝ) ≤ ((coordinateBox s.M).card : ℝ) := by
+    exact_mod_cast hbox2
+  have hBpos : (0 : ℝ) < ((coordinateBox s.M).card : ℝ) := by linarith
+  obtain ⟨s₁, hcard₁, hcase⟩ := hprep X s hX hbad hn
+  rcases hcase with ⟨hlt, hDle, hcard, hboxle⟩ | ⟨hlt, hcard, hboxle⟩ |
+    ⟨heq, hirr, ρ, hρ0, hρ1, hρlow, hρcard, hρbox⟩
+  · -- UP-MOVE: pass through with `ε ↦ 2ε`.
+    refine ⟨s₁, hcard₁, Or.inl ⟨hlt, hDle, ?_, ?_⟩⟩
+    · calc (s.V.card : ℝ) ^ (1 - 2 * ε)
+          ≤ (s.V.card : ℝ) ^ (1 - ε) :=
+            Real.rpow_le_rpow_of_exponent_le hn1R (by linarith)
+        _ ≤ (s₁.V.card : ℝ) := hcard
+    · refine hboxle.trans (Real.rpow_le_rpow_of_exponent_le hn1R ?_)
+      have hed : (0 : ℝ) ≤ (s₁.dim : ℝ) - (s.dim : ℝ) := by
+        have : (s.dim : ℝ) ≤ (s₁.dim : ℝ) := by exact_mod_cast hlt.le
+        linarith
+      have hmul : (1 - 2 * ε) * ((s₁.dim : ℝ) - (s.dim : ℝ)) ≤
+          (1 - ε) * ((s₁.dim : ℝ) - (s.dim : ℝ)) :=
+        mul_le_mul_of_nonneg_right (by linarith) hed
+      linarith
+  · -- DOWN-MOVE: pass through with `ε ↦ 2ε`.
+    refine ⟨s₁, hcard₁, Or.inr (Or.inl ⟨hlt, ?_, hboxle⟩)⟩
+    calc (s.V.card : ℝ) ^ (1 - 2 * ε)
+        ≤ (s.V.card : ℝ) ^ (1 - ε) :=
+          Real.rpow_le_rpow_of_exponent_le hn1R (by linarith)
+      _ ≤ (s₁.V.card : ℝ) := hcard
+  · -- SAME DIMENSION: apply the increment at the irreducible stage `s₁`.
+    obtain ⟨s₂, hcard₂', hcase₂⟩ := hinc X s₁ hX hcard₁ hirr
+    have hρK1 : ρ ^ K₀ ≤ 1 :=
+      Real.rpow_le_one hρ0.le hρ1 (by linarith)
+    have hñ : (s.V.card : ℝ) ^ (1 - ε) ≤ (s₁.V.card : ℝ) := by
+      have h1 : (s.V.card : ℝ) ^ (1 - ε) =
+          (s.V.card : ℝ) ^ (-ε) * (s.V.card : ℝ) := by
+        rw [show (1 - ε) = -ε + 1 by ring, Real.rpow_add hnpos,
+          Real.rpow_one]
+      rw [h1]
+      calc (s.V.card : ℝ) ^ (-ε) * (s.V.card : ℝ)
+          ≤ ρ * (s.V.card : ℝ) :=
+            mul_le_mul_of_nonneg_right hρlow hnpos.le
+        _ ≤ (s₁.V.card : ℝ) := hρcard
+    rcases hcase₂ with ⟨hlt₂, hcard₂, hbox₂⟩ | ⟨heq₂, η, hη0, hη1, hηcard, hηbox⟩
+    · -- Dimension-lowering cap: RawStep down branch at `2ε`.
+      refine ⟨s₂, hcard₂', Or.inr (Or.inl ⟨?_, ?_, ?_⟩)⟩
+      · omega
+      · have hstep1 : ((s.V.card : ℝ) ^ (1 - ε)) ^ (1 - ε) ≤
+            (s₁.V.card : ℝ) ^ (1 - ε) :=
+          Real.rpow_le_rpow (Real.rpow_nonneg hnpos.le _) hñ (by linarith)
+        have hstep2 : ((s.V.card : ℝ) ^ (1 - ε)) ^ (1 - ε) =
+            (s.V.card : ℝ) ^ ((1 - ε) * (1 - ε)) :=
+          (Real.rpow_mul hnpos.le _ _).symm
+        have hstep3 : (s.V.card : ℝ) ^ (1 - 2 * ε) ≤
+            (s.V.card : ℝ) ^ ((1 - ε) * (1 - ε)) :=
+          Real.rpow_le_rpow_of_exponent_le hn1R (by nlinarith [sq_nonneg ε])
+        calc (s.V.card : ℝ) ^ (1 - 2 * ε)
+            ≤ (s.V.card : ℝ) ^ ((1 - ε) * (1 - ε)) := hstep3
+          _ = ((s.V.card : ℝ) ^ (1 - ε)) ^ (1 - ε) := hstep2.symm
+          _ ≤ (s₁.V.card : ℝ) ^ (1 - ε) := hstep1
+          _ ≤ (s₂.V.card : ℝ) := hcard₂
+      · have hreal : ((coordinateBox s₂.M).card : ℝ) ≤
+            ((coordinateBox s.M).card : ℝ) := by
+          have h1 : ((coordinateBox s₂.M).card : ℝ) ≤
+              ((coordinateBox s₁.M).card : ℝ) := by exact_mod_cast hbox₂
+          have h3 : ρ ^ K₀ * ((coordinateBox s.M).card : ℝ) ≤
+              1 * ((coordinateBox s.M).card : ℝ) :=
+            mul_le_mul_of_nonneg_right hρK1 hBpos.le
+          calc ((coordinateBox s₂.M).card : ℝ)
+              ≤ ((coordinateBox s₁.M).card : ℝ) := h1
+            _ ≤ ρ ^ K₀ * ((coordinateBox s.M).card : ℝ) := hρbox
+            _ ≤ 1 * ((coordinateBox s.M).card : ℝ) := h3
+            _ = ((coordinateBox s.M).card : ℝ) := one_mul _
+        exact_mod_cast hreal
+    · -- Same-dimensional cap: the ratio numerology.
+      have hσeq : sigma s₁.dim = sigma s.dim := by rw [heq]
+      rw [hσeq] at hηcard
+      have hζlo := hbad.zeta_lt_stageExcess hζ₀.le
+      have hσ5 := one_fifth_le_sigma s.dim
+      have hp0 : (0 : ℝ) < sigma s.dim + stageExcess s := by linarith
+      have hexact : ((coordinateBox s.M).card : ℝ) ^
+          (sigma s.dim + stageExcess s) = (s.V.card : ℝ) :=
+        rpow_sigma_add_stageExcess hbox2 (by omega)
+      have hB'chain : ((coordinateBox s₂.M).card : ℝ) ≤
+          η * ρ ^ K₀ * ((coordinateBox s.M).card : ℝ) := by
+        calc ((coordinateBox s₂.M).card : ℝ)
+            ≤ η * ((coordinateBox s₁.M).card : ℝ) := hηbox
+          _ ≤ η * (ρ ^ K₀ * ((coordinateBox s.M).card : ℝ)) :=
+              mul_le_mul_of_nonneg_left hρbox hη0.le
+          _ = η * ρ ^ K₀ * ((coordinateBox s.M).card : ℝ) := by ring
+      refine ⟨s₂, hcard₂', Or.inr (Or.inr ⟨heq₂.trans heq, ?_, ?_⟩)⟩
+      · -- Counting increment at the old exponent.
+        refine sameDim_ratio_lt (B := ((coordinateBox s.M).card : ℝ))
+          (η := η) (ρ := ρ) (a := sigma s.dim + ζ₀ - ν) (K := K₀)
+          (by linarith) hexact hp0 hη0 hη1 hρ0 hρ1 ?_ ?_
+          (Nat.cast_nonneg _) ?_ hB'chain
+        · linarith
+        · have h5p : 5 * (sigma s.dim + stageExcess s) ≤
+              K₀ * (sigma s.dim + stageExcess s) :=
+            mul_le_mul_of_nonneg_right hK₀ hp0.le
+          nlinarith
+        · calc ρ * η ^ (sigma s.dim + ζ₀ - ν) * (s.V.card : ℝ)
+              = η ^ (sigma s.dim + ζ₀ - ν) * (ρ * (s.V.card : ℝ)) := by ring
+            _ ≤ η ^ (sigma s.dim + ζ₀ - ν) * (s₁.V.card : ℝ) :=
+                mul_le_mul_of_nonneg_left hρcard
+                  (Real.rpow_nonneg hη0.le _)
+            _ ≤ (s₂.V.card : ℝ) := hηcard
+      · -- Strict box shrink.
+        have hreal : ((coordinateBox s₂.M).card : ℝ) <
+            ((coordinateBox s.M).card : ℝ) := by
+          have h2 : η * ρ ^ K₀ * ((coordinateBox s.M).card : ℝ) <
+              1 * ((coordinateBox s.M).card : ℝ) := by
+            apply mul_lt_mul_of_pos_right _ hBpos
+            calc η * ρ ^ K₀ ≤ η * 1 :=
+                  mul_le_mul_of_nonneg_left hρK1 hη0.le
+              _ = η := mul_one η
+              _ < 1 := hη1
+          calc ((coordinateBox s₂.M).card : ℝ)
+              ≤ η * ρ ^ K₀ * ((coordinateBox s.M).card : ℝ) := hB'chain
+            _ < 1 * ((coordinateBox s.M).card : ℝ) := h2
+            _ = ((coordinateBox s.M).card : ℝ) := one_mul _
+        exact_mod_cast hreal
+
+/-- **Descent supplier from the pipeline suppliers**: the main theorem is
+reduced to `PrepSupplier` + `IrreducibleIncrement` (for each `ζ₀`, at a
+suitable dimension bound and all sufficiently small `ε`). -/
+theorem descentSupplier_of_pipeline
+    (h : ∀ ζ₀ : ℝ, 0 < ζ₀ → ∃ (β : ℝ) (pkgs : ∀ r, Package r β) (D : ℕ),
+      2 ≤ D ∧ 2 / ζ₀ ≤ (D : ℝ) ∧
+      ∀ ε₁ : ℝ, 0 < ε₁ → ∃ (ε δ γ ν K₀ : ℝ) (n₁ : ℕ),
+        0 < ε ∧ 2 * ε ≤ ε₁ ∧ ε ≤ 1 / 2 ∧ 0 < ν ∧ 5 ≤ K₀ ∧ 2 ≤ n₁ ∧
+        PrepSupplier pkgs D ζ₀ ε δ γ K₀ n₁ ∧
+        IrreducibleIncrement pkgs ζ₀ ε δ γ ν n₁) :
+    DescentSupplier := by
+  apply descentSupplier_of_rawStep
+  intro ζ₀ hζ₀
+  obtain ⟨β, pkgs, D, hD, hDcap, hsup⟩ := h ζ₀ hζ₀
+  refine ⟨D, hD, hDcap, ?_⟩
+  intro ε₁ hε₁
+  obtain ⟨ε, δ, γ, ν, K₀, n₁, hε, hεle, hεhalf, hν, hK₀, hn₁, hprep, hinc⟩ :=
+    hsup ε₁ hε₁
+  exact ⟨2 * ε, n₁, by linarith, hεle, hn₁,
+    rawStep_of_suppliers pkgs D hζ₀ hε hεhalf hν hK₀ hn₁ hprep hinc⟩
+
 end Nondividing
