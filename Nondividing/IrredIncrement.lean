@@ -1217,4 +1217,116 @@ theorem irreducible_cap_step {β : ℝ} (eps : ℝ) (heps : 0 < eps) (r : ℕ)
     rw [hW'card]
     exact hWlow
 
+/-! ## 6. Assembly: the `IrreducibleIncrement` predicate
+
+`TODO(orchestrator)`: the remaining hypothesis `hsup` is the per-stage
+supplier package.  Its clauses are exactly:
+
+* the coefficient-vector form of the stage functional (trivial);
+* the parameter regime `0 < μ < min(1, μ₀ d)`, `δ ≤ μ^{1+ε}`, `n ≥ n₀(d, μ)`
+  (manuscript hierarchy `δ = o(μ)`, `n` large);
+* `integerRealSpan V = ⊤` — discharge from `projective_span_package`;
+* the eligibility/scale supplier (manuscript `s(δn)⁻¹ = o(γ)` regime);
+* `IndexedMuConvexPosition` — the conclusion of `thm:projective-convexity`,
+  discharge from `projective_convexity_assembled` (+ `projective_duality`);
+* the absorption numerics `C·η < 1`, `(C·η)^{σ_d+ζ₀-ν} ≤ η^{κ_{d-1}+ε}`,
+  `n₁ ≤ η^{κ_{d-1}+ε}·n` for `η ∈ [μ, μ^τ]` (manuscript:
+  `κ_{d-1}+ε ≤ σ_d+ζ₀-ν` by the choice of `ε, ν`, and `η^{κ+ε} = n^{-o(1)}`).
+
+Note the increment always lands in the *same-dimensional* branch: at an
+irreducible stage the captured set spans (`span_top_of_large_subset`), so the
+dimension-lowering alternative of `lem:cap-lifting` never fires. -/
+
+/-- **`IrreducibleIncrement` from the geometric pipeline and a per-stage
+supplier.**  The constants `tau, K, C, μ₀, n₀` (indexed by the stage
+dimension) are produced by the pipeline; the supplier must meet them. -/
+theorem irreducibleIncrement_of_convexPosition {β : ℝ}
+    (pkgs : ∀ r, Package r β) (eps : ℝ) (heps : 0 < eps) :
+    ∃ (tau K C μ₀ : ℕ → ℝ) (n₀ : ℕ → ℝ → ℕ),
+      (∀ d, 0 < tau d ∧ tau d < 1 ∧ 0 < K d ∧ 0 < C d ∧ 0 < μ₀ d) ∧
+      ∀ (ζ₀ ε δ γ ν : ℝ) (n₁ : ℕ), 2 ≤ n₁ →
+      (∀ (X : ℕ) (s : PrepStage X), 1 ≤ X → n₁ ≤ s.V.card →
+        StageIrreducible pkgs δ γ s →
+        ∃ (ℓ : Fin s.dim → ℤ) (μ : ℝ),
+          (∀ v, s.lam v = intFunctional ℓ v) ∧
+          0 < μ ∧ μ < 1 ∧ μ < μ₀ s.dim ∧
+          n₀ s.dim μ ≤ s.V.card ∧
+          0 < γ ∧
+          δ ≤ μ ^ ((1 : ℝ) + eps) ∧
+          integerRealSpan s.V = ⊤ ∧
+          (∀ W : Finset (Fin s.dim → ℤ), W ⊆ s.V →
+            δ * (s.V.card : ℝ) ≤ (W.card : ℝ) →
+            Eligible β (pkgs s.dim).m₀ W s.M ∧
+            1 ≤ External.structureScale W.card ∧
+            1 ≤ (pkgs s.dim).c * External.structureScale W.card ∧
+            K s.dim < External.structureScale W.card * γ) ∧
+          IndexedMuConvexPosition μ
+            (fun v : {x // x ∈ s.V} => projNorm ℓ v.1) ∧
+          (∀ η : ℝ, μ ≤ η → η ≤ μ ^ tau s.dim →
+            C s.dim * η < 1 ∧
+            (C s.dim * η) ^ (sigma s.dim + ζ₀ - ν) ≤
+              η ^ (((s.dim : ℝ) - 2) / (s.dim : ℝ) + eps) ∧
+            (n₁ : ℝ) ≤ η ^ (((s.dim : ℝ) - 2) / (s.dim : ℝ) + eps) *
+              (s.V.card : ℝ))) →
+      IrreducibleIncrement pkgs ζ₀ ε δ γ ν n₁ := by
+  classical
+  have hstep := fun r : ℕ =>
+    irreducible_cap_step (β := β) eps heps r (pkgs (r + 1))
+  choose tau K C μ₀ htau0 htau1 hK hC hμ₀ hmain using hstep
+  choose n₀ hn₀pos hn₀main using hmain
+  refine ⟨fun d => tau (d - 1), fun d => K (d - 1), fun d => C (d - 1),
+    fun d => μ₀ (d - 1), fun d μ => n₀ (d - 1) μ,
+    fun d => ⟨htau0 _, htau1 _, hK _, hC _, hμ₀ _⟩, ?_⟩
+  intro ζ₀ ε δ γ ν n₁ hn₁ hsup X s hX hncard hirr
+  obtain ⟨d, V, M, lam, hsub, hshell⟩ := s
+  obtain ⟨ℓ, μ, hlam, hμ0, hμ1, hμμ₀, hn₀le, hγ, hδμ, hspanV, hsupply,
+    hconv, habs⟩ := hsup X ⟨d, V, M, lam, hsub, hshell⟩ hX hncard hirr
+  rcases d with _ | r
+  · -- Dimension 0: the box has one point, contradicting `n₁ ≥ 2`.
+    exfalso
+    have hbox1 : (coordinateBox M).card = 1 := by
+      rw [card_coordinateBox]
+      simp
+    have hV1 : V.card ≤ 1 := hbox1 ▸ Finset.card_le_card hsub
+    have hncard' : n₁ ≤ V.card := hncard
+    omega
+  · -- Dimension `r + 1`: run the cap step; always the same-dim branch.
+    have hshell' : ShellNonDividing
+        (fun v => (intFunctional ℓ v : ℤ)) X V := by
+      have hfe : (fun v => lam v) = fun v => (intFunctional ℓ v : ℤ) :=
+        funext hlam
+      rwa [hfe] at hshell
+    obtain ⟨η, lam', W', N, hημ, hημtau, hW'box, hW'shell, hW'count,
+        hW'bound⟩ :=
+      hn₀main r μ X ℓ V M δ γ hμ0 hμμ₀ hμ1 hX hsub hshell' hirr hγ hδμ
+        hn₀le hspanV hsupply hconv
+    -- Exponent bookkeeping: `κ_r = ((r+1)-2)/(r+1)`.
+    have hexp : (((r : ℝ) + 1) - 2) / ((r : ℝ) + 1) + eps
+        = ((r : ℝ) - 1) / ((r : ℝ) + 1) + eps := by
+      ring_nf
+    have hcount' : η ^ ((((r + 1 : ℕ) : ℝ) - 2) / ((r + 1 : ℕ) : ℝ) + eps) *
+        (V.card : ℝ) ≤ (W'.card : ℝ) := by
+      push_cast
+      rw [hexp]
+      exact_mod_cast hW'count
+    obtain ⟨hCη1, hCηpow, hn₁W⟩ := habs η hημ hημtau
+    have hCη0 : 0 < C r * η := mul_pos (hC r) (lt_of_lt_of_le hμ0 hημ)
+    -- `n₁ ≤ |W'|`.
+    have hn₁W' : n₁ ≤ W'.card := by
+      have h1 : (n₁ : ℝ) ≤ (W'.card : ℝ) := by
+        refine le_trans ?_ hcount'
+        exact_mod_cast hn₁W
+      exact_mod_cast h1
+    -- The new stage.
+    refine ⟨⟨r + 1, W', N, lam', hW'box, hW'shell⟩, hn₁W', Or.inr ?_⟩
+    refine ⟨rfl, C r * η, hCη0, hCη1, ?_, ?_⟩
+    · -- Retention at the absorbed density.
+      have h2 : (C r * η) ^ (sigma (r + 1) + ζ₀ - ν) * (V.card : ℝ) ≤
+          η ^ ((((r + 1 : ℕ) : ℝ) - 2) / ((r + 1 : ℕ) : ℝ) + eps) *
+            (V.card : ℝ) :=
+        mul_le_mul_of_nonneg_right hCηpow (Nat.cast_nonneg _)
+      exact h2.trans hcount'
+    · -- Box decay.
+      exact hW'bound
+
 end Nondividing
