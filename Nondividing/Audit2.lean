@@ -1,3 +1,4 @@
+import Nondividing.FinalAssembly
 import Nondividing.ProjectiveTheorem
 
 -- Phase 3 (projective theorem iteration, ProjectiveTheorem.lean): the whole
@@ -21,3 +22,12 @@ import Nondividing.ProjectiveTheorem
 #print axioms Nondividing.descentSupplier_of_pipeline
 #print axioms Nondividing.PrepChain.box_master
 #print axioms Nondividing.PrepChain.pow_upSum_le
+
+-- ============================================================
+-- THE MAIN THEOREM, UNCONDITIONAL: log F(N) / log N → 1/5.
+-- Expected axioms: Lean core (propext, Classical.choice, Quot.sound)
+-- + the whitelisted external interfaces E1–E5 ONLY.
+-- ============================================================
+#print axioms Nondividing.main_log_limit
+#print axioms Nondividing.descentSupplier_proved
+#print axioms Nondividing.prepPrimedHypothesis_proved

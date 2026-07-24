@@ -1,5 +1,6 @@
 import Nondividing.MuSupplier
 import Nondividing.DescentInterface
+import Nondividing.PrepPrimed
 
 open scoped BigOperators
 
@@ -150,5 +151,25 @@ theorem main_log_limit_of_prepPrimed (hPP : PrepPrimedHypothesis) :
     Filter.Tendsto (fun N : ℕ => Real.log (F N) / Real.log N)
       Filter.atTop (nhds ((1 : ℝ) / 5)) :=
   main_log_limit_of_descent (descentSupplier_of_prepPrimed hPP)
+
+/-- The primed preprocessing supplier holds (`prepSupplier'_params`). -/
+theorem prepPrimedHypothesis_proved : PrepPrimedHypothesis :=
+  fun _β pkgs Dcap ζ₀ ε₁ δ hD2 hDζ hslack hζ₀ hε₁ hδ0 hδhalf =>
+    prepSupplier'_params pkgs Dcap ζ₀ ε₁ δ hD2 hDζ hslack hζ₀ hε₁ hδ0 hδhalf
+
+/-- **The descent supplier, unconditionally.** -/
+theorem descentSupplier_proved : DescentSupplier :=
+  descentSupplier_of_prepPrimed prepPrimedHypothesis_proved
+
+/-- **THE MAIN THEOREM** (`thm:main`, Erdős problem 131): the maximum size
+`F(N)` of a non-dividing subset of `[1, N]` satisfies
+`log F(N) / log N → 1/5`.  Unconditional; the only axioms beyond Lean's core
+are the five trusted external interfaces E1–E5
+(Conlon–Fox–Pham structure, discrete John, zonotope rounding, convex density,
+and the convex-geometry facts), each cited to the published literature. -/
+theorem main_log_limit :
+    Filter.Tendsto (fun N : ℕ => Real.log (F N) / Real.log N)
+      Filter.atTop (nhds ((1 : ℝ) / 5)) :=
+  main_log_limit_of_prepPrimed prepPrimedHypothesis_proved
 
 end Nondividing
