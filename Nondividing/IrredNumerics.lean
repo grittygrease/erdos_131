@@ -534,4 +534,42 @@ theorem irreducibleIncrement_of_parameters {β : ℝ}
     absorption_of_mu_small (hpos s.dim).2.2.1 (hpos s.dim).1 hμ0 hμ1 hba
       hCμ hCa hn₁b hn₁τb⟩
 
+/-- **End-to-end raw step.**  The composition check: the parameter-level
+supplier of `irreducibleIncrement_of_parameters`, together with a
+preprocessing supplier, yields the raw density-increment step of the
+projective iteration (`rawStep_of_suppliers`). -/
+theorem rawStep_of_prep_and_parameters {β : ℝ}
+    (pkgs : ∀ r, Package r β) (eps : ℝ) (heps : 0 < eps) (hβ : 0 ≤ β) :
+    ∃ (tau C μ₀ : ℕ → ℝ) (n₀ : ℕ → ℝ → ℕ) (n₂ : ℕ → ℝ → ℝ → ℝ → ℕ),
+      (∀ d, 0 < tau d ∧ tau d < 1 ∧ 0 < C d ∧ 0 < μ₀ d) ∧
+      ∀ (D : ℕ) (ζ₀ ε δ γ ν K₀ : ℝ) (n₁ : ℕ),
+        0 < ζ₀ → 0 < ε → ε ≤ 1 / 2 → 0 < ν → 5 ≤ K₀ → 2 ≤ n₁ →
+        PrepSupplier pkgs D ζ₀ ε δ γ K₀ n₁ →
+        (∀ (X : ℕ) (s : PrepStage X), 1 ≤ X → n₁ ≤ s.V.card →
+          StageIrreducible pkgs δ γ s →
+          ∃ μ : ℝ,
+            0 < μ ∧ μ < 1 ∧ μ < μ₀ s.dim ∧
+            0 < γ ∧ 0 < δ ∧ δ ≤ μ ^ ((1 : ℝ) + eps) ∧ δ ≤ μ / 100 ∧
+            n₀ s.dim μ ≤ s.V.card ∧
+            n₂ s.dim μ δ γ ≤ s.V.card ∧
+            ((pkgs s.dim).m₀ : ℝ) ≤ δ * s.V.card ∧
+            ((coordinateBox s.M).card : ℝ) ≤ (δ * s.V.card) ^ β ∧
+            1 < γ * ((coordinateBox s.M).card : ℝ) ∧
+            C s.dim * μ ^ tau s.dim < 1 ∧
+            C s.dim ^ (sigma s.dim + ζ₀ - ν) ≤
+              μ ^ (tau s.dim * ((((s.dim : ℝ) - 2) / s.dim + eps) -
+                (sigma s.dim + ζ₀ - ν))) ∧
+            ((s.dim : ℝ) - 2) / s.dim + eps ≤ sigma s.dim + ζ₀ - ν ∧
+            (n₁ : ℝ) ≤ μ ^ (((s.dim : ℝ) - 2) / s.dim + eps) *
+              s.V.card ∧
+            (n₁ : ℝ) ≤ μ ^ (tau s.dim *
+              (((s.dim : ℝ) - 2) / s.dim + eps)) * s.V.card) →
+        RawStep D ζ₀ (2 * ε) n₁ := by
+  obtain ⟨tau, C, μ₀, n₀, n₂, hpos, hmain⟩ :=
+    irreducibleIncrement_of_parameters (β := β) pkgs eps heps hβ
+  refine ⟨tau, C, μ₀, n₀, n₂, hpos, ?_⟩
+  intro D ζ₀ ε δ γ ν K₀ n₁ hζ₀ hε hεhalf hν hK₀ hn₁ hprep hsup
+  exact rawStep_of_suppliers pkgs D hζ₀ hε hεhalf hν hK₀ hn₁ hprep
+    (hmain ζ₀ ε δ γ ν n₁ hn₁ hsup)
+
 end Nondividing
