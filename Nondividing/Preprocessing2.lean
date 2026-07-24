@@ -831,6 +831,15 @@ theorem chain_pow_lower {α : Type*} (μ : α → ℕ) (Rel : α → α → Prop
         _ ≤ ρ * f x := mul_le_mul_of_nonneg_left hρn hρ0
         _ ≤ f y := hlow x y hax hxy
 
+/-- Monotone weight along a chain (reachability-relative step hypothesis). -/
+theorem chain_le {α : Type*} (g : α → ℝ) (Rel : α → α → Prop) {a b : α}
+    (hchain : Relation.ReflTransGen Rel a b)
+    (hstep : ∀ x y, Relation.ReflTransGen Rel a x → Rel x y → g y ≤ g x) :
+    g b ≤ g a := by
+  induction hchain with
+  | refl => exact le_refl _
+  | @tail x y hax hxy ih => exact le_trans (hstep x y hax hxy) ih
+
 /-- Single-move cardinality retention: when the E1 deletion at the witness is
 at most `(δ/2)|V|` (manuscript: `c⁻¹|D|/log|D| = o(|D|)`), each move keeps
 `|V'| ≥ (δ/2)|V|` — the manuscript's `|A_{j+1}| ≥ δ_*|A_j|`. -/
@@ -878,7 +887,9 @@ theorem unshifted_preprocessing_toward {X : ℕ} {β : ℝ}
             Relation.ReflTransGen (PrepMove pkgs δ γ C) s₀ s ∧
             StageIrreducible pkgs δ γ s ∧
             (δ / 2) ^ stageMeasure lam s₀ * (s₀.V.card : ℝ) ≤
-              (s.V.card : ℝ) := by
+              (s.V.card : ℝ) ∧
+            Real.log ((coordinateBox s.M).card : ℝ) ≤
+              stagePotential lam s₀ := by
   obtain ⟨C, hC, hstep⟩ := prep_step pkgs dmax
   refine ⟨C, hC, ?_⟩
   intro δ γ lam hγ0 hγ hlam0 hδ0 hδ2 s₀ hcond
@@ -917,9 +928,22 @@ theorem unshifted_preprocessing_toward {X : ℕ} {β : ℝ}
   obtain ⟨s, hreach, hirr⟩ :=
     descend_to_good_from (stageMeasure lam)
       (StageIrreducible pkgs δ γ) (PrepMove pkgs δ γ C) s₀ hstepgood
-  refine ⟨s, hreach, hirr, ?_⟩
-  exact chain_pow_lower (stageMeasure lam) (PrepMove pkgs δ γ C)
-    (fun t => (t.V.card : ℝ)) (δ / 2) (by linarith) (by linarith)
-    (fun t => Nat.cast_nonneg _) hreach hdec hlow
+  refine ⟨s, hreach, hirr, ?_, ?_⟩
+  · exact chain_pow_lower (stageMeasure lam) (PrepMove pkgs δ γ C)
+      (fun t => (t.V.card : ℝ)) (δ / 2) (by linarith) (by linarith)
+      (fun t => Nat.cast_nonneg _) hreach hdec hlow
+  · -- coarse box bound from potential monotonicity
+    have hpot : stagePotential lam s ≤ stagePotential lam s₀ := by
+      refine chain_le (stagePotential lam) (PrepMove pkgs δ γ C) hreach ?_
+      intro x y hx hxy
+      obtain ⟨_, hlamS, hsup⟩ := hcond x hx
+      have hd := prepMove_potential_decrease hC hγ0 hγ hlam0 hlamS
+        (fun Dw hw1 hw2 => ⟨(hsup Dw hw1 hw2).1, (hsup Dw hw1 hw2).2.2.1⟩) hxy
+      linarith
+    have hdim0 : 0 ≤ lam * (s.dim : ℝ) :=
+      mul_nonneg hlam0 (Nat.cast_nonneg _)
+    have := stagePotential_nonneg hlam0 s
+    simp only [stagePotential] at hpot ⊢
+    linarith
 
 end Nondividing
