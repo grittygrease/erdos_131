@@ -126,3 +126,8 @@ import Nondividing.Main
 -- cap_lifting alternative (ii) cone-volume core: E5c+E5d+core.
 #print axioms Nondividing.cap_cone_count
 #print axioms Nondividing.volume_cone
+
+-- unshifted_preprocessing building blocks: core + E2 (parametric in Package).
+#print axioms Nondividing.irreducible_or_witness
+#print axioms Nondividing.prep_step
+#print axioms Nondividing.unshifted_preprocessing_toward
