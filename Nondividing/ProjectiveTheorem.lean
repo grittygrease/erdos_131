@@ -1037,4 +1037,293 @@ theorem descentSupplier_of_pipeline
   exact ⟨2 * ε, n₁, by linarith, hεle, hn₁,
     rawStep_of_suppliers pkgs D hζ₀ hε hεhalf hν hK₀ hn₁ hprep hinc⟩
 
+/-! ## Chain bookkeeping for preprocessing moves
+
+Toward discharging `PrepSupplier`: the manuscript's product estimate over the
+move chain (`eq:unshifted-product`, Manuscript.tex 566–572), with the exact
+dimension bookkeeping (`eq:dimension-bookkeeping`).  `PrepChain` is the
+explicit path data (list of `PrepMove`s); the counts of shrink/up/down moves
+and the summed dimension changes are defined by recursion, and the master
+box estimate telescopes the three per-move bounds. -/
+
+/-- Explicit chain of preprocessing moves (path data for bookkeeping). -/
+inductive PrepChain {X : ℕ} {β : ℝ} (pkgs : ∀ r, Package r β) (δ γ C : ℝ) :
+    PrepStage X → PrepStage X → Type where
+  | nil (s : PrepStage X) : PrepChain pkgs δ γ C s s
+  | cons (s t u : PrepStage X) (h : PrepMove pkgs δ γ C s t)
+      (rest : PrepChain pkgs δ γ C t u) : PrepChain pkgs δ γ C s u
+
+/-- **Shrink-move box bound**: a same-dimension move shrinks the box by `γ`
+(first disjunct of `PrepMove`). -/
+theorem PrepMove.box_shrink {X : ℕ} {β : ℝ} {pkgs : ∀ r, Package r β}
+    {δ γ C : ℝ} {s t : PrepStage X} (h : PrepMove pkgs δ γ C s t)
+    (hdim : t.dim = s.dim) :
+    ((coordinateBox t.M).card : ℝ) < γ * ((coordinateBox s.M).card : ℝ) := by
+  obtain ⟨D, _, _, _, _, hcase⟩ := h
+  rcases hcase with ⟨_, hb⟩ | ⟨hlt', _⟩ | ⟨hlt', _⟩
+  · exact hb
+  · omega
+  · omega
+
+/-- **Down-move box bound**: a dimension-decreasing move satisfies
+`c^{d'}·|B'| ≤ C·|B|` (third disjunct of `PrepMove`). -/
+theorem PrepMove.box_down {X : ℕ} {β : ℝ} {pkgs : ∀ r, Package r β}
+    {δ γ C : ℝ} {s t : PrepStage X} (h : PrepMove pkgs δ γ C s t)
+    (hdim : t.dim < s.dim) :
+    (pkgs s.dim).c ^ t.dim * ((coordinateBox t.M).card : ℝ) ≤
+      C * ((coordinateBox s.M).card : ℝ) := by
+  obtain ⟨D, _, _, _, _, hcase⟩ := h
+  rcases hcase with ⟨heq, _⟩ | ⟨hlt', _⟩ | ⟨hlt', hb⟩
+  · omega
+  · omega
+  · exact hb
+
+/-- **Up-move box decay** in scale-multiplied form: a dimension-increasing
+move satisfies `c^{d'}·smin^{d'−d}·|B'| ≤ 3^{d'}·|B|`, given a lower bound
+`smin` on the witness scale (the manuscript's
+`|P_{j+1}| ≤ C·s(A_{j+1})^{-(d_{j+1}-d_j)}|P_j|`). -/
+theorem PrepMove.box_up {X : ℕ} {β : ℝ} {pkgs : ∀ r, Package r β}
+    {δ γ C : ℝ} {s t : PrepStage X} (h : PrepMove pkgs δ γ C s t)
+    (hdim : s.dim < t.dim) {smin : ℝ} (hs1 : 1 ≤ smin)
+    (hscale : ∀ Dw : Finset (Fin s.dim → ℤ), Dw ⊆ s.V →
+      δ * (s.V.card : ℝ) ≤ (Dw.card : ℝ) →
+      smin ≤ External.structureScale Dw.card) :
+    (pkgs s.dim).c ^ t.dim * (smin ^ (t.dim - s.dim) *
+        ((coordinateBox t.M).card : ℝ)) ≤
+      3 ^ t.dim * ((coordinateBox s.M).card : ℝ) := by
+  obtain ⟨D, hDV, hDcard, _, _, hcase⟩ := h
+  rcases hcase with ⟨heq, _⟩ | ⟨hlt', hb⟩ | ⟨hlt', _⟩
+  · omega
+  · have hsDge : smin ≤ External.structureScale D.card := hscale D hDV hDcard
+    have hsD1 : (1 : ℝ) ≤ External.structureScale D.card := le_trans hs1 hsDge
+    have hsDpos : (0 : ℝ) < External.structureScale D.card :=
+      lt_of_lt_of_le one_pos hsD1
+    have hc := (pkgs s.dim).c_pos
+    have hsplit : External.structureScale D.card ^ t.dim =
+        External.structureScale D.card ^ (t.dim - s.dim) *
+          External.structureScale D.card ^ s.dim := by
+      rw [← pow_add]
+      congr 1
+      omega
+    have hpowle : smin ^ (t.dim - s.dim) ≤
+        External.structureScale D.card ^ (t.dim - s.dim) :=
+      pow_le_pow_left₀ (by linarith) hsDge _
+    have hBt : (0 : ℝ) ≤ ((coordinateBox t.M).card : ℝ) := Nat.cast_nonneg _
+    have key : (pkgs s.dim).c ^ t.dim * (smin ^ (t.dim - s.dim) *
+        ((coordinateBox t.M).card : ℝ)) *
+          External.structureScale D.card ^ s.dim ≤
+        3 ^ t.dim * ((coordinateBox s.M).card : ℝ) *
+          External.structureScale D.card ^ s.dim := by
+      calc (pkgs s.dim).c ^ t.dim * (smin ^ (t.dim - s.dim) *
+            ((coordinateBox t.M).card : ℝ)) *
+              External.structureScale D.card ^ s.dim
+          ≤ (pkgs s.dim).c ^ t.dim *
+              (External.structureScale D.card ^ (t.dim - s.dim) *
+                ((coordinateBox t.M).card : ℝ)) *
+              External.structureScale D.card ^ s.dim := by
+            apply mul_le_mul_of_nonneg_right _ (by positivity)
+            apply mul_le_mul_of_nonneg_left _ (by positivity)
+            exact mul_le_mul_of_nonneg_right hpowle hBt
+        _ = ((pkgs s.dim).c * External.structureScale D.card) ^ t.dim *
+              ((coordinateBox t.M).card : ℝ) := by
+            rw [mul_pow, hsplit]; ring
+        _ ≤ 3 ^ t.dim * External.structureScale D.card ^ s.dim *
+              ((coordinateBox s.M).card : ℝ) := hb
+        _ = 3 ^ t.dim * ((coordinateBox s.M).card : ℝ) *
+              External.structureScale D.card ^ s.dim := by ring
+    exact le_of_mul_le_mul_right key (by positivity)
+  · omega
+
+namespace PrepChain
+
+variable {X : ℕ} {β : ℝ} {pkgs : ∀ r, Package r β} {δ γ C : ℝ}
+
+/-- Number of same-dimension (shrink) moves: the manuscript's `|𝒮|`. -/
+def shrinkCount : ∀ {a b : PrepStage X}, PrepChain pkgs δ γ C a b → ℕ
+  | _, _, .nil _ => 0
+  | _, _, .cons s t _ _ rest =>
+      (if t.dim = s.dim then 1 else 0) + shrinkCount rest
+
+/-- Number of up-moves: the manuscript's `|𝒰|`. -/
+def upCount : ∀ {a b : PrepStage X}, PrepChain pkgs δ γ C a b → ℕ
+  | _, _, .nil _ => 0
+  | _, _, .cons s t _ _ rest =>
+      (if s.dim < t.dim then 1 else 0) + upCount rest
+
+/-- Number of down-moves: the manuscript's `|𝒟|`. -/
+def downCount : ∀ {a b : PrepStage X}, PrepChain pkgs δ γ C a b → ℕ
+  | _, _, .nil _ => 0
+  | _, _, .cons s t _ _ rest =>
+      (if t.dim < s.dim then 1 else 0) + downCount rest
+
+/-- Summed dimension increase over up-moves: the manuscript's
+`U = Σ_{j∈𝒰}(d_{j+1}−d_j)` (truncated subtraction vanishes elsewhere). -/
+def upSum : ∀ {a b : PrepStage X}, PrepChain pkgs δ γ C a b → ℕ
+  | _, _, .nil _ => 0
+  | _, _, .cons s t _ _ rest => (t.dim - s.dim) + upSum rest
+
+/-- Summed dimension decrease over down-moves. -/
+def downSum : ∀ {a b : PrepStage X}, PrepChain pkgs δ γ C a b → ℕ
+  | _, _, .nil _ => 0
+  | _, _, .cons s t _ _ rest => (s.dim - t.dim) + downSum rest
+
+/-- **Exact dimension bookkeeping** (`eq:dimension-bookkeeping`):
+`dim_end + downSum = dim_start + upSum`. -/
+theorem dim_add_downSum_eq : ∀ {a b : PrepStage X}
+    (ch : PrepChain pkgs δ γ C a b),
+    b.dim + ch.downSum = a.dim + ch.upSum
+  | _, _, .nil _ => by simp [downSum, upSum]
+  | _, _, .cons s t u h rest => by
+      have ih := dim_add_downSum_eq rest
+      simp only [downSum, upSum]
+      omega
+
+/-- Each up-move raises the dimension by at least one: `|𝒰| ≤ U`. -/
+theorem upCount_le_upSum : ∀ {a b : PrepStage X}
+    (ch : PrepChain pkgs δ γ C a b), ch.upCount ≤ ch.upSum
+  | _, _, .nil _ => le_rfl
+  | _, _, .cons s t u h rest => by
+      have ih := upCount_le_upSum rest
+      simp only [upCount, upSum]
+      split_ifs with hlt
+      · omega
+      · omega
+
+/-- Each down-move lowers the dimension by at least one: `|𝒟| ≤ downSum`. -/
+theorem downCount_le_downSum : ∀ {a b : PrepStage X}
+    (ch : PrepChain pkgs δ γ C a b), ch.downCount ≤ ch.downSum
+  | _, _, .nil _ => le_rfl
+  | _, _, .cons s t u h rest => by
+      have ih := downCount_le_downSum rest
+      simp only [downCount, downSum]
+      split_ifs with hlt
+      · omega
+      · omega
+
+/-- The manuscript's `|𝒟| ≤ d₀ + U` (via the exact bookkeeping). -/
+theorem downCount_le : ∀ {a b : PrepStage X}
+    (ch : PrepChain pkgs δ γ C a b), ch.downCount ≤ a.dim + ch.upSum
+  | a, b, ch => by
+      have h1 := ch.downCount_le_downSum
+      have h2 := ch.dim_add_downSum_eq
+      omega
+
+/-- A chain yields reachability. -/
+theorem toReflTransGen : ∀ {a b : PrepStage X},
+    PrepChain pkgs δ γ C a b →
+    Relation.ReflTransGen (PrepMove pkgs δ γ C) a b
+  | _, _, .nil _ => Relation.ReflTransGen.refl
+  | _, _, .cons s t u h rest =>
+      Relation.ReflTransGen.head h (toReflTransGen rest)
+
+/-- Reachability yields a chain (path extraction). -/
+theorem nonempty_of_reflTransGen {a b : PrepStage X}
+    (h : Relation.ReflTransGen (PrepMove pkgs δ γ C) a b) :
+    Nonempty (PrepChain pkgs δ γ C a b) := by
+  induction h using Relation.ReflTransGen.head_induction_on with
+  | refl => exact ⟨.nil _⟩
+  | head hxy _ ih =>
+      obtain ⟨ch⟩ := ih
+      exact ⟨.cons _ _ _ hxy ch⟩
+
+/-- **Master box product estimate** (`eq:unshifted-product`): telescoping the
+per-move bounds along a chain,
+`smin^U·|B_end| ≤ γ^{|𝒮|}·Cup^{|𝒰|}·Cdown^{|𝒟|}·|B_start|`,
+where the per-move up/down bounds are supplied at stages reachable from
+`s₀` (the manuscript's thresholds `s(A_j) ≥ n^{1−ε}` etc.). -/
+theorem box_master {s₀ : PrepStage X} {smin Cup Cdown : ℝ}
+    (hγ0 : 0 < γ) (hCup : 0 < Cup) (hCdown : 0 < Cdown) (hs1 : 1 ≤ smin)
+    (hup : ∀ x y : PrepStage X,
+      Relation.ReflTransGen (PrepMove pkgs δ γ C) s₀ x →
+      PrepMove pkgs δ γ C x y → x.dim < y.dim →
+      smin ^ (y.dim - x.dim) * ((coordinateBox y.M).card : ℝ) ≤
+        Cup * ((coordinateBox x.M).card : ℝ))
+    (hdown : ∀ x y : PrepStage X,
+      Relation.ReflTransGen (PrepMove pkgs δ γ C) s₀ x →
+      PrepMove pkgs δ γ C x y → y.dim < x.dim →
+      ((coordinateBox y.M).card : ℝ) ≤
+        Cdown * ((coordinateBox x.M).card : ℝ)) :
+    ∀ {a b : PrepStage X} (ch : PrepChain pkgs δ γ C a b),
+      Relation.ReflTransGen (PrepMove pkgs δ γ C) s₀ a →
+      smin ^ ch.upSum * ((coordinateBox b.M).card : ℝ) ≤
+        γ ^ ch.shrinkCount * Cup ^ ch.upCount * Cdown ^ ch.downCount *
+          ((coordinateBox a.M).card : ℝ) := by
+  intro a b ch
+  induction ch with
+  | nil s =>
+      intro _
+      simp [upSum, shrinkCount, upCount, downCount]
+  | cons s t u h rest ih =>
+      intro hreach
+      have hreacht : Relation.ReflTransGen (PrepMove pkgs δ γ C) s₀ t :=
+        hreach.tail h
+      have IH := ih hreacht
+      have hsmin0 : (0 : ℝ) < smin := lt_of_lt_of_le one_pos hs1
+      have hΓ : (0 : ℝ) ≤ γ ^ rest.shrinkCount * Cup ^ rest.upCount *
+          Cdown ^ rest.downCount := by positivity
+      rcases Nat.lt_trichotomy t.dim s.dim with hlt | heq | hgt
+      · -- down move
+        have hbnd := hdown s t hreach h hlt
+        simp only [upSum, shrinkCount, upCount, downCount]
+        rw [show t.dim - s.dim = 0 from by omega,
+          if_neg (show ¬t.dim = s.dim from by omega),
+          if_neg (show ¬s.dim < t.dim from by omega), if_pos hlt]
+        simp only [Nat.zero_add, pow_add, pow_one]
+        calc smin ^ rest.upSum * ((coordinateBox u.M).card : ℝ)
+            ≤ γ ^ rest.shrinkCount * Cup ^ rest.upCount *
+                Cdown ^ rest.downCount * ((coordinateBox t.M).card : ℝ) := IH
+          _ ≤ γ ^ rest.shrinkCount * Cup ^ rest.upCount *
+                Cdown ^ rest.downCount *
+                (Cdown * ((coordinateBox s.M).card : ℝ)) :=
+              mul_le_mul_of_nonneg_left hbnd hΓ
+          _ = γ ^ rest.shrinkCount * Cup ^ rest.upCount *
+                (Cdown * Cdown ^ rest.downCount) *
+                ((coordinateBox s.M).card : ℝ) := by ring
+      · -- shrink move
+        have hbnd := (PrepMove.box_shrink h heq).le
+        simp only [upSum, shrinkCount, upCount, downCount]
+        rw [show t.dim - s.dim = 0 from by omega, if_pos heq,
+          if_neg (show ¬s.dim < t.dim from by omega),
+          if_neg (show ¬t.dim < s.dim from by omega)]
+        simp only [Nat.zero_add, pow_add, pow_one]
+        calc smin ^ rest.upSum * ((coordinateBox u.M).card : ℝ)
+            ≤ γ ^ rest.shrinkCount * Cup ^ rest.upCount *
+                Cdown ^ rest.downCount * ((coordinateBox t.M).card : ℝ) := IH
+          _ ≤ γ ^ rest.shrinkCount * Cup ^ rest.upCount *
+                Cdown ^ rest.downCount *
+                (γ * ((coordinateBox s.M).card : ℝ)) :=
+              mul_le_mul_of_nonneg_left hbnd hΓ
+          _ = γ * γ ^ rest.shrinkCount * Cup ^ rest.upCount *
+                Cdown ^ rest.downCount * ((coordinateBox s.M).card : ℝ) := by
+              ring
+      · -- up move
+        have hbnd := hup s t hreach h hgt
+        simp only [upSum, shrinkCount, upCount, downCount]
+        rw [if_neg (show ¬t.dim = s.dim from by omega), if_pos hgt,
+          if_neg (show ¬t.dim < s.dim from by omega)]
+        simp only [Nat.zero_add, pow_add, pow_one]
+        calc smin ^ (t.dim - s.dim) * smin ^ rest.upSum *
+              ((coordinateBox u.M).card : ℝ)
+            = smin ^ (t.dim - s.dim) *
+                (smin ^ rest.upSum * ((coordinateBox u.M).card : ℝ)) := by
+              ring
+          _ ≤ smin ^ (t.dim - s.dim) *
+                (γ ^ rest.shrinkCount * Cup ^ rest.upCount *
+                  Cdown ^ rest.downCount *
+                  ((coordinateBox t.M).card : ℝ)) :=
+              mul_le_mul_of_nonneg_left IH (by positivity)
+          _ = γ ^ rest.shrinkCount * Cup ^ rest.upCount *
+                Cdown ^ rest.downCount *
+                (smin ^ (t.dim - s.dim) *
+                  ((coordinateBox t.M).card : ℝ)) := by ring
+          _ ≤ γ ^ rest.shrinkCount * Cup ^ rest.upCount *
+                Cdown ^ rest.downCount *
+                (Cup * ((coordinateBox s.M).card : ℝ)) :=
+              mul_le_mul_of_nonneg_left hbnd hΓ
+          _ = γ ^ rest.shrinkCount * (Cup * Cup ^ rest.upCount) *
+                Cdown ^ rest.downCount *
+                ((coordinateBox s.M).card : ℝ) := by ring
+
+end PrepChain
+
 end Nondividing
