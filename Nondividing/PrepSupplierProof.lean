@@ -436,4 +436,488 @@ theorem exists_irreducible_chain_stepsOK {X : ℕ} {β : ℝ}
         rw [PrepChain.length_snoc]
         omega
 
+/-! ## The per-stage master theorem -/
+
+/-- **Single-stage preprocessing supplier step** (the body of `PrepSupplier`
+at one excessive stage, from the chain numerics).  Given the numeric
+threshold package for the stage's cardinality `n = |V|` — the constants
+`smin, Cup, T` with the U-cap/shrink-cap drivers, the retention/ρ-power
+inequalities, the scale/deletion suppliers, and the one-step move lemma
+`hCstep` (from `prep_step`) — the invariant descent reaches an unshiftedly
+`(δ,γ)`-irreducible stage along a good chain, and the chain accounting
+delivers exactly the up/down/same-dimension disjunction of `PrepSupplier`.
+
+Two hypotheses are `TODO(orchestrator)` inputs (see the file docstring of
+the final assembly below):
+
+* `hdown1` — the *sharp down-move box estimate* `|B'| ≤ |B|` (the manuscript
+  only proves `|B'| ≪ C·|B|`, cf. `dimension_move`; `PrepSupplier`'s
+  down-branch demands the clean inequality);
+* `hn₁out` — the *uniform output threshold* `n₁ ≤ (δ/2)^{imax}·n` (false for
+  `n` close to `n₁`; the manuscript instead tracks a shrinking threshold
+  along the descent). -/
+theorem prep_supplier_step {X : ℕ} {β : ℝ} {pkgs : ∀ r, Package r β}
+    (Dcap : ℕ) {ζ₀ ε δ γ K₀ : ℝ} {n₁ : ℕ} {C : ℝ} (s : PrepStage X)
+    (hζ₀ : 0 < ζ₀) (hδ0 : 0 < δ) (hδ1 : δ ≤ 1) (hγ0 : 0 < γ) (hγ1 : γ < 1)
+    (hK₀ : 0 ≤ K₀) (hbad : ExcessiveStage ζ₀ s)
+    {smin Cup T : ℝ} {Ucap Scap imax : ℕ}
+    (hCup : 1 ≤ Cup) (hT : 1 < T) (hsminT : Cup * T ≤ smin)
+    (hUcapT : ((coordinateBox s.M).card : ℝ) < T ^ (Ucap + 1))
+    (hScapγ : Cup ^ Ucap * ((coordinateBox s.M).card : ℝ) <
+      (1 / γ) ^ (Scap + 1))
+    (himax : Scap + 2 * Ucap + s.dim ≤ imax)
+    (hdimD : s.dim + Ucap ≤ Dcap)
+    (hρε : (s.V.card : ℝ) ^ (-ε) ≤ (δ / 2) ^ imax)
+    (hn₁out : (n₁ : ℝ) ≤ (δ / 2) ^ imax * (s.V.card : ℝ))
+    (hupbox : (s.V.card : ℝ) ^ (1 - ε) * Cup ^ Ucap ≤ smin)
+    (hγK₀ : γ ≤ (δ / 2) ^ K₀)
+    (hsminK₀ : Cup ≤ (δ / 2) ^ (2 * K₀) * smin)
+    (hscale : ∀ m : ℕ, δ * ((δ / 2) ^ imax * (s.V.card : ℝ)) ≤ (m : ℝ) →
+      1 ≤ structureScale m ∧ smin ≤ structureScale m)
+    (hcsmin : ∀ r, r ≤ Dcap → 1 ≤ (pkgs r).c * smin)
+    (hCupB : ∀ r, r ≤ Dcap →
+      ((3 : ℝ) * max 1 (pkgs r).c⁻¹) ^ (pkgs r).D ≤ Cup)
+    (hdel : ∀ r, r ≤ Dcap →
+      (pkgs r).c⁻¹ ≤ δ / 2 *
+        Real.log (δ * ((δ / 2) ^ imax * (s.V.card : ℝ))))
+    (hexp1 : Real.exp 1 ≤ δ * ((δ / 2) ^ imax * (s.V.card : ℝ)))
+    (hdown1 : ∀ x y : PrepStage X, PrepMove pkgs δ γ C x y →
+      y.dim < x.dim → (coordinateBox y.M).card ≤ (coordinateBox x.M).card)
+    (hCstep : ∀ t : PrepStage X, t.dim ≤ Dcap →
+      ¬ StageIrreducible pkgs δ γ t →
+      (∀ Dw : Finset (Fin t.dim → ℤ), Dw ⊆ t.V →
+        δ * (t.V.card : ℝ) ≤ (Dw.card : ℝ) →
+        ∀ _hE : Eligible β (pkgs t.dim).m₀ Dw t.M,
+        1 ≤ structureScale Dw.card ∧
+          1 ≤ (pkgs t.dim).c * structureScale Dw.card) →
+      ∃ t', PrepMove pkgs δ γ C t t') :
+    ∃ s' : PrepStage X, n₁ ≤ s'.V.card ∧
+      ((s.dim < s'.dim ∧ s'.dim ≤ Dcap ∧
+          (s.V.card : ℝ) ^ (1 - ε) ≤ (s'.V.card : ℝ) ∧
+          ((coordinateBox s'.M).card : ℝ) ≤
+            (s.V.card : ℝ) ^ (1 / (sigma s.dim + stageExcess s) -
+              (1 - ε) * ((s'.dim : ℝ) - (s.dim : ℝ)))) ∨
+        (s'.dim < s.dim ∧
+          (s.V.card : ℝ) ^ (1 - ε) ≤ (s'.V.card : ℝ) ∧
+          (coordinateBox s'.M).card ≤ (coordinateBox s.M).card) ∨
+        (s'.dim = s.dim ∧ StageIrreducible pkgs δ γ s' ∧
+          ∃ ρ : ℝ, 0 < ρ ∧ ρ ≤ 1 ∧
+            (s.V.card : ℝ) ^ (-ε) ≤ ρ ∧
+            ρ * (s.V.card : ℝ) ≤ (s'.V.card : ℝ) ∧
+            ((coordinateBox s'.M).card : ℝ) ≤
+              ρ ^ K₀ * ((coordinateBox s.M).card : ℝ))) := by
+  classical
+  -- Base stage facts.
+  have hδ2pos : (0 : ℝ) < δ / 2 := by linarith
+  have hδ2le : δ / 2 ≤ 1 := by linarith
+  have hCup0 : (0 : ℝ) < Cup := lt_of_lt_of_le one_pos hCup
+  have hsmin1 : (1 : ℝ) < smin := by nlinarith
+  have hs1 : (1 : ℝ) ≤ smin := hsmin1.le
+  have hnflδ : (0 : ℝ) < δ * ((δ / 2) ^ imax * (s.V.card : ℝ)) :=
+    lt_of_lt_of_le (Real.exp_pos 1) hexp1
+  have hn2 : 2 ≤ s.V.card := hbad.two_le_card hζ₀.le
+  have hnR : (2 : ℝ) ≤ (s.V.card : ℝ) := by exact_mod_cast hn2
+  have hn0 : (0 : ℝ) < (s.V.card : ℝ) := by linarith
+  have hn1R : (1 : ℝ) ≤ (s.V.card : ℝ) := by linarith
+  have hbox2 : 2 ≤ (coordinateBox s.M).card := hbad.two_le_box hζ₀.le
+  have hB₀2 : (2 : ℝ) ≤ ((coordinateBox s.M).card : ℝ) := by
+    exact_mod_cast hbox2
+  have hB₀0 : (0 : ℝ) < ((coordinateBox s.M).card : ℝ) := by linarith
+  have hγinv : (1 : ℝ) < 1 / γ := by
+    rw [lt_div_iff₀ hγ0]; linarith
+  -- The step predicate: retention + up-decay at floor `smin` + down with
+  -- constant `1` (the sharp bound, from `hdown1`).
+  set Q : PrepStage X → PrepStage X → Prop := GoodStep δ smin Cup 1
+    with hQdef
+  -- U-cap along good chains.
+  have hUcapCh : ∀ (t : PrepStage X) (ch : PrepChain pkgs δ γ C s t),
+      ch.StepsOK Q → ch.upSum ≤ Ucap := by
+    intro t ch hOK
+    have h1 := PrepChain.pow_upSum_le_stepsOK (Cdown := 1) hγ0 hγ1.le hCup
+      le_rfl hT.le (by rwa [mul_one]) ch hOK
+    rw [one_pow, one_mul] at h1
+    exact pow_exponent_cap hT h1 hUcapT
+  -- Length cap along good chains (the γ-power accounting).
+  have hlencap : ∀ (t : PrepStage X) (ch : PrepChain pkgs δ γ C s t),
+      ch.StepsOK Q → ch.length ≤ imax := by
+    intro t ch hOK
+    have hU := hUcapCh t ch hOK
+    have huc : ch.upCount ≤ ch.upSum := ch.upCount_le_upSum
+    have hdc : ch.downCount ≤ s.dim + ch.upSum := ch.downCount_le
+    have hS : ch.shrinkCount ≤ Scap := by
+      have h1 := PrepChain.shrink_cap_stepsOK (Cdown := 1) hγ0 hCup0
+        one_pos hs1 ch hOK
+      rw [one_pow, mul_one] at h1
+      have h2 : Cup ^ ch.upCount ≤ Cup ^ Ucap :=
+        pow_le_pow_right₀ hCup (le_trans huc hU)
+      have h3 : (1 / γ) ^ ch.shrinkCount ≤
+          Cup ^ Ucap * ((coordinateBox s.M).card : ℝ) :=
+        le_trans h1 (mul_le_mul_of_nonneg_right h2 (Nat.cast_nonneg _))
+      exact pow_exponent_cap hγinv h3 hScapγ
+    rw [ch.length_eq_counts]
+    omega
+  -- Cardinality floor at endpoints of good chains.
+  have hcardfloor : ∀ (t : PrepStage X) (ch : PrepChain pkgs δ γ C s t),
+      ch.StepsOK Q → (δ / 2) ^ imax * (s.V.card : ℝ) ≤ (t.V.card : ℝ) := by
+    intro t ch hOK
+    have h1 := PrepChain.card_retention_stepsOK (Cup := Cup) (Cdown := 1)
+      (smin := smin) hδ0.le ch hOK
+    have h2 : (δ / 2) ^ imax ≤ (δ / 2) ^ ch.length :=
+      pow_le_pow_of_le_one hδ2pos.le hδ2le (hlencap t ch hOK)
+    calc (δ / 2) ^ imax * (s.V.card : ℝ)
+        ≤ (δ / 2) ^ ch.length * (s.V.card : ℝ) :=
+          mul_le_mul_of_nonneg_right h2 hn0.le
+      _ ≤ (t.V.card : ℝ) := h1
+  -- Dimension cap at endpoints of good chains.
+  have hdimcap : ∀ (t : PrepStage X) (ch : PrepChain pkgs δ γ C s t),
+      ch.StepsOK Q → t.dim ≤ Dcap := by
+    intro t ch hOK
+    have h1 := ch.dim_le
+    have h2 := hUcapCh t ch hOK
+    omega
+  -- The descent step: extend any good chain at a non-irreducible endpoint.
+  have hstepOK : ∀ (t : PrepStage X) (ch : PrepChain pkgs δ γ C s t),
+      ch.StepsOK Q → ¬ StageIrreducible pkgs δ γ t →
+      ∃ (u : PrepStage X) (_ : PrepMove pkgs δ γ C t u), Q t u := by
+    intro t ch hOK hirr
+    have hVt : (δ / 2) ^ imax * (s.V.card : ℝ) ≤ (t.V.card : ℝ) :=
+      hcardfloor t ch hOK
+    have htdim : t.dim ≤ Dcap := hdimcap t ch hOK
+    have hVt0 : (0 : ℝ) < (t.V.card : ℝ) := by nlinarith
+    -- Scale facts for δ-large subsets of `V_t`.
+    have hDwfacts : ∀ Dw : Finset (Fin t.dim → ℤ), Dw ⊆ t.V →
+        δ * (t.V.card : ℝ) ≤ (Dw.card : ℝ) →
+        1 ≤ structureScale Dw.card ∧ smin ≤ structureScale Dw.card := by
+      intro Dw _ hlarge
+      apply hscale
+      calc δ * ((δ / 2) ^ imax * (s.V.card : ℝ))
+          ≤ δ * (t.V.card : ℝ) := mul_le_mul_of_nonneg_left hVt hδ0.le
+        _ ≤ (Dw.card : ℝ) := hlarge
+    have hsupply : ∀ Dw : Finset (Fin t.dim → ℤ), Dw ⊆ t.V →
+        δ * (t.V.card : ℝ) ≤ (Dw.card : ℝ) →
+        ∀ _hE : Eligible β (pkgs t.dim).m₀ Dw t.M,
+        1 ≤ structureScale Dw.card ∧
+          1 ≤ (pkgs t.dim).c * structureScale Dw.card := by
+      intro Dw h1 h2 _
+      refine ⟨(hDwfacts Dw h1 h2).1, ?_⟩
+      calc (1 : ℝ) ≤ (pkgs t.dim).c * smin := hcsmin t.dim htdim
+        _ ≤ (pkgs t.dim).c * structureScale Dw.card :=
+          mul_le_mul_of_nonneg_left (hDwfacts Dw h1 h2).2
+            (pkgs t.dim).c_pos.le
+    obtain ⟨u, hu⟩ := hCstep t htdim hirr hsupply
+    refine ⟨u, hu, ?_, ?_, ?_⟩
+    · -- Retention `|V_u| ≥ (δ/2)|V_t|` (E1 deletion is at most `(δ/2)|V_t|`).
+      obtain ⟨Dw, hDV, hDcard, hdrop, _, _⟩ := hu
+      have hc0 : (0 : ℝ) ≤ (pkgs t.dim).c⁻¹ :=
+        inv_nonneg.mpr (pkgs t.dim).c_pos.le
+      have hDwn : δ * ((δ / 2) ^ imax * (s.V.card : ℝ)) ≤ (Dw.card : ℝ) :=
+        le_trans (mul_le_mul_of_nonneg_left hVt hδ0.le) hDcard
+      have hlogfloor : (1 : ℝ) ≤
+          Real.log (δ * ((δ / 2) ^ imax * (s.V.card : ℝ))) := by
+        have := Real.log_le_log (Real.exp_pos 1) hexp1
+        rwa [Real.log_exp] at this
+      have hlogpos : (0 : ℝ) <
+          Real.log (δ * ((δ / 2) ^ imax * (s.V.card : ℝ))) := by linarith
+      have hlogDw : Real.log (δ * ((δ / 2) ^ imax * (s.V.card : ℝ))) ≤
+          Real.log (Dw.card : ℝ) := Real.log_le_log hnflδ hDwn
+      have hlogDwpos : (0 : ℝ) < Real.log (Dw.card : ℝ) := by linarith
+      have hDwle : (Dw.card : ℝ) ≤ (t.V.card : ℝ) := by
+        exact_mod_cast Finset.card_le_card hDV
+      have hdelstep : (Dw.card : ℝ) / Real.log (Dw.card : ℝ) ≤
+          (t.V.card : ℝ) /
+            Real.log (δ * ((δ / 2) ^ imax * (s.V.card : ℝ))) := by
+        rw [div_le_div_iff₀ hlogDwpos hlogpos]
+        have e1 : (Dw.card : ℝ) *
+            Real.log (δ * ((δ / 2) ^ imax * (s.V.card : ℝ))) ≤
+            (Dw.card : ℝ) * Real.log (Dw.card : ℝ) :=
+          mul_le_mul_of_nonneg_left hlogDw (Nat.cast_nonneg _)
+        have e2 : (Dw.card : ℝ) * Real.log (Dw.card : ℝ) ≤
+            (t.V.card : ℝ) * Real.log (Dw.card : ℝ) :=
+          mul_le_mul_of_nonneg_right hDwle hlogDwpos.le
+        linarith
+      have hdelbound : (pkgs t.dim).c⁻¹ * Dw.card / Real.log Dw.card ≤
+          δ / 2 * (t.V.card : ℝ) := by
+        have e3 : (pkgs t.dim).c⁻¹ * (Dw.card : ℝ) /
+            Real.log (Dw.card : ℝ) =
+            (pkgs t.dim).c⁻¹ *
+              ((Dw.card : ℝ) / Real.log (Dw.card : ℝ)) := by ring
+        rw [e3]
+        calc (pkgs t.dim).c⁻¹ * ((Dw.card : ℝ) / Real.log (Dw.card : ℝ))
+            ≤ (pkgs t.dim).c⁻¹ * ((t.V.card : ℝ) /
+                Real.log (δ * ((δ / 2) ^ imax * (s.V.card : ℝ)))) :=
+              mul_le_mul_of_nonneg_left hdelstep hc0
+          _ ≤ (δ / 2 * Real.log (δ * ((δ / 2) ^ imax * (s.V.card : ℝ)))) *
+                ((t.V.card : ℝ) /
+                  Real.log (δ * ((δ / 2) ^ imax * (s.V.card : ℝ)))) :=
+              mul_le_mul_of_nonneg_right (hdel t.dim htdim) (by positivity)
+          _ = δ / 2 * (t.V.card : ℝ) *
+                (Real.log (δ * ((δ / 2) ^ imax * (s.V.card : ℝ))) /
+                  Real.log (δ * ((δ / 2) ^ imax * (s.V.card : ℝ)))) := by
+              ring
+          _ = δ / 2 * (t.V.card : ℝ) := by
+              rw [div_self (ne_of_gt hlogpos), mul_one]
+      linarith
+    · -- Up-move box decay at the scale floor.
+      intro hlt
+      have hboxup := PrepMove.box_up hu hlt hs1
+        (fun Dw h1 h2 => (hDwfacts Dw h1 h2).2)
+      obtain ⟨_, _, _, _, hdimle, _⟩ := hu
+      set c_t : ℝ := (pkgs t.dim).c with hct
+      have hc : (0 : ℝ) < c_t := (pkgs t.dim).c_pos
+      have key : smin ^ (u.dim - t.dim) * ((coordinateBox u.M).card : ℝ) ≤
+          (3 * c_t⁻¹) ^ u.dim * ((coordinateBox t.M).card : ℝ) := by
+        have hmul := mul_le_mul_of_nonneg_left hboxup
+          (le_of_lt (pow_pos (inv_pos.mpr hc) u.dim))
+        calc smin ^ (u.dim - t.dim) * ((coordinateBox u.M).card : ℝ)
+            = (c_t⁻¹) ^ u.dim * (c_t ^ u.dim *
+                (smin ^ (u.dim - t.dim) *
+                  ((coordinateBox u.M).card : ℝ))) := by
+              rw [← mul_assoc, ← mul_pow, inv_mul_cancel₀ (ne_of_gt hc),
+                one_pow, one_mul]
+          _ ≤ (c_t⁻¹) ^ u.dim *
+                (3 ^ u.dim * ((coordinateBox t.M).card : ℝ)) := hmul
+          _ = (3 * c_t⁻¹) ^ u.dim * ((coordinateBox t.M).card : ℝ) := by
+              rw [mul_pow]; ring
+      refine le_trans key
+        (mul_le_mul_of_nonneg_right ?_ (Nat.cast_nonneg _))
+      have hmax1 : (1 : ℝ) ≤ max 1 c_t⁻¹ := le_max_left _ _
+      calc (3 * c_t⁻¹) ^ u.dim
+          ≤ (3 * max 1 c_t⁻¹) ^ u.dim := by
+            apply pow_le_pow_left₀ (by positivity)
+            have := le_max_right (1 : ℝ) c_t⁻¹
+            linarith
+        _ ≤ (3 * max 1 c_t⁻¹) ^ (pkgs t.dim).D :=
+            pow_le_pow_right₀ (by linarith) hdimle
+        _ ≤ Cup := hCupB t.dim htdim
+    · -- Down-move: the sharp box estimate (documented hypothesis).
+      intro hlt
+      have h1 := hdown1 t u hu hlt
+      have h2 : ((coordinateBox u.M).card : ℝ) ≤
+          ((coordinateBox t.M).card : ℝ) := by exact_mod_cast h1
+      rw [one_mul]
+      exact h2
+  -- Run the descent.
+  obtain ⟨t, ch, hOK, hirr⟩ :=
+    exists_irreducible_chain_stepsOK s hlencap hstepOK
+  -- End-of-chain facts.
+  have hlen := hlencap t ch hOK
+  have hret : (δ / 2) ^ ch.length * (s.V.card : ℝ) ≤ (t.V.card : ℝ) :=
+    PrepChain.card_retention_stepsOK (Cup := Cup) (Cdown := 1)
+      (smin := smin) hδ0.le ch hOK
+  have hVtfloor : (δ / 2) ^ imax * (s.V.card : ℝ) ≤ (t.V.card : ℝ) :=
+    hcardfloor t ch hOK
+  have hn₁t : n₁ ≤ t.V.card := by
+    have h1 : (n₁ : ℝ) ≤ (t.V.card : ℝ) := le_trans hn₁out hVtfloor
+    exact_mod_cast h1
+  have hUt := hUcapCh t ch hOK
+  have huct : ch.upCount ≤ ch.upSum := ch.upCount_le_upSum
+  have hCupuc : Cup ^ ch.upCount ≤ Cup ^ Ucap :=
+    pow_le_pow_right₀ hCup (le_trans huct hUt)
+  have hγS1 : γ ^ ch.shrinkCount ≤ 1 := pow_le_one₀ hγ0.le hγ1.le
+  have hretε : (s.V.card : ℝ) ^ (1 - ε) ≤ (t.V.card : ℝ) := by
+    have h1 : (s.V.card : ℝ) ^ (1 - ε) =
+        (s.V.card : ℝ) ^ (-ε) * (s.V.card : ℝ) := by
+      rw [show (1 : ℝ) - ε = -ε + 1 by ring, Real.rpow_add hn0,
+        Real.rpow_one]
+    rw [h1]
+    calc (s.V.card : ℝ) ^ (-ε) * (s.V.card : ℝ)
+        ≤ (δ / 2) ^ imax * (s.V.card : ℝ) :=
+          mul_le_mul_of_nonneg_right hρε hn0.le
+      _ ≤ (t.V.card : ℝ) := hVtfloor
+  -- Master box estimate along the chain (with `Cdown = 1`).
+  have hmaster : smin ^ ch.upSum * ((coordinateBox t.M).card : ℝ) ≤
+      γ ^ ch.shrinkCount * Cup ^ ch.upCount *
+        ((coordinateBox s.M).card : ℝ) := by
+    have h1 := PrepChain.box_master_stepsOK (Cdown := 1) hγ0 hCup0 one_pos
+      hs1 ch hOK
+    rwa [one_pow, mul_one] at h1
+  -- Case split on the net dimension change.
+  rcases Nat.lt_trichotomy t.dim s.dim with hlt | heq | hgt
+  · -- DOWN: `|B̃| ≤ |B₀|` from the master estimate (`Cup ≤ smin` absorbs
+    -- the up factors; `γ ≤ 1` kills the shrink factors).
+    refine ⟨t, hn₁t, Or.inr (Or.inl ⟨hlt, hretε, ?_⟩)⟩
+    have hCupsmin : Cup ≤ smin := by nlinarith
+    have h1 : Cup ^ ch.upCount ≤ smin ^ ch.upSum :=
+      le_trans (pow_le_pow_left₀ hCup0.le hCupsmin _)
+        (pow_le_pow_right₀ hs1 huct)
+    have h2 : γ ^ ch.shrinkCount * Cup ^ ch.upCount *
+        ((coordinateBox s.M).card : ℝ) ≤
+        smin ^ ch.upSum * ((coordinateBox s.M).card : ℝ) := by
+      apply mul_le_mul_of_nonneg_right _ hB₀0.le
+      calc γ ^ ch.shrinkCount * Cup ^ ch.upCount
+          ≤ 1 * smin ^ ch.upSum :=
+            mul_le_mul hγS1 h1 (by positivity) one_pos.le
+        _ = smin ^ ch.upSum := one_mul _
+    have h3 : smin ^ ch.upSum * ((coordinateBox t.M).card : ℝ) ≤
+        smin ^ ch.upSum * ((coordinateBox s.M).card : ℝ) :=
+      le_trans hmaster h2
+    have h4 : ((coordinateBox t.M).card : ℝ) ≤
+        ((coordinateBox s.M).card : ℝ) :=
+      le_of_mul_le_mul_left h3 (by positivity)
+    exact_mod_cast h4
+  · -- SAME DIMENSION: irreducible output with `ρ = (δ/2)^i` bookkeeping.
+    refine ⟨t, hn₁t, Or.inr (Or.inr ⟨heq, hirr, ?_⟩)⟩
+    set ρ : ℝ := (δ / 2) ^ ch.length with hρdef
+    have hρ0 : 0 < ρ := pow_pos hδ2pos _
+    have hρ1 : ρ ≤ 1 := pow_le_one₀ hδ2pos.le hδ2le
+    have hρlow : (s.V.card : ℝ) ^ (-ε) ≤ ρ :=
+      le_trans hρε (pow_le_pow_of_le_one hδ2pos.le hδ2le hlen)
+    refine ⟨ρ, hρ0, hρ1, hρlow, hret, ?_⟩
+    set q : ℝ := (δ / 2) ^ K₀ with hqdef
+    have hq0 : 0 < q := Real.rpow_pos_of_pos hδ2pos _
+    have hq1 : q ≤ 1 := Real.rpow_le_one hδ2pos.le hδ2le hK₀
+    have hρK : ρ ^ K₀ = q ^ ch.length := by
+      rw [hρdef, hqdef, ← Real.rpow_natCast (δ / 2) ch.length,
+        ← Real.rpow_mul hδ2pos.le, mul_comm ((ch.length : ℕ) : ℝ) K₀,
+        Real.rpow_mul hδ2pos.le, Real.rpow_natCast]
+    have hq2 : (δ / 2 : ℝ) ^ (2 * K₀) = q * q := by
+      rw [hqdef, ← Real.rpow_add hδ2pos]
+      congr 1
+      ring
+    have hsums : ch.downSum = ch.upSum := by
+      have := ch.dim_add_downSum_eq
+      omega
+    have hdct : ch.downCount ≤ ch.upSum := by
+      have := ch.downCount_le_downSum
+      omega
+    have hCbq : Cup ≤ q * q * smin := by
+      rw [hq2] at hsminK₀
+      linarith
+    have hbq1 : (1 : ℝ) ≤ q * q * smin := le_trans hCup hCbq
+    have hkey : γ ^ ch.shrinkCount * Cup ^ ch.upCount ≤
+        smin ^ ch.upSum * q ^ ch.length := by
+      have hγq : γ ^ ch.shrinkCount ≤ q ^ ch.shrinkCount :=
+        pow_le_pow_left₀ hγ0.le hγK₀ _
+      have hCupq : Cup ^ ch.upCount ≤ (q * q * smin) ^ ch.upSum := by
+        calc Cup ^ ch.upCount ≤ (q * q * smin) ^ ch.upCount :=
+              pow_le_pow_left₀ hCup0.le hCbq _
+          _ ≤ (q * q * smin) ^ ch.upSum := pow_le_pow_right₀ hbq1 huct
+      have hquc : q ^ ch.upSum ≤ q ^ ch.upCount :=
+        pow_le_pow_of_le_one hq0.le hq1 huct
+      have hqdc : q ^ ch.upSum ≤ q ^ ch.downCount :=
+        pow_le_pow_of_le_one hq0.le hq1 hdct
+      calc γ ^ ch.shrinkCount * Cup ^ ch.upCount
+          ≤ q ^ ch.shrinkCount * (q * q * smin) ^ ch.upSum :=
+            mul_le_mul hγq hCupq (by positivity) (by positivity)
+        _ = q ^ ch.shrinkCount *
+              (q ^ ch.upSum * q ^ ch.upSum * smin ^ ch.upSum) := by
+            rw [mul_pow, mul_pow]
+        _ ≤ q ^ ch.shrinkCount *
+              (q ^ ch.upCount * q ^ ch.downCount * smin ^ ch.upSum) := by
+            apply mul_le_mul_of_nonneg_left _ (by positivity)
+            apply mul_le_mul_of_nonneg_right _ (by positivity)
+            exact mul_le_mul hquc hqdc (by positivity) (by positivity)
+        _ = smin ^ ch.upSum *
+              (q ^ (ch.shrinkCount + ch.upCount + ch.downCount)) := by
+            rw [pow_add, pow_add]
+            ring
+        _ = smin ^ ch.upSum * q ^ ch.length := by
+            rw [ch.length_eq_counts]
+    have hfinal : smin ^ ch.upSum * ((coordinateBox t.M).card : ℝ) ≤
+        smin ^ ch.upSum *
+          (q ^ ch.length * ((coordinateBox s.M).card : ℝ)) := by
+      calc smin ^ ch.upSum * ((coordinateBox t.M).card : ℝ)
+          ≤ γ ^ ch.shrinkCount * Cup ^ ch.upCount *
+              ((coordinateBox s.M).card : ℝ) := hmaster
+        _ ≤ smin ^ ch.upSum * q ^ ch.length *
+              ((coordinateBox s.M).card : ℝ) :=
+            mul_le_mul_of_nonneg_right hkey hB₀0.le
+        _ = smin ^ ch.upSum *
+              (q ^ ch.length * ((coordinateBox s.M).card : ℝ)) := by ring
+    have hboxfin : ((coordinateBox t.M).card : ℝ) ≤
+        q ^ ch.length * ((coordinateBox s.M).card : ℝ) :=
+      le_of_mul_le_mul_left hfinal (by positivity)
+    rw [hρK]
+    exact hboxfin
+  · -- UP: net scale decay gives the manuscript's `|B̃| ≪ n^{-(1-ε)Δ}|B₀|`.
+    refine ⟨t, hn₁t, Or.inl ⟨hgt, ?_, hretε, ?_⟩⟩
+    · have h1 := ch.dim_le
+      omega
+    · -- Net-up master estimate.
+      have hnet := PrepChain.box_master_net_up_stepsOK (Cdown := 1) hγ0
+        hCup0 one_pos hs1 ch hOK
+      rw [one_pow, mul_one] at hnet
+      have h1 : smin ^ (t.dim - s.dim) * ((coordinateBox t.M).card : ℝ) ≤
+          Cup ^ Ucap * ((coordinateBox s.M).card : ℝ) := by
+        refine le_trans hnet ?_
+        apply mul_le_mul_of_nonneg_right _ hB₀0.le
+        calc γ ^ ch.shrinkCount * Cup ^ ch.upCount
+            ≤ 1 * Cup ^ Ucap :=
+              mul_le_mul hγS1 hCupuc (by positivity) one_pos.le
+          _ = Cup ^ Ucap := one_mul _
+      -- The exact excess identity `B₀ = n^{1/(σ+ζ)}`.
+      have hζlo := hbad.zeta_lt_stageExcess hζ₀.le
+      have hσd := sigma_pos s.dim
+      have hσζ : 0 < sigma s.dim + stageExcess s := by linarith
+      have hexact : ((coordinateBox s.M).card : ℝ) ^
+          (sigma s.dim + stageExcess s) = (s.V.card : ℝ) :=
+        rpow_sigma_add_stageExcess hbox2 (by omega)
+      have hB₀eq : ((coordinateBox s.M).card : ℝ) =
+          (s.V.card : ℝ) ^ (1 / (sigma s.dim + stageExcess s)) := by
+        have h2 : (((coordinateBox s.M).card : ℝ) ^
+            (sigma s.dim + stageExcess s)) ^
+              (1 / (sigma s.dim + stageExcess s)) =
+            ((coordinateBox s.M).card : ℝ) := by
+          rw [← Real.rpow_mul hB₀0.le, mul_one_div,
+            div_self (ne_of_gt hσζ), Real.rpow_one]
+        rw [← h2, hexact]
+      have hΔcast : ((t.dim - s.dim : ℕ) : ℝ) =
+          (t.dim : ℝ) - (s.dim : ℝ) := by
+        rw [Nat.cast_sub hgt.le]
+      -- The exponent absorption `Cup^{Ucap}·n^{(1-ε)Δ} ≤ smin^Δ`.
+      set nP : ℝ := (s.V.card : ℝ) ^
+        ((1 - ε) * ((t.dim : ℝ) - (s.dim : ℝ))) with hnPdef
+      have hnP0 : 0 < nP := Real.rpow_pos_of_pos hn0 _
+      have hkey : Cup ^ Ucap * nP ≤ smin ^ (t.dim - s.dim) := by
+        have hΔ1 : 1 ≤ t.dim - s.dim := by omega
+        have e1 : nP = ((s.V.card : ℝ) ^ (1 - ε)) ^ (t.dim - s.dim) := by
+          rw [hnPdef, ← hΔcast, ← Real.rpow_natCast
+            ((s.V.card : ℝ) ^ (1 - ε)) (t.dim - s.dim),
+            ← Real.rpow_mul hn0.le]
+        have hnε0 : (0 : ℝ) ≤ (s.V.card : ℝ) ^ (1 - ε) :=
+          Real.rpow_nonneg hn0.le _
+        have hCupUc1 : (1 : ℝ) ≤ Cup ^ Ucap := one_le_pow₀ hCup
+        rw [e1]
+        calc Cup ^ Ucap * ((s.V.card : ℝ) ^ (1 - ε)) ^ (t.dim - s.dim)
+            ≤ (Cup ^ Ucap) ^ (t.dim - s.dim) *
+                ((s.V.card : ℝ) ^ (1 - ε)) ^ (t.dim - s.dim) := by
+              apply mul_le_mul_of_nonneg_right _ (by positivity)
+              calc Cup ^ Ucap = (Cup ^ Ucap) ^ 1 := (pow_one _).symm
+                _ ≤ (Cup ^ Ucap) ^ (t.dim - s.dim) :=
+                  pow_le_pow_right₀ hCupUc1 hΔ1
+          _ = (Cup ^ Ucap * (s.V.card : ℝ) ^ (1 - ε)) ^ (t.dim - s.dim) :=
+              (mul_pow _ _ _).symm
+          _ ≤ smin ^ (t.dim - s.dim) := by
+              apply pow_le_pow_left₀ (by positivity)
+              linarith
+      -- Conclude.
+      have hchain : ((coordinateBox t.M).card : ℝ) * (Cup ^ Ucap * nP) ≤
+          Cup ^ Ucap * ((coordinateBox s.M).card : ℝ) := by
+        calc ((coordinateBox t.M).card : ℝ) * (Cup ^ Ucap * nP)
+            ≤ ((coordinateBox t.M).card : ℝ) * smin ^ (t.dim - s.dim) :=
+              mul_le_mul_of_nonneg_left hkey (Nat.cast_nonneg _)
+          _ = smin ^ (t.dim - s.dim) * ((coordinateBox t.M).card : ℝ) :=
+              mul_comm _ _
+          _ ≤ Cup ^ Ucap * ((coordinateBox s.M).card : ℝ) := h1
+      have h2 : ((coordinateBox t.M).card : ℝ) * nP ≤
+          ((coordinateBox s.M).card : ℝ) := by
+        have h3 : Cup ^ Ucap * (((coordinateBox t.M).card : ℝ) * nP) ≤
+            Cup ^ Ucap * ((coordinateBox s.M).card : ℝ) := by
+          calc Cup ^ Ucap * (((coordinateBox t.M).card : ℝ) * nP)
+              = ((coordinateBox t.M).card : ℝ) * (Cup ^ Ucap * nP) := by
+                ring
+            _ ≤ Cup ^ Ucap * ((coordinateBox s.M).card : ℝ) := hchain
+        exact le_of_mul_le_mul_left h3 (by positivity)
+      have htarget : (s.V.card : ℝ) ^
+          (1 / (sigma s.dim + stageExcess s) -
+            (1 - ε) * ((t.dim : ℝ) - (s.dim : ℝ))) =
+          ((coordinateBox s.M).card : ℝ) * nP⁻¹ := by
+        rw [Real.rpow_sub hn0, hB₀eq, hnPdef, div_eq_mul_inv]
+      rw [htarget]
+      calc ((coordinateBox t.M).card : ℝ)
+          = ((coordinateBox t.M).card : ℝ) * nP * nP⁻¹ := by
+            rw [mul_assoc, mul_inv_cancel₀ (ne_of_gt hnP0), mul_one]
+        _ ≤ ((coordinateBox s.M).card : ℝ) * nP⁻¹ :=
+            mul_le_mul_of_nonneg_right h2 (inv_nonneg.mpr hnP0.le)
+
 end Nondividing
