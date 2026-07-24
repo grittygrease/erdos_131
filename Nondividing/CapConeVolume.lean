@@ -243,4 +243,121 @@ theorem card_latticePoints_le_volume (d : ℕ) :
     hcount K (latticePoints (K : Set (Fin d → ℝ)) K.isBounded) hsymm
       (fun z => mem_latticePoints K.isBounded z) hspan⟩
 
+/-! ## 7. The assembled `r = d` count -/
+
+/-- **Cap-lifting cone count** (`lem:cap-lifting`, alternative (ii), counting
+step).  Let `W` be a set of integer points with `X ≤ λ(v) ≤ 2X` whose
+projective normalizations lie in a compact convex `Ω'`, and suppose the
+cone-volume hypothesis `vol(cone 1 Ω') ≤ η · vol(cone 1 Ω)` holds (this is the
+avatar of the surface-measure cap hypothesis; the projective-theorem glue
+discharges it from `weighted_density`).  If moreover `W` spans `ℝ^d`
+(the full-rank case `r = d`), then
+
+  `#W ≤ C(d) · η · (2X)^d · vol(cone 1 Ω)`
+
+with `C(d)` depending only on `d` — via `W ⊆ K ∩ ℤ^d ⊆ (K−K) ∩ ℤ^d`
+(`K = cone_{2X}(Ω')`), Rogers–Shephard, and the lattice-point count E5d. -/
+theorem cap_cone_count (d : ℕ) :
+    ∃ C : ℝ, 0 < C ∧
+      ∀ (a : Fin d → ℤ) (X : ℕ) (η : ℝ) (Ω Ω' : Set (Fin d → ℝ))
+        (W : Finset (Fin d → ℤ)),
+        1 ≤ X → 0 ≤ η →
+        Convex ℝ Ω' → IsCompact Ω' → Ω'.Nonempty →
+        volume (cone 1 Ω') ≤ ENNReal.ofReal η * volume (cone 1 Ω) →
+        volume (cone 1 Ω) ≠ ⊤ →
+        (∀ v ∈ W, (X : ℤ) ≤ intFunctional a v ∧
+          intFunctional a v ≤ 2 * X ∧ projNorm a v ∈ Ω') →
+        Submodule.span ℝ
+          (External.realPoint '' (W : Set (Fin d → ℤ))) = ⊤ →
+        (W.card : ℝ) ≤
+          C * η * (2 * (X : ℝ)) ^ d * (volume (cone 1 Ω)).toReal := by
+  classical
+  obtain ⟨C₀, hC₀, hcount⟩ := card_latticePoints_le_volume d
+  set binom : ℕ := Nat.choose (2 * d) d with hbinom_def
+  have hbinom_pos : 0 < binom := Nat.choose_pos (by omega)
+  refine ⟨(C₀ : ℝ) * binom, by positivity, ?_⟩
+  intro a X η Ω Ω' W hX hη hconv hcomp hne hvol hfin hW hspan
+  set T : ℝ := 2 * (X : ℝ) with hT_def
+  have hT : 0 ≤ T := by positivity
+  set K : ConvexBody (Fin d → ℝ) := coneBody T Ω' hT hconv hcomp hne
+    with hK_def
+  set Kd : ConvexBody (Fin d → ℝ) := K + (-1 : ℝ) • K with hKd_def
+  have hDcoe : (Kd : Set (Fin d → ℝ)) =
+      (K : Set (Fin d → ℝ)) + (-1 : ℝ) • (K : Set (Fin d → ℝ)) := by
+    rw [hKd_def, ConvexBody.coe_add, ConvexBody.coe_smul]
+  set A : Finset (Fin d → ℤ) :=
+    latticePoints (Kd : Set (Fin d → ℝ)) Kd.isBounded with hA_def
+  -- `K ⊆ K − K` since `0 ∈ K`.
+  have h0K : (0 : Fin d → ℝ) ∈ (K : Set (Fin d → ℝ)) :=
+    zero_mem_cone hT hne
+  have hKD : (K : Set (Fin d → ℝ)) ⊆ (Kd : Set (Fin d → ℝ)) := by
+    intro x hx
+    rw [hDcoe]
+    have hmem : x + (-1 : ℝ) • (0 : Fin d → ℝ) ∈
+        (K : Set (Fin d → ℝ)) + (-1 : ℝ) • (K : Set (Fin d → ℝ)) :=
+      Set.add_mem_add hx (Set.smul_mem_smul_set h0K)
+    simpa using hmem
+  -- `W ⊆ A` via the shell containment (deliverable 3).
+  have hWA : W ⊆ A := by
+    intro v hv
+    rw [hA_def, mem_latticePoints]
+    obtain ⟨hlo, hhi, hmem⟩ := hW v hv
+    exact hKD (realPoint_mem_cone hX hlo hhi hmem)
+  -- `K − K` is origin-symmetric.
+  have hsymm : ∀ x ∈ (Kd : Set (Fin d → ℝ)), -x ∈ Kd := by
+    intro x hx
+    rw [hDcoe] at hx
+    show -x ∈ (Kd : Set (Fin d → ℝ))
+    rw [hDcoe]
+    obtain ⟨u, hu, w, hw, rfl⟩ := Set.mem_add.mp hx
+    obtain ⟨k, hk, rfl⟩ := Set.mem_smul_set.mp hw
+    refine Set.mem_add.mpr ⟨k, hk, (-1 : ℝ) • u,
+      Set.smul_mem_smul_set hu, ?_⟩
+    simp only [neg_one_smul]
+    abel
+  -- The lattice points of `K − K` span, since `W` does.
+  have hspanA : Submodule.span ℝ
+      (External.realPoint '' (A : Set (Fin d → ℤ))) = ⊤ := by
+    refine eq_top_iff.mpr ?_
+    rw [← hspan]
+    exact Submodule.span_mono
+      (Set.image_mono (Finset.coe_subset.mpr hWA))
+  -- The ENNReal cardinality chain.
+  have hcard : (W.card : ENNReal) ≤
+      (C₀ : ENNReal) * ((binom : ENNReal) * ENNReal.ofReal (T ^ d) *
+        (ENNReal.ofReal η * volume (cone 1 Ω))) := by
+    calc (W.card : ENNReal)
+        ≤ (A.card : ENNReal) := by
+          exact_mod_cast Finset.card_le_card hWA
+      _ ≤ (C₀ : ENNReal) * volume (Kd : Set (Fin d → ℝ)) :=
+          hcount Kd hsymm hspanA
+      _ ≤ (C₀ : ENNReal) * ((binom : ENNReal) * ENNReal.ofReal (T ^ d) *
+            volume (cone 1 Ω')) := by
+          refine mul_le_mul_right ?_ _
+          exact volume_coneBody_diff_le T Ω' hT hconv hcomp hne
+      _ ≤ (C₀ : ENNReal) * ((binom : ENNReal) * ENNReal.ofReal (T ^ d) *
+            (ENNReal.ofReal η * volume (cone 1 Ω))) := by
+          exact mul_le_mul_right (mul_le_mul_right hvol _) _
+  -- Convert to real numbers.
+  have hRHS_ne : (C₀ : ENNReal) * ((binom : ENNReal) *
+      ENNReal.ofReal (T ^ d) * (ENNReal.ofReal η * volume (cone 1 Ω))) ≠
+        ⊤ := by
+    apply ENNReal.mul_ne_top ENNReal.coe_ne_top
+    apply ENNReal.mul_ne_top
+    · exact ENNReal.mul_ne_top (ENNReal.natCast_ne_top binom)
+        ENNReal.ofReal_ne_top
+    · exact ENNReal.mul_ne_top ENNReal.ofReal_ne_top hfin
+  have hreal := ENNReal.toReal_mono hRHS_ne hcard
+  rw [ENNReal.toReal_natCast, ENNReal.toReal_mul, ENNReal.toReal_mul,
+    ENNReal.toReal_mul, ENNReal.toReal_mul, ENNReal.coe_toReal,
+    ENNReal.toReal_natCast, ENNReal.toReal_ofReal (by positivity),
+    ENNReal.toReal_ofReal hη] at hreal
+  calc (W.card : ℝ)
+      ≤ (C₀ : ℝ) * ((binom : ℝ) * T ^ d *
+          (η * (volume (cone 1 Ω)).toReal)) := hreal
+    _ = (C₀ : ℝ) * binom * η * T ^ d *
+          (volume (cone 1 Ω)).toReal := by ring
+    _ = (C₀ : ℝ) * binom * η * (2 * (X : ℝ)) ^ d *
+          (volume (cone 1 Ω)).toReal := by rw [hT_def]
+
 end Nondividing
