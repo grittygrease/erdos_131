@@ -1,0 +1,19 @@
+{
+    "challenge_module": "Challenge",
+    "solution_module": "Solution",
+    "theorem_names": ["Nondividing.main_log_limit"],
+    "permitted_axioms": [
+        "propext",
+        "Quot.sound",
+        "Classical.choice",
+        "Nondividing.External.cfp_structure",
+        "Nondividing.External.discrete_john",
+        "Nondividing.External.zonotope_rounding",
+        "Nondividing.External.convex_density_set",
+        "Nondividing.External.blaschke_selection",
+        "Nondividing.External.convexBody_volume_tendsto",
+        "Nondividing.External.rogers_shephard",
+        "Nondividing.External.full_rank_lattice_points_le_volume"
+    ],
+    "enable_nanoda": false
+}

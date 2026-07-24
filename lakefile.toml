@@ -9,3 +9,12 @@ rev = "81a5d257c8e410db227a6665ed08f64fea08e997"
 
 [[lean_lib]]
 name = "Nondividing"
+
+# Comparator targets (see README "Verifying the formalization").
+# Challenge = trusted statement surface (contains `sorry` by design);
+# Solution = the full development re-exported for kernel replay.
+[[lean_lib]]
+name = "Challenge"
+
+[[lean_lib]]
+name = "Solution"

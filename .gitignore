@@ -45,3 +45,8 @@ Thumbs.db
 # --- Scratch / logs --------------------------------------------------------
 scratch/
 *.tmp
+
+# --- Comparator / Lean 4 Web ----------------------------------------------
+# Self-contained single-file version of Challenge.lean for pasting into
+# live.lean-lang.org / comparator.live (regenerable; see README).
+/comparator_web.lean
