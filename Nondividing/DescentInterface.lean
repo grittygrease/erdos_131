@@ -261,4 +261,423 @@ theorem rawStep'_of_suppliers {β : ℝ} (pkgs : ∀ r, Package r β) (D : ℕ)
           _ ≤ η * (ρ ^ K₀ * ((coordinateBox s.M).card : ℝ)) :=
               mul_le_mul_of_nonneg_left hρbox hη0.le
 
+/-! ## The stage potential
+
+The manuscript's global cardinality bookkeeping `|A_j| ≥ n₀^q`
+(Manuscript.tex 2024–2100) is carried by the potential
+`Φ(s) = |V| / |B|^{σ_dim+ζ₀−ν}`:
+
+* `rpow_le_descentPotential` — at every excessive stage, the exact excess
+  identity `|B|^{σ+ζ} = |V|` *regenerates* the floor `Φ ≥ |V|^ν`;
+* `descentPotential_le_card` — conversely `Φ ≤ |V|`, so a potential floor is a
+  cardinality floor;
+* `descentPotential_mono_sameDim` — along a coupled same-dimensional step the
+  potential never decreases: the `η`-exponents match exactly and
+  `K₀·(σ_d+ζ₀−ν) ≥ 1` absorbs the `ρ`-loss into the `ρ^{K₀}` box decay. -/
+
+/-- The stage potential `Φ(s) = |V| / |B|^{σ_dim+ζ₀−ν}`. -/
+noncomputable def descentPotential (ζ₀ ν : ℝ) {X : ℕ} (s : PrepStage X) : ℝ :=
+  (s.V.card : ℝ) /
+    ((coordinateBox s.M).card : ℝ) ^ (sigma s.dim + ζ₀ - ν)
+
+theorem descentPotential_nonneg (ζ₀ ν : ℝ) {X : ℕ} (s : PrepStage X) :
+    0 ≤ descentPotential ζ₀ ν s :=
+  div_nonneg (Nat.cast_nonneg _) (Real.rpow_nonneg (Nat.cast_nonneg _) _)
+
+/-- The potential is a cardinality lower bound: `Φ(s) ≤ |V|`. -/
+theorem descentPotential_le_card (ζ₀ ν : ℝ) {X : ℕ} (s : PrepStage X)
+    (hθ : 0 ≤ sigma s.dim + ζ₀ - ν) :
+    descentPotential ζ₀ ν s ≤ (s.V.card : ℝ) := by
+  have hB1 : (1 : ℝ) ≤ ((coordinateBox s.M).card : ℝ) := by
+    exact_mod_cast one_le_card_coordinateBox s.M
+  have h1 : (1 : ℝ) ≤
+      ((coordinateBox s.M).card : ℝ) ^ (sigma s.dim + ζ₀ - ν) := by
+    calc (1 : ℝ) = ((coordinateBox s.M).card : ℝ) ^ (0 : ℝ) :=
+          (Real.rpow_zero _).symm
+      _ ≤ _ := Real.rpow_le_rpow_of_exponent_le hB1 hθ
+  exact div_le_self (Nat.cast_nonneg _) h1
+
+/-- **Potential regeneration** at excessive stages: by the exact excess
+identity, `Φ(s) = |B|^{ζ−ζ₀+ν} ≥ |V|^ν`. -/
+theorem rpow_le_descentPotential {ζ₀ ν : ℝ} (hζ₀ : 0 < ζ₀) (hν0 : 0 ≤ ν)
+    {X : ℕ} {s : PrepStage X} (hbad : ExcessiveStage ζ₀ s) :
+    (s.V.card : ℝ) ^ ν ≤ descentPotential ζ₀ ν s := by
+  have hbox2 : 2 ≤ (coordinateBox s.M).card := hbad.two_le_box hζ₀.le
+  have hn2 : 2 ≤ s.V.card := hbad.two_le_card hζ₀.le
+  have hB2 : (2 : ℝ) ≤ ((coordinateBox s.M).card : ℝ) := by
+    exact_mod_cast hbox2
+  have hB0 : (0 : ℝ) < ((coordinateBox s.M).card : ℝ) := by linarith
+  have hnR : (2 : ℝ) ≤ (s.V.card : ℝ) := by exact_mod_cast hn2
+  have hn1 : (1 : ℝ) ≤ (s.V.card : ℝ) := by linarith
+  have hζlt : ζ₀ < stageExcess s := hbad.zeta_lt_stageExcess hζ₀.le
+  have hexact : ((coordinateBox s.M).card : ℝ) ^
+      (sigma s.dim + stageExcess s) = (s.V.card : ℝ) :=
+    rpow_sigma_add_stageExcess hbox2 (by omega)
+  have hVB : (s.V.card : ℝ) ≤ ((coordinateBox s.M).card : ℝ) := by
+    exact_mod_cast stage_card_le_box s
+  have hkey : descentPotential ζ₀ ν s =
+      ((coordinateBox s.M).card : ℝ) ^ (stageExcess s - ζ₀ + ν) := by
+    unfold descentPotential
+    rw [← hexact, ← Real.rpow_sub hB0]
+    congr 1
+    ring
+  rw [hkey]
+  calc (s.V.card : ℝ) ^ ν
+      ≤ (s.V.card : ℝ) ^ (stageExcess s - ζ₀ + ν) :=
+        Real.rpow_le_rpow_of_exponent_le hn1 (by linarith)
+    _ ≤ ((coordinateBox s.M).card : ℝ) ^ (stageExcess s - ζ₀ + ν) :=
+        Real.rpow_le_rpow (by linarith) hVB (by linarith)
+
+/-- **Potential monotonicity along a coupled same-dimensional step**:
+from `|V'| ≥ η^θ·ρ·|V|` and `|B'| ≤ η·ρ^{K₀}·|B|` with `θ = σ_d+ζ₀−ν`,
+`K₀·θ ≥ 1`, the potential never decreases (`ρ^{K₀θ} ≤ ρ`). -/
+theorem descentPotential_mono_sameDim {ζ₀ ν K₀ η ρ : ℝ} {X : ℕ}
+    {s s' : PrepStage X} (hdim : s'.dim = s.dim)
+    (hθ0 : 0 ≤ sigma s.dim + ζ₀ - ν)
+    (hK₀θ : 1 ≤ K₀ * (sigma s.dim + ζ₀ - ν))
+    (hη0 : 0 < η) (hρ0 : 0 < ρ) (hρ1 : ρ ≤ 1)
+    (hcard : η ^ (sigma s.dim + ζ₀ - ν) * (ρ * (s.V.card : ℝ)) ≤
+      (s'.V.card : ℝ))
+    (hbox : ((coordinateBox s'.M).card : ℝ) ≤
+      η * (ρ ^ K₀ * ((coordinateBox s.M).card : ℝ))) :
+    descentPotential ζ₀ ν s ≤ descentPotential ζ₀ ν s' := by
+  have hB'1 : (1 : ℝ) ≤ ((coordinateBox s'.M).card : ℝ) := by
+    exact_mod_cast one_le_card_coordinateBox s'.M
+  have hB1 : (1 : ℝ) ≤ ((coordinateBox s.M).card : ℝ) := by
+    exact_mod_cast one_le_card_coordinateBox s.M
+  have hB'θ : (0 : ℝ) <
+      ((coordinateBox s'.M).card : ℝ) ^ (sigma s.dim + ζ₀ - ν) :=
+    Real.rpow_pos_of_pos (by linarith) _
+  have hBθ : (0 : ℝ) <
+      ((coordinateBox s.M).card : ℝ) ^ (sigma s.dim + ζ₀ - ν) :=
+    Real.rpow_pos_of_pos (by linarith) _
+  have hσeq : sigma s'.dim = sigma s.dim := by rw [hdim]
+  show (s.V.card : ℝ) /
+      ((coordinateBox s.M).card : ℝ) ^ (sigma s.dim + ζ₀ - ν) ≤
+    (s'.V.card : ℝ) /
+      ((coordinateBox s'.M).card : ℝ) ^ (sigma s'.dim + ζ₀ - ν)
+  rw [hσeq, div_le_div_iff₀ hBθ hB'θ]
+  -- Denominator expansion: `B'^θ ≤ η^θ·ρ^{K₀θ}·B^θ`.
+  have hBB' : ((coordinateBox s'.M).card : ℝ) ^ (sigma s.dim + ζ₀ - ν) ≤
+      (η * (ρ ^ K₀ * ((coordinateBox s.M).card : ℝ))) ^
+        (sigma s.dim + ζ₀ - ν) :=
+    Real.rpow_le_rpow (Nat.cast_nonneg _) hbox hθ0
+  have hexpand : (η * (ρ ^ K₀ * ((coordinateBox s.M).card : ℝ))) ^
+      (sigma s.dim + ζ₀ - ν) =
+      η ^ (sigma s.dim + ζ₀ - ν) *
+        (ρ ^ (K₀ * (sigma s.dim + ζ₀ - ν)) *
+          ((coordinateBox s.M).card : ℝ) ^ (sigma s.dim + ζ₀ - ν)) := by
+    rw [Real.mul_rpow hη0.le (by positivity),
+      Real.mul_rpow (Real.rpow_nonneg hρ0.le _) (Nat.cast_nonneg _),
+      ← Real.rpow_mul hρ0.le]
+  -- `ρ^{K₀θ} ≤ ρ` absorbs the loss.
+  have hρpow : ρ ^ (K₀ * (sigma s.dim + ζ₀ - ν)) ≤ ρ := by
+    have h1 : ρ ^ (K₀ * (sigma s.dim + ζ₀ - ν)) ≤ ρ ^ (1 : ℝ) :=
+      Real.rpow_le_rpow_of_exponent_ge hρ0 hρ1 hK₀θ
+    rwa [Real.rpow_one] at h1
+  calc (s.V.card : ℝ) *
+        ((coordinateBox s'.M).card : ℝ) ^ (sigma s.dim + ζ₀ - ν)
+      ≤ (s.V.card : ℝ) *
+          (η ^ (sigma s.dim + ζ₀ - ν) *
+            (ρ ^ (K₀ * (sigma s.dim + ζ₀ - ν)) *
+              ((coordinateBox s.M).card : ℝ) ^ (sigma s.dim + ζ₀ - ν))) :=
+        mul_le_mul_of_nonneg_left (hBB'.trans_eq hexpand) (Nat.cast_nonneg _)
+    _ ≤ (s.V.card : ℝ) *
+          (η ^ (sigma s.dim + ζ₀ - ν) *
+            (ρ * ((coordinateBox s.M).card : ℝ) ^
+              (sigma s.dim + ζ₀ - ν))) := by
+        apply mul_le_mul_of_nonneg_left _ (Nat.cast_nonneg _)
+        apply mul_le_mul_of_nonneg_left _ (Real.rpow_nonneg hη0.le _)
+        exact mul_le_mul_of_nonneg_right hρpow hBθ.le
+    _ = (η ^ (sigma s.dim + ζ₀ - ν) * (ρ * (s.V.card : ℝ))) *
+          ((coordinateBox s.M).card : ℝ) ^ (sigma s.dim + ζ₀ - ν) := by
+        ring
+    _ ≤ (s'.V.card : ℝ) *
+          ((coordinateBox s.M).card : ℝ) ^ (sigma s.dim + ζ₀ - ν) :=
+        mul_le_mul_of_nonneg_right hcard hBθ.le
+
+/-! ## Per-branch step facts
+
+The three branches of `RawStep'` are converted into the data the descent
+consumes: the same-dimensional branch yields excess monotonicity, a strict
+box shrink and potential monotonicity (`sameDim_step_facts`); the up branch
+yields the numerology counting gain (`up_step_facts`); the down branch
+yields the sigma-gap counting gain with the `Cdown` constant absorbed into
+`Δ_D` above the threshold `Cdown² ≤ n₁^c` (`down_step_facts`). -/
+
+/-- **Same-dimensional step conversion**: the coupled `(η,ρ)` output beats
+the old exponent (`sameDim_ratio_lt`), so the new stage is excessive with
+monotone excess, a strictly smaller box, and monotone potential. -/
+theorem sameDim_step_facts {ζ₀ ν K₀ η ρ : ℝ} {X : ℕ} {s s' : PrepStage X}
+    (hζ₀ : 0 < ζ₀) (hν0 : 0 < ν) (hνζ : ν ≤ ζ₀) (hK₀ : 5 ≤ K₀)
+    (hbad : ExcessiveStage ζ₀ s) (hdim : s'.dim = s.dim)
+    (hη0 : 0 < η) (hη1 : η < 1) (hρ0 : 0 < ρ) (hρ1 : ρ ≤ 1)
+    (hcard : η ^ (sigma s.dim + ζ₀ - ν) * (ρ * (s.V.card : ℝ)) ≤
+      (s'.V.card : ℝ))
+    (hbox : ((coordinateBox s'.M).card : ℝ) ≤
+      η * (ρ ^ K₀ * ((coordinateBox s.M).card : ℝ))) :
+    ExcessiveStage ζ₀ s' ∧ stageExcess s ≤ stageExcess s' ∧
+      (coordinateBox s'.M).card < (coordinateBox s.M).card ∧
+      descentPotential ζ₀ ν s ≤ descentPotential ζ₀ ν s' := by
+  have hbox2 : 2 ≤ (coordinateBox s.M).card := hbad.two_le_box hζ₀.le
+  have hn2 : 2 ≤ s.V.card := hbad.two_le_card hζ₀.le
+  have hB2 : (2 : ℝ) ≤ ((coordinateBox s.M).card : ℝ) := by
+    exact_mod_cast hbox2
+  have hB0 : (0 : ℝ) < ((coordinateBox s.M).card : ℝ) := by linarith
+  have hB1 : (1 : ℝ) ≤ ((coordinateBox s.M).card : ℝ) := by linarith
+  have hζlt : ζ₀ < stageExcess s := hbad.zeta_lt_stageExcess hζ₀.le
+  have hσ := sigma_pos s.dim
+  have hσ5 := one_fifth_le_sigma s.dim
+  have hp0 : 0 < sigma s.dim + stageExcess s := by linarith
+  have hexact : ((coordinateBox s.M).card : ℝ) ^
+      (sigma s.dim + stageExcess s) = (s.V.card : ℝ) :=
+    rpow_sigma_add_stageExcess hbox2 (by omega)
+  have hB'1 : (1 : ℝ) ≤ ((coordinateBox s'.M).card : ℝ) := by
+    exact_mod_cast one_le_card_coordinateBox s'.M
+  -- The ratio numerology at the old exponent.
+  have hcount : ((coordinateBox s'.M).card : ℝ) ^
+      (sigma s.dim + stageExcess s) < (s'.V.card : ℝ) := by
+    refine sameDim_ratio_lt (B := ((coordinateBox s.M).card : ℝ))
+      (η := η) (ρ := ρ) (a := sigma s.dim + ζ₀ - ν) (K := K₀)
+      hB1 hexact hp0 hη0 hη1 hρ0 hρ1 (by linarith) (by nlinarith)
+      (Nat.cast_nonneg _) ?_ ?_
+    · calc ρ * η ^ (sigma s.dim + ζ₀ - ν) * (s.V.card : ℝ)
+          = η ^ (sigma s.dim + ζ₀ - ν) * (ρ * (s.V.card : ℝ)) := by ring
+        _ ≤ (s'.V.card : ℝ) := hcard
+    · calc ((coordinateBox s'.M).card : ℝ)
+          ≤ η * (ρ ^ K₀ * ((coordinateBox s.M).card : ℝ)) := hbox
+        _ = η * ρ ^ K₀ * ((coordinateBox s.M).card : ℝ) := by ring
+  -- `|V'| ≥ 2`, `|B'| ≥ 2`.
+  have hB'p1 : (1 : ℝ) ≤ ((coordinateBox s'.M).card : ℝ) ^
+      (sigma s.dim + stageExcess s) := by
+    calc (1 : ℝ) = ((coordinateBox s'.M).card : ℝ) ^ (0 : ℝ) :=
+          (Real.rpow_zero _).symm
+      _ ≤ _ := Real.rpow_le_rpow_of_exponent_le hB'1 hp0.le
+  have hV'2 : 2 ≤ s'.V.card := by
+    have h1 : (1 : ℝ) < (s'.V.card : ℝ) := lt_of_le_of_lt hB'p1 hcount
+    exact_mod_cast (by exact_mod_cast h1 : (1 : ℕ) < s'.V.card)
+  have hbox2' : 2 ≤ (coordinateBox s'.M).card :=
+    le_trans hV'2 (stage_card_le_box s')
+  -- Excessiveness and excess monotonicity.
+  have hσeq : sigma s'.dim = sigma s.dim := by rw [hdim]
+  have hbad' : ExcessiveStage ζ₀ s' := by
+    unfold ExcessiveStage
+    rw [hσeq]
+    refine lt_of_le_of_lt ?_ hcount
+    exact Real.rpow_le_rpow_of_exponent_le hB'1 (by linarith)
+  have hmono : stageExcess s ≤ stageExcess s' := by
+    have h1 := lt_stageExcess_of_rpow_lt hbox2' hcount
+    -- `h1 : (σ_d + ζ) − σ_{d'} < ζ'` with `σ_{d'} = σ_d`.
+    rw [hσeq] at h1
+    linarith
+  -- Strict box shrink.
+  have hboxlt : (coordinateBox s'.M).card < (coordinateBox s.M).card := by
+    have hρK : ρ ^ K₀ ≤ 1 :=
+      Real.rpow_le_one hρ0.le hρ1 (by linarith)
+    have h1 : ((coordinateBox s'.M).card : ℝ) <
+        ((coordinateBox s.M).card : ℝ) := by
+      calc ((coordinateBox s'.M).card : ℝ)
+          ≤ η * (ρ ^ K₀ * ((coordinateBox s.M).card : ℝ)) := hbox
+        _ ≤ η * (1 * ((coordinateBox s.M).card : ℝ)) := by
+            apply mul_le_mul_of_nonneg_left _ hη0.le
+            exact mul_le_mul_of_nonneg_right hρK hB0.le
+        _ = η * ((coordinateBox s.M).card : ℝ) := by ring
+        _ < 1 * ((coordinateBox s.M).card : ℝ) :=
+            mul_lt_mul_of_pos_right hη1 hB0
+        _ = ((coordinateBox s.M).card : ℝ) := one_mul _
+    exact_mod_cast h1
+  -- Potential monotonicity.
+  have hΦ : descentPotential ζ₀ ν s ≤ descentPotential ζ₀ ν s' :=
+    descentPotential_mono_sameDim hdim (by linarith) (by nlinarith)
+      hη0 hρ0 hρ1 hcard hbox
+  exact ⟨hbad', hmono, hboxlt, hΦ⟩
+
+/-- **Up-move step conversion** (numerology gain): the raw up-move output
+beats the counting exponent `σ_{dim'} + ζ + c₊/10`. -/
+theorem up_step_facts {D : ℕ} {ζ₀ ε₀ cstar ε : ℝ} {X : ℕ}
+    {s s' : PrepStage X} (hζ₀ : 0 < ζ₀) (hcstar : 0 < cstar)
+    (hnum : ∀ (d e : ℕ), 1 ≤ d → d < e → e ≤ D →
+      ∀ ζ : ℝ, ζ₀ ≤ ζ → ζ ≤ 1 - sigma d →
+        ∀ ε' : ℝ, 0 < ε' → ε' < ε₀ →
+          (sigma e + ζ) * (1 / (sigma d + ζ) - (1 - ε') * ((e : ℝ) - d)) ≤
+            1 - cstar)
+    (hbad : ExcessiveStage ζ₀ s)
+    (hε : 0 < ε) (hε1 : ε ≤ 1) (hεε₀ : ε < ε₀) (hεc : ε ≤ cstar / 4)
+    (hV'2 : 2 ≤ s'.V.card)
+    (hlt : s.dim < s'.dim) (hDle : s'.dim ≤ D)
+    (hcard : (s.V.card : ℝ) ^ (1 - ε) ≤ (s'.V.card : ℝ))
+    (hboxle : ((coordinateBox s'.M).card : ℝ) ≤
+      (s.V.card : ℝ) ^ (1 / (sigma s.dim + stageExcess s) -
+        (1 - ε) * ((s'.dim : ℝ) - (s.dim : ℝ)))) :
+    ((coordinateBox s'.M).card : ℝ) ^
+        (sigma s'.dim + stageExcess s + cstar / 10) < (s'.V.card : ℝ) := by
+  have hd1 : 1 ≤ s.dim := hbad.one_le_dim hζ₀.le
+  set ζ : ℝ := stageExcess s with hζdef
+  have hζlo : ζ₀ < ζ := hbad.zeta_lt_stageExcess hζ₀.le
+  have hζhi : ζ ≤ 1 - sigma s.dim := hbad.stageExcess_le hζ₀.le
+  have hσd := sigma_pos s.dim
+  have hσd5 := one_fifth_le_sigma s.dim
+  have hσd' := sigma_pos s'.dim
+  have hn2 : 2 ≤ s.V.card := hbad.two_le_card hζ₀.le
+  have hnR : (2 : ℝ) ≤ (s.V.card : ℝ) := by exact_mod_cast hn2
+  have hn1R : (1 : ℝ) < (s.V.card : ℝ) := by linarith
+  have hnpos : (0 : ℝ) < (s.V.card : ℝ) := by linarith
+  have hbox2' : 2 ≤ (coordinateBox s'.M).card :=
+    le_trans hV'2 (stage_card_le_box s')
+  have hB'2 : (2 : ℝ) ≤ ((coordinateBox s'.M).card : ℝ) := by
+    exact_mod_cast hbox2'
+  have hB'1 : (1 : ℝ) ≤ ((coordinateBox s'.M).card : ℝ) := by linarith
+  have hB'0 : (0 : ℝ) ≤ ((coordinateBox s'.M).card : ℝ) := by linarith
+  set a : ℝ := 1 / (sigma s.dim + ζ) -
+    (1 - ε) * ((s'.dim : ℝ) - (s.dim : ℝ)) with hadef
+  -- `a > 0`, else the box collapses.
+  have hapos : 0 < a := by
+    by_contra hcon
+    push Not at hcon
+    have hb1 : ((coordinateBox s'.M).card : ℝ) ≤ 1 :=
+      hboxle.trans
+        (Real.rpow_le_one_of_one_le_of_nonpos (by linarith) hcon)
+    linarith
+  -- `a ≤ 5` from `σ_d + ζ ≥ 1/5`.
+  have ha5 : a ≤ 5 := by
+    have h1 : 1 / (sigma s.dim + ζ) ≤ 5 := by
+      rw [div_le_iff₀ (by linarith : (0 : ℝ) < sigma s.dim + ζ)]
+      linarith
+    have h2 : (0 : ℝ) ≤ (1 - ε) * ((s'.dim : ℝ) - (s.dim : ℝ)) := by
+      have hdd : (s.dim : ℝ) ≤ (s'.dim : ℝ) := by exact_mod_cast hlt.le
+      have hε1' : (0 : ℝ) ≤ 1 - ε := by linarith
+      nlinarith
+    rw [hadef]
+    linarith
+  -- The numerology inequality `(σ_e+ζ)·a ≤ 1 − c₊`.
+  have hnume : (sigma s'.dim + ζ) * a ≤ 1 - cstar := by
+    have := hnum s.dim s'.dim hd1 hlt hDle ζ hζlo.le hζhi ε hε hεε₀
+    rw [hadef]
+    exact this
+  -- Assemble the chain.
+  have hexp0 : (0 : ℝ) ≤ sigma s'.dim + ζ + cstar / 10 := by linarith
+  have step2 : ((coordinateBox s'.M).card : ℝ) ^
+      (sigma s'.dim + ζ + cstar / 10) ≤
+      ((s.V.card : ℝ) ^ a) ^ (sigma s'.dim + ζ + cstar / 10) :=
+    Real.rpow_le_rpow hB'0 hboxle hexp0
+  have step3 : ((s.V.card : ℝ) ^ a) ^ (sigma s'.dim + ζ + cstar / 10) =
+      (s.V.card : ℝ) ^ (a * (sigma s'.dim + ζ + cstar / 10)) :=
+    (Real.rpow_mul hnpos.le _ _).symm
+  have hexpbound : a * (sigma s'.dim + ζ + cstar / 10) ≤ 1 - cstar / 2 := by
+    have h1 : a * (sigma s'.dim + ζ + cstar / 10) =
+        (sigma s'.dim + ζ) * a + a * (cstar / 10) := by ring
+    have h2 : a * (cstar / 10) ≤ 5 * (cstar / 10) :=
+      mul_le_mul_of_nonneg_right ha5 (by positivity)
+    rw [h1]
+    linarith
+  have step4 : (s.V.card : ℝ) ^ (a * (sigma s'.dim + ζ + cstar / 10)) ≤
+      (s.V.card : ℝ) ^ (1 - cstar / 2) :=
+    Real.rpow_le_rpow_of_exponent_le (by linarith) hexpbound
+  have step5 : (s.V.card : ℝ) ^ (1 - cstar / 2) <
+      (s.V.card : ℝ) ^ (1 - ε) :=
+    Real.rpow_lt_rpow_of_exponent_lt hn1R (by linarith)
+  calc ((coordinateBox s'.M).card : ℝ) ^ (sigma s'.dim + ζ + cstar / 10)
+      ≤ ((s.V.card : ℝ) ^ a) ^ (sigma s'.dim + ζ + cstar / 10) := step2
+    _ = (s.V.card : ℝ) ^ (a * (sigma s'.dim + ζ + cstar / 10)) := step3
+    _ ≤ (s.V.card : ℝ) ^ (1 - cstar / 2) := step4
+    _ < (s.V.card : ℝ) ^ (1 - ε) := step5
+    _ ≤ (s'.V.card : ℝ) := hcard
+
+/-- **Down-move step conversion** (sigma-gap gain, `Cdown` absorbed): the
+constant-relaxed down-move output beats the counting exponent
+`σ_{dim'} + ζ + c` once `Cdown² ≤ n₁^c` and `c, ε ≤ Δ_D/8` — the gap
+`σ_{dim} − σ_{dim'} ≥ Δ_D` strictly dominates the constant for
+`|B| ≥ |V| ≥ n₁`. -/
+theorem down_step_facts {D : ℕ} {ζ₀ Δ c ε Cdown : ℝ} {n₁ : ℕ}
+    {X : ℕ} {s s' : PrepStage X}
+    (hζ₀ : 0 < ζ₀) (hD : 2 ≤ D) (hDcap : 2 / ζ₀ ≤ (D : ℝ)) (hΔ : 0 < Δ)
+    (hgap : ∀ r, 2 ≤ r → r ≤ D → sigma (r - 1) + Δ ≤ sigma r)
+    (hbad : ExcessiveStage ζ₀ s)
+    (hc : 0 < c) (hcΔ : c ≤ Δ / 8) (hε : 0 < ε) (hεΔ : ε ≤ Δ / 8)
+    (hCdown : 1 ≤ Cdown) (habs : Cdown ^ 2 ≤ (n₁ : ℝ) ^ c)
+    (hn : n₁ ≤ s.V.card) (hV'2 : 2 ≤ s'.V.card)
+    (hlt : s'.dim < s.dim)
+    (hcard : (s.V.card : ℝ) ^ (1 - ε) ≤ (s'.V.card : ℝ))
+    (hboxle : ((coordinateBox s'.M).card : ℝ) ≤
+      Cdown * ((coordinateBox s.M).card : ℝ)) :
+    ((coordinateBox s'.M).card : ℝ) ^
+        (sigma s'.dim + stageExcess s + c) < (s'.V.card : ℝ) := by
+  have hbox2 : 2 ≤ (coordinateBox s.M).card := hbad.two_le_box hζ₀.le
+  have hn2 : 2 ≤ s.V.card := hbad.two_le_card hζ₀.le
+  have hB2 : (2 : ℝ) ≤ ((coordinateBox s.M).card : ℝ) := by
+    exact_mod_cast hbox2
+  have hB0 : (0 : ℝ) < ((coordinateBox s.M).card : ℝ) := by linarith
+  have hnpos : (0 : ℝ) < (s.V.card : ℝ) := by
+    have : (2 : ℝ) ≤ (s.V.card : ℝ) := by exact_mod_cast hn2
+    linarith
+  set ζ : ℝ := stageExcess s with hζdef
+  have hζlo : ζ₀ < ζ := hbad.zeta_lt_stageExcess hζ₀.le
+  have hζhi : ζ ≤ 1 - sigma s.dim := hbad.stageExcess_le hζ₀.le
+  have hζ45 : ζ ≤ 4 / 5 := hbad.stageExcess_le_one hζ₀.le
+  have hσd := sigma_pos s.dim
+  have hσd' := sigma_pos s'.dim
+  have hσd'1 : sigma s'.dim < 1 := sigma_one_le s'.dim
+  have hbox2' : 2 ≤ (coordinateBox s'.M).card :=
+    le_trans hV'2 (stage_card_le_box s')
+  have hB'0 : (0 : ℝ) ≤ ((coordinateBox s'.M).card : ℝ) := Nat.cast_nonneg _
+  have hd1' : 1 ≤ s'.dim := one_le_dim_of_two_le_box hbox2'
+  have hd2 : 2 ≤ s.dim := by omega
+  have hdD : s.dim ≤ D := by
+    have h1 := hbad.dim_cast_le hζ₀
+    have h2 : (s.dim : ℝ) ≤ (D : ℝ) := le_trans h1 hDcap
+    exact_mod_cast h2
+  have hσgap : sigma s'.dim + Δ ≤ sigma s.dim := by
+    have h1 : sigma (s.dim - 1) + Δ ≤ sigma s.dim := hgap s.dim hd2 hdD
+    have h2 : sigma s'.dim ≤ sigma (s.dim - 1) := sigma_le_sigma (by omega)
+    linarith
+  have hΔ20 : Δ ≤ 1 / 20 := by
+    have h1 := hgap 2 (le_refl 2) hD
+    have h2 : sigma (2 - 1) = sigma 1 := rfl
+    rw [h2, sigma_one, sigma_two] at h1
+    linarith
+  have hexact : ((coordinateBox s.M).card : ℝ) ^ (sigma s.dim + ζ) =
+      (s.V.card : ℝ) := rpow_sigma_add_stageExcess hbox2 (by omega)
+  have hn₁B : (n₁ : ℝ) ≤ ((coordinateBox s.M).card : ℝ) := by
+    have h1 : n₁ ≤ (coordinateBox s.M).card :=
+      le_trans hn (stage_card_le_box s)
+    exact_mod_cast h1
+  have hn₁0 : (0 : ℝ) ≤ (n₁ : ℝ) := Nat.cast_nonneg _
+  -- The exponent bounds.
+  have hE0 : (0 : ℝ) ≤ sigma s'.dim + ζ + c := by linarith
+  have hE2 : sigma s'.dim + ζ + c ≤ 2 := by linarith
+  have hCd0 : (0 : ℝ) < Cdown := by linarith
+  -- `Cdown^E ≤ B^{Δ/2}`.
+  have hCdE : Cdown ^ (sigma s'.dim + ζ + c) ≤
+      ((coordinateBox s.M).card : ℝ) ^ (Δ / 2) := by
+    calc Cdown ^ (sigma s'.dim + ζ + c)
+        ≤ Cdown ^ ((2 : ℕ) : ℝ) :=
+          Real.rpow_le_rpow_of_exponent_le hCdown (by push_cast; linarith)
+      _ = Cdown ^ (2 : ℕ) := Real.rpow_natCast _ _
+      _ ≤ (n₁ : ℝ) ^ c := habs
+      _ ≤ ((coordinateBox s.M).card : ℝ) ^ c :=
+          Real.rpow_le_rpow hn₁0 hn₁B hc.le
+      _ ≤ ((coordinateBox s.M).card : ℝ) ^ (Δ / 2) :=
+          Real.rpow_le_rpow_of_exponent_le (by linarith) (by linarith)
+  -- The strict exponent gap.
+  have hexplt : Δ / 2 + (sigma s'.dim + ζ + c) < (1 - ε) * (sigma s.dim + ζ) := by
+    have h1 : ε * (sigma s.dim + ζ) ≤ ε := by nlinarith
+    nlinarith
+  -- Assemble.
+  calc ((coordinateBox s'.M).card : ℝ) ^ (sigma s'.dim + ζ + c)
+      ≤ (Cdown * ((coordinateBox s.M).card : ℝ)) ^ (sigma s'.dim + ζ + c) :=
+        Real.rpow_le_rpow hB'0 hboxle hE0
+    _ = Cdown ^ (sigma s'.dim + ζ + c) *
+          ((coordinateBox s.M).card : ℝ) ^ (sigma s'.dim + ζ + c) :=
+        Real.mul_rpow hCd0.le hB0.le
+    _ ≤ ((coordinateBox s.M).card : ℝ) ^ (Δ / 2) *
+          ((coordinateBox s.M).card : ℝ) ^ (sigma s'.dim + ζ + c) :=
+        mul_le_mul_of_nonneg_right hCdE (Real.rpow_nonneg hB0.le _)
+    _ = ((coordinateBox s.M).card : ℝ) ^ (Δ / 2 + (sigma s'.dim + ζ + c)) :=
+        (Real.rpow_add hB0 _ _).symm
+    _ < ((coordinateBox s.M).card : ℝ) ^ ((1 - ε) * (sigma s.dim + ζ)) :=
+        Real.rpow_lt_rpow_of_exponent_lt (by linarith) hexplt
+    _ = (s.V.card : ℝ) ^ (1 - ε) := by
+        rw [mul_comm, Real.rpow_mul (by linarith), hexact]
+    _ ≤ (s'.V.card : ℝ) := hcard
+
 end Nondividing
