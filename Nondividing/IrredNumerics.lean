@@ -418,4 +418,158 @@ theorem irreducibleIncrement_of_regime {β : ℝ}
         (hrange W.card hWcard (Finset.card_le_card hWV)).2.2⟩),
     hγB, h6dn, h2cs, h6dp, hsqrt, hidx, hgap, hεκ, habs⟩
 
+/-- Eligibility of a `δ`-large subset from the stage-level box bound
+`|B| ≤ (δn)^β` and the largeness `m₀ ≤ δn`. -/
+theorem eligible_of_box_bound {d : ℕ} {β : ℝ} (m₀ : ℕ)
+    {V W : Finset (Fin d → ℤ)} {M : Fin d → ℕ} {δ : ℝ}
+    (hWV : W ⊆ V) (hVbox : V ⊆ coordinateBox M)
+    (hm₀ : (m₀ : ℝ) ≤ δ * V.card)
+    (hWcard : δ * V.card ≤ (W.card : ℝ)) (hβ : 0 ≤ β)
+    (hbox : ((coordinateBox M).card : ℝ) ≤ (δ * V.card) ^ β) :
+    Eligible β m₀ W M := by
+  have hδn0 : (0 : ℝ) ≤ δ * V.card := le_trans (Nat.cast_nonneg m₀) hm₀
+  refine ⟨?_, hWV.trans hVbox, ?_⟩
+  · have h : (m₀ : ℝ) ≤ (W.card : ℝ) := le_trans hm₀ hWcard
+    exact_mod_cast h
+  · calc ((coordinateBox M).card : ℝ) ≤ (δ * V.card) ^ β := hbox
+      _ ≤ (W.card : ℝ) ^ β := Real.rpow_le_rpow hδn0 hWcard hβ
+
+/-- The absorption numerics for all `η ∈ [μ, μ^τ]` from four `μ`-level
+inequalities: `C·μ^τ < 1`, the exponent ordering `b ≤ a`, the smallness
+`C^a ≤ μ^{τ(b-a)}`, and the two retention bounds at the endpoints. -/
+theorem absorption_of_mu_small {C tau a b μ : ℝ} {n₁ n : ℕ}
+    (hC : 0 < C) (hτ0 : 0 < tau) (hμ0 : 0 < μ) (hμ1 : μ < 1)
+    (hba : b ≤ a) (hCμ : C * μ ^ tau < 1)
+    (hCa : C ^ a ≤ μ ^ (tau * (b - a)))
+    (hn₁b : (n₁ : ℝ) ≤ μ ^ b * n)
+    (hn₁τb : (n₁ : ℝ) ≤ μ ^ (tau * b) * n) :
+    ∀ η : ℝ, μ ≤ η → η ≤ μ ^ tau →
+      C * η < 1 ∧ (C * η) ^ a ≤ η ^ b ∧ (n₁ : ℝ) ≤ η ^ b * n := by
+  intro η hμη hητ
+  have hη0 : 0 < η := lt_of_lt_of_le hμ0 hμη
+  have hCη : C * η < 1 := by
+    calc C * η ≤ C * μ ^ tau := mul_le_mul_of_nonneg_left hητ hC.le
+      _ < 1 := hCμ
+  refine ⟨hCη, ?_, ?_⟩
+  · -- `(C·η)^a ≤ η^b`.
+    have h1 : (C * η) ^ a = C ^ a * η ^ a := Real.mul_rpow hC.le hη0.le
+    have h2 : η ^ (b - a) * η ^ a = η ^ b := by
+      rw [← Real.rpow_add hη0]
+      congr 1
+      ring
+    have h3 : C ^ a ≤ η ^ (b - a) := by
+      have h4 : (μ ^ tau) ^ (b - a) ≤ η ^ (b - a) :=
+        Real.rpow_le_rpow_of_nonpos hη0 hητ (by linarith)
+      calc C ^ a ≤ μ ^ (tau * (b - a)) := hCa
+        _ = (μ ^ tau) ^ (b - a) := Real.rpow_mul hμ0.le _ _
+        _ ≤ η ^ (b - a) := h4
+    calc (C * η) ^ a = C ^ a * η ^ a := h1
+      _ ≤ η ^ (b - a) * η ^ a :=
+          mul_le_mul_of_nonneg_right h3 (Real.rpow_nonneg hη0.le a)
+      _ = η ^ b := h2
+  · -- `n₁ ≤ η^b·n`.
+    rcases le_total 0 b with hb | hb
+    · have h1 : μ ^ b ≤ η ^ b := Real.rpow_le_rpow hμ0.le hμη hb
+      have h2 : μ ^ b * n ≤ η ^ b * n :=
+        mul_le_mul_of_nonneg_right h1 (Nat.cast_nonneg n)
+      linarith
+    · have h1' : μ ^ (tau * b) ≤ η ^ b := by
+        rw [Real.rpow_mul hμ0.le]
+        exact Real.rpow_le_rpow_of_nonpos hη0 hητ hb
+      have h2 : μ ^ (tau * b) * n ≤ η ^ b * n :=
+        mul_le_mul_of_nonneg_right h1' (Nat.cast_nonneg n)
+      linarith
+
+/-- **`IrreducibleIncrement` from stage parameters.**  The final reduction:
+on top of `irreducibleIncrement_of_regime`, the subset-eligibility clause is
+reduced to the stage-level box bound `|B| ≤ (δn)^β` (with `m₀ ≤ δn`), and the
+`∀ η ∈ [μ, μ^τ]` absorption clause is reduced to `μ`-level inequalities.  The
+remaining supplier is a per-stage choice of `μ` with:
+
+* the regime `0 < δ ≤ min(μ^{1+ε}, μ/100)`, `0 < μ < min(1, μ₀ d)`, `0 < γ`;
+* the largeness `n ≥ max(n₀(d,μ), n₂(d,μ,δ,γ))` and `m₀ ≤ δn`;
+* the box regime `|B| ≤ (δn)^β` and `γ·|B| > 1`;
+* the absorption smallness `C_d·μ^{τ_d} < 1`,
+  `C_d^{σ_d+ζ₀-ν} ≤ μ^{τ_d((κ_d+ε)-(σ_d+ζ₀-ν))}`, the exponent ordering
+  `κ_d + ε ≤ σ_d + ζ₀ - ν`, and the two retention endpoints
+  `n₁ ≤ μ^{κ_d+ε}·n`, `n₁ ≤ μ^{τ_d(κ_d+ε)}·n`. -/
+theorem irreducibleIncrement_of_parameters {β : ℝ}
+    (pkgs : ∀ r, Package r β) (eps : ℝ) (heps : 0 < eps) (hβ : 0 ≤ β) :
+    ∃ (tau C μ₀ : ℕ → ℝ) (n₀ : ℕ → ℝ → ℕ) (n₂ : ℕ → ℝ → ℝ → ℝ → ℕ),
+      (∀ d, 0 < tau d ∧ tau d < 1 ∧ 0 < C d ∧ 0 < μ₀ d) ∧
+      ∀ (ζ₀ ε δ γ ν : ℝ) (n₁ : ℕ), 2 ≤ n₁ →
+      (∀ (X : ℕ) (s : PrepStage X), 1 ≤ X → n₁ ≤ s.V.card →
+        StageIrreducible pkgs δ γ s →
+        ∃ μ : ℝ,
+          0 < μ ∧ μ < 1 ∧ μ < μ₀ s.dim ∧
+          0 < γ ∧ 0 < δ ∧ δ ≤ μ ^ ((1 : ℝ) + eps) ∧ δ ≤ μ / 100 ∧
+          n₀ s.dim μ ≤ s.V.card ∧
+          n₂ s.dim μ δ γ ≤ s.V.card ∧
+          ((pkgs s.dim).m₀ : ℝ) ≤ δ * s.V.card ∧
+          ((coordinateBox s.M).card : ℝ) ≤ (δ * s.V.card) ^ β ∧
+          1 < γ * ((coordinateBox s.M).card : ℝ) ∧
+          C s.dim * μ ^ tau s.dim < 1 ∧
+          C s.dim ^ (sigma s.dim + ζ₀ - ν) ≤
+            μ ^ (tau s.dim * ((((s.dim : ℝ) - 2) / s.dim + eps) -
+              (sigma s.dim + ζ₀ - ν))) ∧
+          ((s.dim : ℝ) - 2) / s.dim + eps ≤ sigma s.dim + ζ₀ - ν ∧
+          (n₁ : ℝ) ≤ μ ^ (((s.dim : ℝ) - 2) / s.dim + eps) *
+            s.V.card ∧
+          (n₁ : ℝ) ≤ μ ^ (tau s.dim * (((s.dim : ℝ) - 2) / s.dim + eps)) *
+            s.V.card) →
+      IrreducibleIncrement pkgs ζ₀ ε δ γ ν n₁ := by
+  classical
+  obtain ⟨tau, C, μ₀, n₀, n₂, hpos, hmain⟩ :=
+    irreducibleIncrement_of_regime (β := β) pkgs eps heps
+  refine ⟨tau, C, μ₀, n₀, n₂, hpos, ?_⟩
+  intro ζ₀ ε δ γ ν n₁ hn₁ hsup
+  refine hmain ζ₀ ε δ γ ν n₁ hn₁ ?_
+  intro X s hX hn hirr
+  obtain ⟨μ, hμ0, hμ1, hμμ₀, hγ, hδ0, hδμe, hδμ100, hn₀le, hn₂le, hm₀,
+    hbox, hγB, hCμ, hCa, hba, hn₁b, hn₁τb⟩ := hsup X s hX hn hirr
+  exact ⟨μ, hμ0, hμ1, hμμ₀, hγ, hδ0, hδμe, hδμ100, hn₀le, hn₂le,
+    (fun W hWV hWcard =>
+      eligible_of_box_bound (pkgs s.dim).m₀ hWV s.subset hm₀ hWcard hβ hbox),
+    hγB,
+    absorption_of_mu_small (hpos s.dim).2.2.1 (hpos s.dim).1 hμ0 hμ1 hba
+      hCμ hCa hn₁b hn₁τb⟩
+
+/-- **End-to-end raw step.**  The composition check: the parameter-level
+supplier of `irreducibleIncrement_of_parameters`, together with a
+preprocessing supplier, yields the raw density-increment step of the
+projective iteration (`rawStep_of_suppliers`). -/
+theorem rawStep_of_prep_and_parameters {β : ℝ}
+    (pkgs : ∀ r, Package r β) (eps : ℝ) (heps : 0 < eps) (hβ : 0 ≤ β) :
+    ∃ (tau C μ₀ : ℕ → ℝ) (n₀ : ℕ → ℝ → ℕ) (n₂ : ℕ → ℝ → ℝ → ℝ → ℕ),
+      (∀ d, 0 < tau d ∧ tau d < 1 ∧ 0 < C d ∧ 0 < μ₀ d) ∧
+      ∀ (D : ℕ) (ζ₀ ε δ γ ν K₀ : ℝ) (n₁ : ℕ),
+        0 < ζ₀ → 0 < ε → ε ≤ 1 / 2 → 0 < ν → 5 ≤ K₀ → 2 ≤ n₁ →
+        PrepSupplier pkgs D ζ₀ ε δ γ K₀ n₁ →
+        (∀ (X : ℕ) (s : PrepStage X), 1 ≤ X → n₁ ≤ s.V.card →
+          StageIrreducible pkgs δ γ s →
+          ∃ μ : ℝ,
+            0 < μ ∧ μ < 1 ∧ μ < μ₀ s.dim ∧
+            0 < γ ∧ 0 < δ ∧ δ ≤ μ ^ ((1 : ℝ) + eps) ∧ δ ≤ μ / 100 ∧
+            n₀ s.dim μ ≤ s.V.card ∧
+            n₂ s.dim μ δ γ ≤ s.V.card ∧
+            ((pkgs s.dim).m₀ : ℝ) ≤ δ * s.V.card ∧
+            ((coordinateBox s.M).card : ℝ) ≤ (δ * s.V.card) ^ β ∧
+            1 < γ * ((coordinateBox s.M).card : ℝ) ∧
+            C s.dim * μ ^ tau s.dim < 1 ∧
+            C s.dim ^ (sigma s.dim + ζ₀ - ν) ≤
+              μ ^ (tau s.dim * ((((s.dim : ℝ) - 2) / s.dim + eps) -
+                (sigma s.dim + ζ₀ - ν))) ∧
+            ((s.dim : ℝ) - 2) / s.dim + eps ≤ sigma s.dim + ζ₀ - ν ∧
+            (n₁ : ℝ) ≤ μ ^ (((s.dim : ℝ) - 2) / s.dim + eps) *
+              s.V.card ∧
+            (n₁ : ℝ) ≤ μ ^ (tau s.dim *
+              (((s.dim : ℝ) - 2) / s.dim + eps)) * s.V.card) →
+        RawStep D ζ₀ (2 * ε) n₁ := by
+  obtain ⟨tau, C, μ₀, n₀, n₂, hpos, hmain⟩ :=
+    irreducibleIncrement_of_parameters (β := β) pkgs eps heps hβ
+  refine ⟨tau, C, μ₀, n₀, n₂, hpos, ?_⟩
+  intro D ζ₀ ε δ γ ν K₀ n₁ hζ₀ hε hεhalf hν hK₀ hn₁ hprep hsup
+  exact rawStep_of_suppliers pkgs D hζ₀ hε hεhalf hν hK₀ hn₁ hprep
+    (hmain ζ₀ ε δ γ ν n₁ hn₁ hsup)
+
 end Nondividing
