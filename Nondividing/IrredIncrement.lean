@@ -315,12 +315,338 @@ theorem cone_volume_ratio {r : ℕ} (ℓ : Fin (r + 1) → ℤ) (j : Fin (r + 1)
       = coneConst r * volume (chartProj j '' E') :=
         volume_cone_hyperplane ℓ j hj hE'c hE'1
     _ ≤ coneConst r * (ENNReal.ofReal η * volume (chartProj j '' E)) :=
-        mul_le_mul_left' hvol _
+        mul_le_mul' le_rfl hvol
     _ = ENNReal.ofReal η * (coneConst r * volume (chartProj j '' E)) := by
         ring
     _ = ENNReal.ofReal η * (ENNReal.ofReal |(ℓ j : ℝ)| * volume (cone 1 E)) := by
         rw [volume_cone_hyperplane ℓ j hj hEc hE1]
     _ = ENNReal.ofReal |(ℓ j : ℝ)| * (ENNReal.ofReal η * volume (cone 1 E)) := by
         ring
+
+/-! ## 2. The affine chart of `H_λ = {λℝ = 1}`
+
+`chartProj j` deletes coordinate `j`; `chartSec ℓ j` is its affine section
+landing in the hyperplane.  Convexity, compactness, and the indexed
+`μ`-convex-position predicate all transfer through the chart. -/
+
+/-- A pointwise recognition principle for `insertNth`. -/
+theorem insertNth_eq_of {r : ℕ} {j : Fin (r + 1)} {a : ℝ} {y : Fin r → ℝ}
+    {x : Fin (r + 1) → ℝ} (h1 : x j = a)
+    (h2 : ∀ k, x (j.succAbove k) = y k) :
+    Fin.insertNth j a y = x := by
+  have hy : y = j.removeNth x := funext fun k => (h2 k).symm
+  rw [← h1, hy]
+  exact Fin.insertNth_self_removeNth j x
+
+/-- The affine section of the chart: the unique point of `{λℝ = 1}` above a
+chart point. -/
+noncomputable def chartSec {r : ℕ} (ℓ : Fin (r + 1) → ℤ) (j : Fin (r + 1))
+    (y : Fin r → ℝ) : Fin (r + 1) → ℝ :=
+  Fin.insertNth j
+    ((1 - ∑ k, (ℓ (j.succAbove k) : ℝ) * y k) / (ℓ j : ℝ)) y
+
+@[simp] theorem chartProj_apply {r : ℕ} (j : Fin (r + 1))
+    (x : Fin (r + 1) → ℝ) (k : Fin r) :
+    chartProj j x k = x (j.succAbove k) := rfl
+
+@[simp] theorem chartSec_apply_same {r : ℕ} (ℓ : Fin (r + 1) → ℤ)
+    (j : Fin (r + 1)) (y : Fin r → ℝ) :
+    chartSec ℓ j y j =
+      (1 - ∑ k, (ℓ (j.succAbove k) : ℝ) * y k) / (ℓ j : ℝ) :=
+  Fin.insertNth_apply_same j _ _
+
+@[simp] theorem chartSec_apply_succAbove {r : ℕ} (ℓ : Fin (r + 1) → ℤ)
+    (j : Fin (r + 1)) (y : Fin r → ℝ) (k : Fin r) :
+    chartSec ℓ j y (j.succAbove k) = y k :=
+  Fin.insertNth_apply_succAbove j _ _ _
+
+theorem chartProj_chartSec {r : ℕ} (ℓ : Fin (r + 1) → ℤ) (j : Fin (r + 1))
+    (y : Fin r → ℝ) : chartProj j (chartSec ℓ j y) = y := by
+  funext k
+  rw [chartProj_apply, chartSec_apply_succAbove]
+
+theorem realFunctional_chartSec {r : ℕ} {ℓ : Fin (r + 1) → ℤ}
+    {j : Fin (r + 1)} (hj : (ℓ j : ℝ) ≠ 0) (y : Fin r → ℝ) :
+    realFunctional ℓ (chartSec ℓ j y) = 1 := by
+  rw [realFunctional_apply,
+    Fin.sum_univ_succAbove (fun i => (ℓ i : ℝ) * chartSec ℓ j y i) j,
+    chartSec_apply_same]
+  have hsum : ∑ k, (ℓ (j.succAbove k) : ℝ) * chartSec ℓ j y (j.succAbove k)
+      = ∑ k, (ℓ (j.succAbove k) : ℝ) * y k :=
+    Finset.sum_congr rfl fun k _ => by rw [chartSec_apply_succAbove]
+  rw [hsum, mul_comm, div_mul_cancel₀ _ hj]
+  ring
+
+theorem chartSec_chartProj {r : ℕ} {ℓ : Fin (r + 1) → ℤ}
+    {j : Fin (r + 1)} (hj : (ℓ j : ℝ) ≠ 0) {x : Fin (r + 1) → ℝ}
+    (hx : realFunctional ℓ x = 1) : chartSec ℓ j (chartProj j x) = x := by
+  rw [realFunctional_apply,
+    Fin.sum_univ_succAbove (fun i => (ℓ i : ℝ) * x i) j] at hx
+  refine insertNth_eq_of ?_ (fun k => rfl)
+  have hsum : ∑ k, (ℓ (j.succAbove k) : ℝ) * chartProj j x k
+      = ∑ k, (ℓ (j.succAbove k) : ℝ) * x (j.succAbove k) := rfl
+  rw [hsum]
+  rw [eq_comm, div_eq_iff hj]
+  linear_combination -hx
+
+/-- The linear part of the section. -/
+noncomputable def chartSecL {r : ℕ} (ℓ : Fin (r + 1) → ℤ) (j : Fin (r + 1)) :
+    (Fin r → ℝ) →ₗ[ℝ] (Fin (r + 1) → ℝ) where
+  toFun y := Fin.insertNth j
+    ((-(∑ k, (ℓ (j.succAbove k) : ℝ) * y k)) / (ℓ j : ℝ)) y
+  map_add' y z := by
+    refine insertNth_eq_of ?_ (fun k => ?_)
+    · rw [Pi.add_apply, Fin.insertNth_apply_same, Fin.insertNth_apply_same]
+      rw [← add_div]
+      congr 1
+      rw [← neg_add]
+      congr 1
+      rw [← Finset.sum_add_distrib]
+      exact Finset.sum_congr rfl fun k _ => by
+        rw [Pi.add_apply]; ring
+    · rw [Pi.add_apply, Fin.insertNth_apply_succAbove,
+        Fin.insertNth_apply_succAbove]
+      rfl
+  map_smul' c y := by
+    refine insertNth_eq_of ?_ (fun k => ?_)
+    · show (c • Fin.insertNth j
+        ((-(∑ k, (ℓ (j.succAbove k) : ℝ) * y k)) / (ℓ j : ℝ)) y) j = _
+      rw [Pi.smul_apply, Fin.insertNth_apply_same, smul_eq_mul]
+      have hsum : ∑ k, (ℓ (j.succAbove k) : ℝ) * (c • y) k
+          = c * ∑ k, (ℓ (j.succAbove k) : ℝ) * y k := by
+        rw [Finset.mul_sum]
+        exact Finset.sum_congr rfl fun k _ => by
+          rw [Pi.smul_apply, smul_eq_mul]; ring
+      rw [hsum]
+      ring
+    · show (c • Fin.insertNth j
+        ((-(∑ k, (ℓ (j.succAbove k) : ℝ) * y k)) / (ℓ j : ℝ)) y)
+        (j.succAbove k) = (c • y) k
+      rw [Pi.smul_apply, Fin.insertNth_apply_succAbove]
+      rfl
+
+theorem chartSecL_apply {r : ℕ} (ℓ : Fin (r + 1) → ℤ) (j : Fin (r + 1))
+    (y : Fin r → ℝ) :
+    chartSecL ℓ j y = Fin.insertNth j
+      ((-(∑ k, (ℓ (j.succAbove k) : ℝ) * y k)) / (ℓ j : ℝ)) y := rfl
+
+/-- The affine decomposition `chartSec y = chartSec 0 + chartSecL y`. -/
+theorem chartSec_eq_add {r : ℕ} (ℓ : Fin (r + 1) → ℤ) (j : Fin (r + 1))
+    (y : Fin r → ℝ) :
+    chartSec ℓ j y = chartSec ℓ j 0 + chartSecL ℓ j y := by
+  refine insertNth_eq_of ?_ (fun k => ?_)
+  · rw [Pi.add_apply, chartSec_apply_same, chartSecL_apply,
+      Fin.insertNth_apply_same, ← add_div]
+    congr 1
+    simp only [Pi.zero_apply, mul_zero, Finset.sum_const_zero]
+    ring
+  · rw [Pi.add_apply, chartSec_apply_succAbove, chartSecL_apply,
+      Fin.insertNth_apply_succAbove, Pi.zero_apply, zero_add]
+
+theorem continuous_chartSec {r : ℕ} (ℓ : Fin (r + 1) → ℤ)
+    (j : Fin (r + 1)) : Continuous (chartSec ℓ j) := by
+  have : chartSec ℓ j = fun y => chartSec ℓ j 0 + chartSecL ℓ j y :=
+    funext fun y => chartSec_eq_add ℓ j y
+  rw [this]
+  exact continuous_const.add (chartSecL ℓ j).continuous_of_finiteDimensional
+
+theorem convex_chartSec_image {r : ℕ} (ℓ : Fin (r + 1) → ℤ)
+    (j : Fin (r + 1)) {K : Set (Fin r → ℝ)} (hK : Convex ℝ K) :
+    Convex ℝ (chartSec ℓ j '' K) := by
+  rintro _ ⟨u, hu, rfl⟩ _ ⟨w, hw, rfl⟩ a b ha hb hab
+  refine ⟨a • u + b • w, hK hu hw ha hb hab, ?_⟩
+  rw [chartSec_eq_add ℓ j (a • u + b • w), chartSec_eq_add ℓ j u,
+    chartSec_eq_add ℓ j w, map_add, map_smul, map_smul]
+  have hc : a • chartSec ℓ j 0 + b • chartSec ℓ j 0 = chartSec ℓ j 0 := by
+    rw [← add_smul, hab, one_smul]
+  calc chartSec ℓ j 0 + (a • chartSecL ℓ j u + b • chartSecL ℓ j w)
+      = (a • chartSec ℓ j 0 + b • chartSec ℓ j 0) +
+        (a • chartSecL ℓ j u + b • chartSecL ℓ j w) := by rw [hc]
+    _ = a • (chartSec ℓ j 0 + chartSecL ℓ j u) +
+        b • (chartSec ℓ j 0 + chartSecL ℓ j w) := by
+        rw [smul_add, smul_add]; abel
+
+/-- Transfer of indexed `μ`-convex position through the chart: half-spaces of
+the chart pull back to half-spaces of the ambient space along the affine
+section. -/
+theorem indexedMuConvexPosition_chartProj {r : ℕ} {ι : Type*} [Fintype ι]
+    [DecidableEq ι] {μ : ℝ} {ℓ : Fin (r + 1) → ℤ} {j : Fin (r + 1)}
+    (hj : (ℓ j : ℝ) ≠ 0) {p : ι → Fin (r + 1) → ℝ}
+    (hp : ∀ i, realFunctional ℓ (p i) = 1)
+    (h : IndexedMuConvexPosition μ p) :
+    IndexedMuConvexPosition μ (fun i => chartProj j (p i)) := by
+  intro i
+  obtain ⟨u, t, hti, hcount⟩ := h i
+  have hkey : ∀ k, u (chartSecL ℓ j (chartProj j (p k)))
+      = u (p k) - u (chartSec ℓ j 0) := by
+    intro k
+    have h1 : chartSec ℓ j (chartProj j (p k)) = p k :=
+      chartSec_chartProj hj (hp k)
+    have h2 : chartSecL ℓ j (chartProj j (p k))
+        = p k - chartSec ℓ j 0 := by
+      have hd := chartSec_eq_add ℓ j (chartProj j (p k))
+      rw [h1] at hd
+      rw [eq_sub_iff_add_eq]
+      exact (add_comm _ _).trans hd.symm
+    rw [h2, map_sub]
+  refine ⟨u ∘ₗ chartSecL ℓ j, t - u (chartSec ℓ j 0), ?_, ?_⟩
+  · rw [LinearMap.comp_apply, hkey i]
+    exact sub_le_sub_right hti _
+  · have hfe : (Finset.univ.filter fun k =>
+        t - u (chartSec ℓ j 0) ≤ (u ∘ₗ chartSecL ℓ j) (chartProj j (p k)))
+        = Finset.univ.filter fun k => t ≤ u (p k) := by
+      refine Finset.filter_congr fun k _ => ?_
+      rw [LinearMap.comp_apply, hkey k]
+      exact sub_le_sub_iff_right _
+    rw [hfe]
+    exact hcount
+
+/-- Reindexing an indexed `μ`-convex-position family along an equivalence. -/
+theorem IndexedMuConvexPosition.comp_equiv {r : ℕ} {ι κ : Type*} [Fintype ι]
+    [DecidableEq ι] [Fintype κ] [DecidableEq κ] {μ : ℝ}
+    {p : ι → Fin r → ℝ} (h : IndexedMuConvexPosition μ p) (e : κ ≃ ι) :
+    IndexedMuConvexPosition μ (fun k => p (e k)) := by
+  intro k
+  obtain ⟨u, t, ht, hc⟩ := h (e k)
+  refine ⟨u, t, ht, ?_⟩
+  have hcard : (Finset.univ.filter fun k' : κ => t ≤ u (p (e k'))).card
+      = (Finset.univ.filter fun i : ι => t ≤ u (p i)).card := by
+    refine Finset.card_bij (fun k' _ => e k') ?_ ?_ ?_
+    · intro a ha
+      simp only [Finset.mem_filter, Finset.mem_univ, true_and] at ha ⊢
+      exact ha
+    · intro a _ b _ hab
+      exact e.injective hab
+    · intro b hb
+      refine ⟨e.symm b, ?_, by simp⟩
+      simp only [Finset.mem_filter, Finset.mem_univ, true_and] at hb ⊢
+      simpa using hb
+  rw [hcard, show (Fintype.card κ) = Fintype.card ι from Fintype.card_congr e]
+  exact hc
+
+/-! ### The stage body `Ω = {y ∈ H_λ : X·y ∈ B_ℝ}` -/
+
+/-- The stage body: points of the hyperplane whose `X`-dilate lies in the
+real coordinate box. -/
+def stageOmega {d : ℕ} (ℓ : Fin d → ℤ) (X : ℕ) (M : Fin d → ℕ) :
+    Set (Fin d → ℝ) :=
+  {x | realFunctional ℓ x = 1 ∧ (X : ℝ) • x ∈ realCoordinateBox M}
+
+theorem stageOmega_convex {d : ℕ} (ℓ : Fin d → ℤ) (X : ℕ) (M : Fin d → ℕ) :
+    Convex ℝ (stageOmega ℓ X M) := by
+  intro x hx y hy a b ha hb hab
+  refine ⟨?_, ?_⟩
+  · rw [map_add, map_smul, map_smul, hx.1, hy.1, smul_eq_mul, smul_eq_mul,
+      mul_one, mul_one, hab]
+  · have hrw : (X : ℝ) • (a • x + b • y)
+        = a • ((X : ℝ) • x) + b • ((X : ℝ) • y) := by
+      rw [smul_add, smul_comm (X : ℝ) a x, smul_comm (X : ℝ) b y]
+    rw [hrw]
+    exact (realCoordinateBox_convex M) hx.2 hy.2 ha hb hab
+
+theorem stageOmega_subset_box {d : ℕ} {ℓ : Fin d → ℤ} {X : ℕ}
+    {M : Fin d → ℕ} (hX : 1 ≤ X) :
+    stageOmega ℓ X M ⊆ realCoordinateBox M := by
+  intro x hx
+  have hXR : (1 : ℝ) ≤ (X : ℝ) := by exact_mod_cast hX
+  rw [mem_realCoordinateBox]
+  intro i
+  have hb := (mem_realCoordinateBox.mp hx.2) i
+  rw [Pi.smul_apply, smul_eq_mul] at hb
+  have hM : (0 : ℝ) ≤ (M i : ℝ) := Nat.cast_nonneg _
+  constructor
+  · nlinarith [hb.1, hb.2]
+  · nlinarith [hb.1, hb.2]
+
+theorem stageOmega_isCompact {d : ℕ} (ℓ : Fin d → ℤ) {X : ℕ}
+    (M : Fin d → ℕ) (hX : 1 ≤ X) : IsCompact (stageOmega ℓ X M) := by
+  have hclosed : IsClosed (stageOmega ℓ X M) := by
+    have h1 : IsClosed {x : Fin d → ℝ | realFunctional ℓ x = 1} :=
+      isClosed_eq (realFunctional ℓ).continuous_of_finiteDimensional
+        continuous_const
+    have h2 : IsClosed {x : Fin d → ℝ | (X : ℝ) • x ∈ realCoordinateBox M} :=
+      (realCoordinateBox_isCompact M).isClosed.preimage
+        (continuous_const_smul ((X : ℝ)))
+    exact h1.inter h2
+  exact (realCoordinateBox_isCompact M).of_isClosed_subset hclosed
+    (stageOmega_subset_box hX)
+
+/-- The projective normalizations of the shell set live in the stage body. -/
+theorem projNorm_mem_stageOmega {d : ℕ} {ℓ : Fin d → ℤ} {X : ℕ}
+    {V : Finset (Fin d → ℤ)} {M : Fin d → ℕ} (hX : 1 ≤ X)
+    (hshell : ShellNonDividing (fun v => (intFunctional ℓ v : ℤ)) X V)
+    (hVbox : V ⊆ coordinateBox M) {v : Fin d → ℤ} (hv : v ∈ V) :
+    projNorm ℓ v ∈ stageOmega ℓ X M :=
+  ⟨realFunctional_projNorm_of_shell hX hshell hv,
+    smul_projNorm_mem_realBox hX (hshell.1 v hv).1 (hVbox hv)⟩
+
+/-- The height-`X` cone over the stage body stays in the real box. -/
+theorem cone_stageOmega_subset {d : ℕ} (ℓ : Fin d → ℤ) (X : ℕ)
+    (M : Fin d → ℕ) :
+    cone (X : ℝ) (stageOmega ℓ X M) ⊆ realCoordinateBox M := by
+  rintro _ ⟨y, hy, t, ht0, htX, rfl⟩
+  rw [mem_realCoordinateBox]
+  intro i
+  have hb := (mem_realCoordinateBox.mp hy.2) i
+  rw [Pi.smul_apply, smul_eq_mul] at hb
+  rw [Pi.smul_apply, smul_eq_mul]
+  have hM : (0 : ℝ) ≤ (M i : ℝ) := Nat.cast_nonneg _
+  rcases le_or_gt 0 (y i) with hyi | hyi
+  · constructor
+    · nlinarith
+    · nlinarith
+  · constructor
+    · nlinarith
+    · nlinarith
+
+/-- **Interior of the chart image of the stage body is nonempty**, given that
+the shell set spans `ℝ^d` (from `projective_span_package`): the chart image of
+`π(V)` affinely spans the chart, and its convex hull sits inside the chart
+image of `Ω`. -/
+theorem interior_chart_stageOmega_nonempty {r : ℕ} {ℓ : Fin (r + 1) → ℤ}
+    {j : Fin (r + 1)} (hj : (ℓ j : ℝ) ≠ 0) {V : Finset (Fin (r + 1) → ℤ)}
+    {X : ℕ} {M : Fin (r + 1) → ℕ} (hX : 1 ≤ X)
+    (hshell : ShellNonDividing (fun v => (intFunctional ℓ v : ℤ)) X V)
+    (hVbox : V ⊆ coordinateBox M) (hVne : V.Nonempty)
+    (hspanV : integerRealSpan V = ⊤) :
+    (interior (chartProj j '' stageOmega ℓ X M)).Nonempty := by
+  classical
+  have hpos : ∀ v ∈ V, intFunctional ℓ v ≠ 0 := fun v hv =>
+    ne_of_gt (intFunctional_pos_of_shell hX hshell hv)
+  have hsp : Submodule.span ℝ (projNorm ℓ '' (V : Set (Fin (r + 1) → ℤ))) = ⊤ :=
+    span_projNorm_eq_top ℓ hspanV hpos
+  obtain ⟨v₀, hv₀⟩ := hVne
+  -- The chart image of the projective family affinely spans the chart.
+  have haff : affineSpan ℝ
+      (chartProj j '' (projNorm ℓ '' (V : Set (Fin (r + 1) → ℤ)))) = ⊤ := by
+    have hmap := AffineSubspace.map_span ((chartProjL j).toAffineMap)
+      (projNorm ℓ '' (V : Set (Fin (r + 1) → ℤ)))
+    rw [show ((chartProjL j).toAffineMap) ''
+        (projNorm ℓ '' (V : Set (Fin (r + 1) → ℤ)))
+        = chartProj j '' (projNorm ℓ '' (V : Set (Fin (r + 1) → ℤ))) from rfl]
+      at hmap
+    rw [← hmap]
+    rw [eq_top_iff]
+    intro y _
+    rw [AffineSubspace.mem_map]
+    refine ⟨chartSec ℓ j y, ?_, chartProj_chartSec ℓ j y⟩
+    rw [mem_affineSpan_projNorm_iff (by omega : 1 ≤ r + 1) ℓ hv₀ hpos hsp]
+    exact realFunctional_chartSec hj y
+  -- The convex hull of the chart points has nonempty interior.
+  have hconvΩc : Convex ℝ (chartProj j '' stageOmega ℓ X M) :=
+    (stageOmega_convex ℓ X M).linear_image (chartProjL j)
+  have hsubset : convexHull ℝ
+      (chartProj j '' (projNorm ℓ '' (V : Set (Fin (r + 1) → ℤ))))
+      ⊆ chartProj j '' stageOmega ℓ X M := by
+    refine convexHull_min ?_ hconvΩc
+    rintro _ ⟨_, ⟨v, hv, rfl⟩, rfl⟩
+    exact ⟨projNorm ℓ v, projNorm_mem_stageOmega hX hshell hVbox hv, rfl⟩
+  have h1 : (interior (convexHull ℝ
+      (chartProj j '' (projNorm ℓ '' (V : Set (Fin (r + 1) → ℤ)))))).Nonempty := by
+    rw [Convex.interior_nonempty_iff_affineSpan_eq_top
+      (convex_convexHull ℝ _)]
+    rw [affineSpan_convexHull]
+    exact haff
+  exact h1.mono (interior_mono hsubset)
 
 end Nondividing
