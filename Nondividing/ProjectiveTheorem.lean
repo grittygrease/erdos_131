@@ -1324,6 +1324,99 @@ theorem box_master {s₀ : PrepStage X} {smin Cup Cdown : ℝ}
                 Cdown ^ rest.downCount *
                 ((coordinateBox s.M).card : ℝ) := by ring
 
+/-- **Total-up-move bound** (Manuscript.tex 587–607): from the master product
+estimate, `|B_end| ≥ 1`, `γ ≤ 1` and a scale floor `smin ≥ Cup·Cdown·T`, the
+summed dimension increase obeys `T^U ≤ Cdown^{d₀}·|B_start|` — the
+manuscript's `n^{(1−ε)U} ≤ C^{|𝒰|+|𝒟|}|P₀|`, which caps `U` (and with it
+every dimension along the chain) in terms of the initial box. -/
+theorem pow_upSum_le {s₀ : PrepStage X} {smin Cup Cdown T : ℝ}
+    (hγ0 : 0 < γ) (hγ1 : γ ≤ 1) (hCup : 1 ≤ Cup) (hCdown : 1 ≤ Cdown)
+    (hT : 1 ≤ T) (hsmin : Cup * Cdown * T ≤ smin)
+    (hup : ∀ x y : PrepStage X,
+      Relation.ReflTransGen (PrepMove pkgs δ γ C) s₀ x →
+      PrepMove pkgs δ γ C x y → x.dim < y.dim →
+      smin ^ (y.dim - x.dim) * ((coordinateBox y.M).card : ℝ) ≤
+        Cup * ((coordinateBox x.M).card : ℝ))
+    (hdown : ∀ x y : PrepStage X,
+      Relation.ReflTransGen (PrepMove pkgs δ γ C) s₀ x →
+      PrepMove pkgs δ γ C x y → y.dim < x.dim →
+      ((coordinateBox y.M).card : ℝ) ≤
+        Cdown * ((coordinateBox x.M).card : ℝ))
+    {b : PrepStage X} (ch : PrepChain pkgs δ γ C s₀ b) :
+    T ^ ch.upSum ≤
+      Cdown ^ s₀.dim * ((coordinateBox s₀.M).card : ℝ) := by
+  have hCup0 : (0 : ℝ) < Cup := lt_of_lt_of_le one_pos hCup
+  have hCdown0 : (0 : ℝ) < Cdown := lt_of_lt_of_le one_pos hCdown
+  have hT0 : (0 : ℝ) < T := lt_of_lt_of_le one_pos hT
+  have h11 : (1 : ℝ) ≤ Cup * Cdown := by nlinarith
+  have h12 : (1 : ℝ) ≤ Cup * Cdown * T := by nlinarith
+  have hs1 : (1 : ℝ) ≤ smin := by linarith
+  have hmaster := box_master hγ0 hCup0 hCdown0 hs1 hup hdown ch
+    Relation.ReflTransGen.refl
+  have hBb : (1 : ℝ) ≤ ((coordinateBox b.M).card : ℝ) := by
+    exact_mod_cast one_le_card_coordinateBox b.M
+  have hBa : (0 : ℝ) ≤ ((coordinateBox s₀.M).card : ℝ) := Nat.cast_nonneg _
+  -- Drop `γ^S ≤ 1` and `|B_end| ≥ 1`.
+  have h1 : smin ^ ch.upSum ≤
+      Cup ^ ch.upCount * Cdown ^ ch.downCount *
+        ((coordinateBox s₀.M).card : ℝ) := by
+    have hγS : γ ^ ch.shrinkCount ≤ 1 :=
+      pow_le_one₀ hγ0.le hγ1
+    have hstep : smin ^ ch.upSum * 1 ≤ smin ^ ch.upSum *
+        ((coordinateBox b.M).card : ℝ) :=
+      mul_le_mul_of_nonneg_left hBb (by positivity)
+    rw [mul_one] at hstep
+    have hdropγ : γ ^ ch.shrinkCount * Cup ^ ch.upCount *
+        Cdown ^ ch.downCount * ((coordinateBox s₀.M).card : ℝ) ≤
+        1 * Cup ^ ch.upCount * Cdown ^ ch.downCount *
+          ((coordinateBox s₀.M).card : ℝ) := by
+      apply mul_le_mul_of_nonneg_right _ hBa
+      apply mul_le_mul_of_nonneg_right _ (by positivity)
+      exact mul_le_mul_of_nonneg_right hγS (by positivity)
+    calc smin ^ ch.upSum
+        ≤ smin ^ ch.upSum * ((coordinateBox b.M).card : ℝ) := hstep
+      _ ≤ γ ^ ch.shrinkCount * Cup ^ ch.upCount * Cdown ^ ch.downCount *
+            ((coordinateBox s₀.M).card : ℝ) := hmaster
+      _ ≤ 1 * Cup ^ ch.upCount * Cdown ^ ch.downCount *
+            ((coordinateBox s₀.M).card : ℝ) := hdropγ
+      _ = Cup ^ ch.upCount * Cdown ^ ch.downCount *
+            ((coordinateBox s₀.M).card : ℝ) := by ring
+  -- Enlarge the counts to `U` and `d₀ + U`.
+  have h2 : Cup ^ ch.upCount ≤ Cup ^ ch.upSum :=
+    pow_le_pow_right₀ hCup ch.upCount_le_upSum
+  have h3 : Cdown ^ ch.downCount ≤ Cdown ^ (s₀.dim + ch.upSum) :=
+    pow_le_pow_right₀ hCdown ch.downCount_le
+  have h4 : smin ^ ch.upSum ≤
+      Cup ^ ch.upSum * Cdown ^ (s₀.dim + ch.upSum) *
+        ((coordinateBox s₀.M).card : ℝ) := by
+    calc smin ^ ch.upSum
+        ≤ Cup ^ ch.upCount * Cdown ^ ch.downCount *
+            ((coordinateBox s₀.M).card : ℝ) := h1
+      _ ≤ Cup ^ ch.upSum * Cdown ^ (s₀.dim + ch.upSum) *
+            ((coordinateBox s₀.M).card : ℝ) := by
+          apply mul_le_mul_of_nonneg_right _ hBa
+          exact mul_le_mul h2 h3 (by positivity) (by positivity)
+  -- Divide by `(Cup·Cdown)^U`.
+  have h5 : (Cup * Cdown * T) ^ ch.upSum ≤ smin ^ ch.upSum :=
+    pow_le_pow_left₀ (by positivity) hsmin _
+  have h6 : (Cup * Cdown * T) ^ ch.upSum =
+      Cup ^ ch.upSum * Cdown ^ ch.upSum * T ^ ch.upSum := by
+    rw [mul_pow, mul_pow]
+  have h7 : Cdown ^ (s₀.dim + ch.upSum) =
+      Cdown ^ s₀.dim * Cdown ^ ch.upSum := pow_add _ _ _
+  have key : Cup ^ ch.upSum * Cdown ^ ch.upSum * T ^ ch.upSum ≤
+      Cup ^ ch.upSum * Cdown ^ ch.upSum *
+        (Cdown ^ s₀.dim * ((coordinateBox s₀.M).card : ℝ)) := by
+    calc Cup ^ ch.upSum * Cdown ^ ch.upSum * T ^ ch.upSum
+        = (Cup * Cdown * T) ^ ch.upSum := h6.symm
+      _ ≤ smin ^ ch.upSum := h5
+      _ ≤ Cup ^ ch.upSum * Cdown ^ (s₀.dim + ch.upSum) *
+            ((coordinateBox s₀.M).card : ℝ) := h4
+      _ = Cup ^ ch.upSum * Cdown ^ ch.upSum *
+            (Cdown ^ s₀.dim * ((coordinateBox s₀.M).card : ℝ)) := by
+          rw [h7]; ring
+  exact le_of_mul_le_mul_left key (by positivity)
+
 end PrepChain
 
 end Nondividing
