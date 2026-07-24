@@ -888,8 +888,9 @@ This capping is what makes the parameter supplier dischargeable: the
 per-dimension thresholds `n₀(d,μ), n₂(d,…)` are only bounded over finitely
 many dimensions. -/
 def IrreducibleIncrementCapped {β : ℝ} (pkgs : ∀ r, Package r β) (Dcap : ℕ)
-    (ζ₀ ε δ γ ν : ℝ) (n₁ : ℕ) : Prop :=
-  ∀ (X : ℕ) (s : PrepStage X), 1 ≤ X → n₁ ≤ s.V.card → s.dim ≤ Dcap →
+    (ζ₀ ε δ γ ν : ℝ) (n₁ n₂ : ℕ) : Prop :=
+  ∀ (X : ℕ) (s : PrepStage X), 1 ≤ X → n₂ ≤ s.V.card → s.dim ≤ Dcap →
+    ExcessiveStage ζ₀ s →
     StageIrreducible pkgs δ γ s →
     ∃ s' : PrepStage X, n₁ ≤ s'.V.card ∧
       ((s'.dim < s.dim ∧

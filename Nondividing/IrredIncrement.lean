@@ -1244,8 +1244,9 @@ theorem irreducibleIncrement_of_convexPosition {β : ℝ}
     (pkgs : ∀ r, Package r β) (eps : ℝ) (heps : 0 < eps) (Dcap : ℕ) :
     ∃ (tau K C μ₀ : ℕ → ℝ) (n₀ : ℕ → ℝ → ℕ),
       (∀ d, 0 < tau d ∧ tau d < 1 ∧ 0 < K d ∧ 0 < C d ∧ 0 < μ₀ d) ∧
-      ∀ (ζ₀ ε δ γ ν : ℝ) (n₁ : ℕ), 2 ≤ n₁ →
-      (∀ (X : ℕ) (s : PrepStage X), 1 ≤ X → n₁ ≤ s.V.card → s.dim ≤ Dcap →
+      ∀ (ζ₀ ε δ γ ν : ℝ) (n₁ n₂ : ℕ), 2 ≤ n₁ → n₁ ≤ n₂ →
+      (∀ (X : ℕ) (s : PrepStage X), 1 ≤ X → n₂ ≤ s.V.card → s.dim ≤ Dcap →
+        ExcessiveStage ζ₀ s →
         StageIrreducible pkgs δ γ s →
         ∃ (ℓ : Fin s.dim → ℤ) (μ : ℝ),
           (∀ v, s.lam v = intFunctional ℓ v) ∧
@@ -1268,7 +1269,7 @@ theorem irreducibleIncrement_of_convexPosition {β : ℝ}
               η ^ (((s.dim : ℝ) - 2) / (s.dim : ℝ) + eps) ∧
             (n₁ : ℝ) ≤ η ^ (((s.dim : ℝ) - 2) / (s.dim : ℝ) + eps) *
               (s.V.card : ℝ))) →
-      IrreducibleIncrementCapped pkgs Dcap ζ₀ ε δ γ ν n₁ := by
+      IrreducibleIncrementCapped pkgs Dcap ζ₀ ε δ γ ν n₁ n₂ := by
   classical
   have hstep := fun r : ℕ =>
     irreducible_cap_step (β := β) eps heps r (pkgs (r + 1))
@@ -1277,10 +1278,10 @@ theorem irreducibleIncrement_of_convexPosition {β : ℝ}
   refine ⟨fun d => tau (d - 1), fun d => K (d - 1), fun d => C (d - 1),
     fun d => μ₀ (d - 1), fun d μ => n₀ (d - 1) μ,
     fun d => ⟨htau0 _, htau1 _, hK _, hC _, hμ₀ _⟩, ?_⟩
-  intro ζ₀ ε δ γ ν n₁ hn₁ hsup X s hX hncard hcap hirr
+  intro ζ₀ ε δ γ ν n₁ n₂ hn₁ hn₁₂ hsup X s hX hncard hcap hexc hirr
   obtain ⟨d, V, M, lam, hsub, hshell⟩ := s
   obtain ⟨ℓ, μ, hlam, hμ0, hμ1, hμμ₀, hn₀le, hγ, hδμ, hspanV, hsupply,
-    hconv, habs⟩ := hsup X ⟨d, V, M, lam, hsub, hshell⟩ hX hncard hcap hirr
+    hconv, habs⟩ := hsup X ⟨d, V, M, lam, hsub, hshell⟩ hX hncard hcap hexc hirr
   rcases d with _ | r
   · -- Dimension 0: the box has one point, contradicting `n₁ ≥ 2`.
     exfalso
@@ -1288,7 +1289,7 @@ theorem irreducibleIncrement_of_convexPosition {β : ℝ}
       rw [card_coordinateBox]
       simp
     have hV1 : V.card ≤ 1 := hbox1 ▸ Finset.card_le_card hsub
-    have hncard' : n₁ ≤ V.card := hncard
+    have hncard' : n₁ ≤ V.card := le_trans hn₁₂ hncard
     omega
   · -- Dimension `r + 1`: run the cap step; always the same-dim branch.
     have hshell' : ShellNonDividing
@@ -1849,8 +1850,9 @@ theorem irreducibleIncrement_of_numerics {β : ℝ}
     ∃ (tau K C μ₀ cw : ℕ → ℝ) (n₀ : ℕ → ℝ → ℕ),
       (∀ d, 0 < tau d ∧ tau d < 1 ∧ 0 < K d ∧ 0 < C d ∧ 0 < μ₀ d ∧
         0 < cw d) ∧
-      ∀ (ζ₀ ε δ γ ν : ℝ) (n₁ : ℕ), 2 ≤ n₁ →
-      (∀ (X : ℕ) (s : PrepStage X), 1 ≤ X → n₁ ≤ s.V.card → s.dim ≤ Dcap →
+      ∀ (ζ₀ ε δ γ ν : ℝ) (n₁ n₂ : ℕ), 2 ≤ n₁ → n₁ ≤ n₂ →
+      (∀ (X : ℕ) (s : PrepStage X), 1 ≤ X → n₂ ≤ s.V.card → s.dim ≤ Dcap →
+        ExcessiveStage ζ₀ s →
         StageIrreducible pkgs δ γ s →
         ∃ μ : ℝ,
           0 < μ ∧ μ < 1 ∧ μ < μ₀ s.dim ∧
@@ -1895,7 +1897,7 @@ theorem irreducibleIncrement_of_numerics {β : ℝ}
               η ^ (((s.dim : ℝ) - 2) / (s.dim : ℝ) + eps) ∧
             (n₁ : ℝ) ≤ η ^ (((s.dim : ℝ) - 2) / (s.dim : ℝ) + eps) *
               (s.V.card : ℝ))) →
-      IrreducibleIncrementCapped pkgs Dcap ζ₀ ε δ γ ν n₁ := by
+      IrreducibleIncrementCapped pkgs Dcap ζ₀ ε δ γ ν n₁ n₂ := by
   classical
   obtain ⟨tau, K₁, C, μ₀, n₀, hpos, hmainIC⟩ :=
     irreducibleIncrement_of_convexPosition (β := β) pkgs eps heps Dcap
@@ -1907,13 +1909,13 @@ theorem irreducibleIncrement_of_numerics {β : ℝ}
   · intro d
     obtain ⟨h1, h2, h3, h4, h5⟩ := hpos d
     exact ⟨h1, h2, lt_max_of_lt_left h3, h4, h5, hcw₀ _⟩
-  · intro ζ₀ ε δ γ ν n₁ hn₁ hsupnum
-    refine hmainIC ζ₀ ε δ γ ν n₁ hn₁ ?_
-    intro X s hX hn hcap hirr
+  · intro ζ₀ ε δ γ ν n₁ n₂ hn₁ hn₁₂ hsupnum
+    refine hmainIC ζ₀ ε δ γ ν n₁ n₂ hn₁ hn₁₂ ?_
+    intro X s hX hn hcap hexc hirr
     obtain ⟨d, V, M, lam, hsub, hshell⟩ := s
     obtain ⟨μ, hμ0, hμ1, hμμ₀, hn₀le, hγ, hδ0, hδμ, hμn8, hδn1, hWsup,
       hγB, h6dV, h2cs, h6d, hsqrt, hidx8, hgapT, hεκT, habs⟩ :=
-      hsupnum X ⟨d, V, M, lam, hsub, hshell⟩ hX hn hcap hirr
+      hsupnum X ⟨d, V, M, lam, hsub, hshell⟩ hX hn hcap hexc hirr
     rcases d with _ | r
     · -- Dimension 0: the box has one point, contradicting `n₁ ≥ 2`.
       exfalso
@@ -1921,7 +1923,7 @@ theorem irreducibleIncrement_of_numerics {β : ℝ}
         rw [card_coordinateBox]
         simp
       have hV1 : V.card ≤ 1 := hbox1 ▸ Finset.card_le_card hsub
-      have hncard' : n₁ ≤ V.card := hn
+      have hncard' : n₁ ≤ V.card := le_trans hn₁₂ hn
       omega
     · -- Dimension `r + 1`.
       set ℓ : Fin (r + 1) → ℤ := fun i => lam (Pi.single i 1) with hℓ_def

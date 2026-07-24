@@ -364,8 +364,9 @@ theorem irreducibleIncrement_of_regime {β : ℝ}
     (pkgs : ∀ r, Package r β) (eps : ℝ) (heps : 0 < eps) (Dcap : ℕ) :
     ∃ (tau C μ₀ : ℕ → ℝ) (n₀ : ℕ → ℝ → ℕ) (n₂ : ℕ → ℝ → ℝ → ℝ → ℕ),
       (∀ d, 0 < tau d ∧ tau d < 1 ∧ 0 < C d ∧ 0 < μ₀ d) ∧
-      ∀ (ζ₀ ε δ γ ν : ℝ) (n₁ : ℕ), 2 ≤ n₁ →
-      (∀ (X : ℕ) (s : PrepStage X), 1 ≤ X → n₁ ≤ s.V.card → s.dim ≤ Dcap →
+      ∀ (ζ₀ ε δ γ ν : ℝ) (n₁ n₃ : ℕ), 2 ≤ n₁ → n₁ ≤ n₃ →
+      (∀ (X : ℕ) (s : PrepStage X), 1 ≤ X → n₃ ≤ s.V.card → s.dim ≤ Dcap →
+        ExcessiveStage ζ₀ s →
         StageIrreducible pkgs δ γ s →
         ∃ μ : ℝ,
           0 < μ ∧ μ < 1 ∧ μ < μ₀ s.dim ∧
@@ -382,7 +383,7 @@ theorem irreducibleIncrement_of_regime {β : ℝ}
               η ^ (((s.dim : ℝ) - 2) / (s.dim : ℝ) + eps) ∧
             (n₁ : ℝ) ≤ η ^ (((s.dim : ℝ) - 2) / (s.dim : ℝ) + eps) *
               (s.V.card : ℝ))) →
-      IrreducibleIncrementCapped pkgs Dcap ζ₀ ε δ γ ν n₁ := by
+      IrreducibleIncrementCapped pkgs Dcap ζ₀ ε δ γ ν n₁ n₃ := by
   classical
   obtain ⟨tau, K, C, μ₀, cw, n₀, hpos, hmain⟩ :=
     irreducibleIncrement_of_numerics (β := β) pkgs eps heps Dcap
@@ -403,11 +404,11 @@ theorem irreducibleIncrement_of_regime {β : ℝ}
   refine ⟨tau, C, μ₀, n₀, n₂,
     fun d => ⟨(hpos d).1, (hpos d).2.1, (hpos d).2.2.2.1,
       (hpos d).2.2.2.2.1⟩, ?_⟩
-  intro ζ₀ ε δ γ ν n₁ hn₁ hsup
-  refine hmain ζ₀ ε δ γ ν n₁ hn₁ ?_
-  intro X s hX hn hcap hirr
+  intro ζ₀ ε δ γ ν n₁ n₃ hn₁ hn₁₂ hsup
+  refine hmain ζ₀ ε δ γ ν n₁ n₃ hn₁ hn₁₂ ?_
+  intro X s hX hn hcap hexc hirr
   obtain ⟨μ, hμ0, hμ1, hμμ₀, hγ, hδ0, hδμe, hδμ100, hn₀le, hn₂le, hElig,
-    hγB, habs⟩ := hsup X s hX hn hcap hirr
+    hγB, habs⟩ := hsup X s hX hn hcap hexc hirr
   have hthr := hn₂ s.dim μ δ γ s.V.card hn₂le hγ hμ0 hμ1.le hδ0 hδμ100
   obtain ⟨h8, hb, hrange, h2cs, h6dp, h6dn, hsqrt, hidx, hgap, hεκ⟩ := hthr
   exact ⟨μ, hμ0, hμ1, hμμ₀, hn₀le, hγ, hδ0.le, hδμe, h8, hb,
@@ -498,8 +499,9 @@ theorem irreducibleIncrement_of_parameters {β : ℝ}
     (Dcap : ℕ) :
     ∃ (tau C μ₀ : ℕ → ℝ) (n₀ : ℕ → ℝ → ℕ) (n₂ : ℕ → ℝ → ℝ → ℝ → ℕ),
       (∀ d, 0 < tau d ∧ tau d < 1 ∧ 0 < C d ∧ 0 < μ₀ d) ∧
-      ∀ (ζ₀ ε δ γ ν : ℝ) (n₁ : ℕ), 2 ≤ n₁ →
-      (∀ (X : ℕ) (s : PrepStage X), 1 ≤ X → n₁ ≤ s.V.card → s.dim ≤ Dcap →
+      ∀ (ζ₀ ε δ γ ν : ℝ) (n₁ n₃ : ℕ), 2 ≤ n₁ → n₁ ≤ n₃ →
+      (∀ (X : ℕ) (s : PrepStage X), 1 ≤ X → n₃ ≤ s.V.card → s.dim ≤ Dcap →
+        ExcessiveStage ζ₀ s →
         StageIrreducible pkgs δ γ s →
         ∃ μ : ℝ,
           0 < μ ∧ μ < 1 ∧ μ < μ₀ s.dim ∧
@@ -518,16 +520,16 @@ theorem irreducibleIncrement_of_parameters {β : ℝ}
             s.V.card ∧
           (n₁ : ℝ) ≤ μ ^ (tau s.dim * (((s.dim : ℝ) - 2) / s.dim + eps)) *
             s.V.card) →
-      IrreducibleIncrementCapped pkgs Dcap ζ₀ ε δ γ ν n₁ := by
+      IrreducibleIncrementCapped pkgs Dcap ζ₀ ε δ γ ν n₁ n₃ := by
   classical
   obtain ⟨tau, C, μ₀, n₀, n₂, hpos, hmain⟩ :=
     irreducibleIncrement_of_regime (β := β) pkgs eps heps Dcap
   refine ⟨tau, C, μ₀, n₀, n₂, hpos, ?_⟩
-  intro ζ₀ ε δ γ ν n₁ hn₁ hsup
-  refine hmain ζ₀ ε δ γ ν n₁ hn₁ ?_
-  intro X s hX hn hcap hirr
+  intro ζ₀ ε δ γ ν n₁ n₃ hn₁ hn₁₂ hsup
+  refine hmain ζ₀ ε δ γ ν n₁ n₃ hn₁ hn₁₂ ?_
+  intro X s hX hn hcap hexc hirr
   obtain ⟨μ, hμ0, hμ1, hμμ₀, hγ, hδ0, hδμe, hδμ100, hn₀le, hn₂le, hm₀,
-    hbox, hγB, hCμ, hCa, hba, hn₁b, hn₁τb⟩ := hsup X s hX hn hcap hirr
+    hbox, hγB, hCμ, hCa, hba, hn₁b, hn₁τb⟩ := hsup X s hX hn hcap hexc hirr
   exact ⟨μ, hμ0, hμ1, hμμ₀, hγ, hδ0, hδμe, hδμ100, hn₀le, hn₂le,
     (fun W hWV hWcard =>
       eligible_of_box_bound (pkgs s.dim).m₀ hWV s.subset hm₀ hWcard hβ hbox),

@@ -266,11 +266,12 @@ theorem rawStep'_of_suppliers {β : ℝ} (pkgs : ∀ r, Package r β) (D : ℕ)
 irreducible intermediate stage has the same dimension as the excessive input
 stage, hence dimension `≤ 2/ζ₀ ≤ Dcap` (`ExcessiveStage.dim_cast_le`). -/
 theorem rawStep''_of_suppliers {β : ℝ} (pkgs : ∀ r, Package r β) (D Dcap : ℕ)
-    {ζ₀ ε δ γ ν K₀ Cdown : ℝ} {n₁ : ℕ} (hζ₀ : 0 < ζ₀)
+    {ζ₀ ε δ γ ν K₀ Cdown : ℝ} {n₁ n₂ : ℕ} (hζ₀ : 0 < ζ₀)
     (hDcap : 2 / ζ₀ ≤ (Dcap : ℝ)) (hε : 0 < ε)
-    (hεhalf : ε ≤ 1 / 2) (hK₀ : 0 ≤ K₀) (hCdown : 1 ≤ Cdown) (hn₁ : 2 ≤ n₁)
+    (hεhalf : ε ≤ 1 / 2) (hK₀ : 5 ≤ K₀) (hCdown : 1 ≤ Cdown) (hn₁ : 2 ≤ n₁)
+    (hn₂pow : (n₂ : ℝ) ≤ ((n₁ : ℝ) * (n₁ : ℝ)) ^ ((1 : ℝ) - ε))
     (hprep : PrepSupplier' pkgs D ζ₀ ε δ γ K₀ Cdown n₁)
-    (hinc : IrreducibleIncrementCapped pkgs Dcap ζ₀ ε δ γ ν n₁) :
+    (hinc : IrreducibleIncrementCapped pkgs Dcap ζ₀ ε δ γ ν n₁ n₂) :
     RawStep' D ζ₀ (2 * ε) ν Cdown K₀ (n₁ * n₁) := by
   intro X s hX hbad hn
   have hn₁sq : n₁ ≤ n₁ * n₁ := Nat.le_mul_of_pos_left n₁ (by omega)
@@ -339,8 +340,45 @@ theorem rawStep''_of_suppliers {β : ℝ} (pkgs : ∀ r, Package r β) (D Dcap :
       have h2 : (s.dim : ℝ) ≤ (Dcap : ℝ) :=
         le_trans (hbad.dim_cast_le hζ₀) hDcap
       exact_mod_cast h2
-    obtain ⟨s₂, _hcard₂', hcase₂⟩ := hinc X s₁ hX hn₁s₁ hcap₁ hirr
-    have hρK1 : ρ ^ K₀ ≤ 1 := Real.rpow_le_one hρ0.le hρ1 hK₀
+    -- The second threshold at the intermediate stage.
+    have hn₂s₁ : n₂ ≤ s₁.V.card := by
+      have h1 : (n₂ : ℝ) ≤ (s₁.V.card : ℝ) := by
+        calc (n₂ : ℝ) ≤ ((n₁ : ℝ) * (n₁ : ℝ)) ^ ((1 : ℝ) - ε) := hn₂pow
+          _ ≤ (s.V.card : ℝ) ^ ((1 : ℝ) - ε) :=
+              Real.rpow_le_rpow (by positivity) hnsqR (by linarith)
+          _ ≤ (s₁.V.card : ℝ) := hñ
+      exact_mod_cast h1
+    -- The intermediate stage is excessive: `K₀(σ+ζ₀) ≥ 1` beats the ρ-loss.
+    have hσ5 := one_fifth_le_sigma s.dim
+    have hKσ : (1 : ℝ) ≤ K₀ * (sigma s.dim + ζ₀) := by nlinarith
+    have hexc₁ : ExcessiveStage ζ₀ s₁ := by
+      unfold ExcessiveStage
+      have hσeq : sigma s₁.dim = sigma s.dim := by rw [heq]
+      rw [hσeq]
+      have hB₁0 : (0 : ℝ) ≤ ((coordinateBox s₁.M).card : ℝ) :=
+        Nat.cast_nonneg _
+      have hσζ0 : (0 : ℝ) ≤ sigma s.dim + ζ₀ := by linarith
+      have hρK₀0 : (0 : ℝ) < ρ ^ K₀ := Real.rpow_pos_of_pos hρ0 _
+      calc ((coordinateBox s₁.M).card : ℝ) ^ (sigma s.dim + ζ₀)
+          ≤ (ρ ^ K₀ * ((coordinateBox s.M).card : ℝ)) ^ (sigma s.dim + ζ₀) :=
+            Real.rpow_le_rpow hB₁0 hρbox hσζ0
+        _ = (ρ ^ K₀) ^ (sigma s.dim + ζ₀) *
+              ((coordinateBox s.M).card : ℝ) ^ (sigma s.dim + ζ₀) :=
+            Real.mul_rpow hρK₀0.le hBpos.le
+        _ = ρ ^ (K₀ * (sigma s.dim + ζ₀)) *
+              ((coordinateBox s.M).card : ℝ) ^ (sigma s.dim + ζ₀) := by
+            rw [← Real.rpow_mul hρ0.le]
+        _ < ρ ^ (K₀ * (sigma s.dim + ζ₀)) * (s.V.card : ℝ) := by
+            apply mul_lt_mul_of_pos_left hbad
+            exact Real.rpow_pos_of_pos hρ0 _
+        _ ≤ ρ ^ (1 : ℝ) * (s.V.card : ℝ) := by
+            apply mul_le_mul_of_nonneg_right _ hnpos.le
+            exact Real.rpow_le_rpow_of_exponent_ge hρ0 hρ1 hKσ
+        _ = ρ * (s.V.card : ℝ) := by rw [Real.rpow_one]
+        _ ≤ (s₁.V.card : ℝ) := hρcard
+    obtain ⟨s₂, _hcard₂', hcase₂⟩ := hinc X s₁ hX hn₂s₁ hcap₁ hexc₁ hirr
+    have hρK1 : ρ ^ K₀ ≤ 1 :=
+      Real.rpow_le_one hρ0.le hρ1 (by linarith)
     rcases hcase₂ with ⟨hlt₂, hcard₂, hbox₂⟩ | ⟨heq₂, η, hη0, hη1, hηcard, hηbox⟩
     · refine ⟨s₂, Or.inr (Or.inl ⟨?_, ?_, ?_⟩)⟩
       · omega
