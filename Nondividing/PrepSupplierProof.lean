@@ -1569,4 +1569,132 @@ theorem prepNumerics_of_large {β : ℝ} (pkgs : ∀ r, Package r β) (Dcap : �
       _ ≤ δ * (n : ℝ) ^ (1 - ε / 2) := h6
       _ ≤ δ * ((δ / 2) ^ prepImax pkgs Dcap γ n * (n : ℝ)) := hm₁m₀
 
+/-! ## Final assembly
+
+`PrepSupplier` is discharged up to exactly two `TODO(orchestrator)`
+hypotheses:
+
+* **`hdown1`** (sharp down-move box estimate): every dimension-decreasing
+  `PrepMove` satisfies `|B'| ≤ |B|` on the nose.  The proven toolkit
+  (`dimension_move`) gives only `c^{d'}·|B'| ≤ C·|B|`, i.e. `|B'| ≪ |B|`
+  with a multiplicative constant — which matches the manuscript's `≪` but
+  not `PrepSupplier`'s clean `≤` in the down branch.  Either the geometric
+  estimate must be sharpened, or the `PrepSupplier`/`RawStep` interface
+  relaxed to a constant (absorbable in the down-case σ-gap for `n` large).
+
+* **`hout`** (uniform output threshold): `n₁ ≤ (δ/2)^{imax(n)}·n` for all
+  `n ≥ n₁`.  This clause is *false near `n = n₁`* for any fixed parameters
+  (one preprocessing move already loses a `δ/2` factor), so it cannot be
+  discharged as stated: `PrepSupplier` demands output cardinality `≥ n₁`
+  uniformly, while the manuscript tracks a *shrinking* threshold along the
+  projective descent.  The interface needs a second (smaller) output
+  threshold or a `|V'| ≥ |V|^{1-2ε}`-style clause. -/
+
+/-- **`PrepSupplier`, final form.**  For any parameters in the manuscript's
+regime (`0 < δ ≤ 1`, `γ ≤ (δ/2)^{K₀}`, `40·log(2/δ) ≤ ε·log(1/γ)`,
+`Dcap ≥ 2/ζ₀ + 10`), there is a threshold `n₂` such that for every
+`n₁ ≥ n₂` satisfying the uniform output-threshold clause `hout`,
+`PrepSupplier pkgs Dcap ζ₀ ε δ γ K₀ n₁` holds — given the sharp down-move
+box estimate `hdown1`.  (See the section docstring for the status of the
+two hypotheses.) -/
+theorem prepSupplier_final {β : ℝ} (pkgs : ∀ r, Package r β) (Dcap : ℕ)
+    (ζ₀ ε δ γ K₀ : ℝ)
+    (hζ₀ : 0 < ζ₀) (hδ0 : 0 < δ) (hδ1 : δ ≤ 1) (hγ0 : 0 < γ) (hγ1 : γ < 1)
+    (hε0 : 0 < ε) (hε1 : ε < 1) (hK₀ : 0 ≤ K₀)
+    (hγK₀ : γ ≤ (δ / 2) ^ K₀)
+    (hKε : 40 * Real.log (2 / δ) ≤ ε * Real.log (1 / γ))
+    (hDζ : 2 / ζ₀ + 10 ≤ (Dcap : ℝ))
+    (hdown1 : ∀ (X : ℕ) (C : ℝ) (x y : PrepStage X),
+      PrepMove pkgs δ γ C x y → y.dim < x.dim →
+      (coordinateBox y.M).card ≤ (coordinateBox x.M).card) :
+    ∃ n₂ : ℕ, ∀ n₁ : ℕ, n₂ ≤ n₁ →
+      (∀ n : ℕ, n₁ ≤ n →
+        (n₁ : ℝ) ≤ (δ / 2) ^ prepImax pkgs Dcap γ n * (n : ℝ)) →
+      PrepSupplier pkgs Dcap ζ₀ ε δ γ K₀ n₁ := by
+  obtain ⟨n₂, hnum⟩ := prepNumerics_of_large pkgs Dcap ζ₀ ε δ γ K₀
+    hζ₀ hδ0 hδ1 hγ0 hγ1 hε0 hε1 hγK₀ hKε hDζ
+  refine ⟨n₂, fun n₁ hn₁ hout => ?_⟩
+  exact prepSupplier_of_numerics pkgs Dcap ζ₀ ε δ γ K₀ n₁
+    hζ₀ hδ0 hδ1 hγ0 hγ1 hK₀ hdown1
+    (fun n d₀ B₀ hn hbad hle hd hdd =>
+      hnum n₁ n d₀ B₀ (le_trans hn₁ hn) (hout n hn) hbad hle hd hdd)
+
+/-- **Consumption-shaped corollary** (matching
+`descentSupplier_of_pipeline`): for every excess parameter `ζ₀ > 0` and
+every `ε₁ > 0` there are concrete parameters — `Dcap ≥ max(2, 2/ζ₀)`,
+`0 < ε ≤ 1/2` with `2ε ≤ ε₁`, `δ = 1/2`, `K₀ = 5`, and
+`γ = 4^{-max(5,⌈40/ε⌉)}` — for which the final supplier theorem applies. -/
+theorem prepSupplier_params {β : ℝ} (pkgs : ∀ r, Package r β)
+    (ζ₀ ε₁ : ℝ) (hζ₀ : 0 < ζ₀) (hε₁ : 0 < ε₁) :
+    ∃ (Dcap : ℕ) (ε δ γ K₀ : ℝ),
+      2 ≤ Dcap ∧ 2 / ζ₀ ≤ (Dcap : ℝ) ∧
+      0 < ε ∧ 2 * ε ≤ ε₁ ∧ ε ≤ 1 / 2 ∧ (5 : ℝ) ≤ K₀ ∧
+      0 < δ ∧ δ ≤ 1 ∧ 0 < γ ∧ γ < 1 ∧
+      ((∀ (X : ℕ) (C : ℝ) (x y : PrepStage X),
+          PrepMove pkgs δ γ C x y → y.dim < x.dim →
+          (coordinateBox y.M).card ≤ (coordinateBox x.M).card) →
+        ∃ n₂ : ℕ, ∀ n₁ : ℕ, n₂ ≤ n₁ →
+          (∀ n : ℕ, n₁ ≤ n →
+            (n₁ : ℝ) ≤ (δ / 2) ^ prepImax pkgs Dcap γ n * (n : ℝ)) →
+          PrepSupplier pkgs Dcap ζ₀ ε δ γ K₀ n₁) := by
+  set ε : ℝ := min (ε₁ / 2) (1 / 2) with hεdef
+  have hε0 : 0 < ε := by
+    rw [hεdef]
+    exact lt_min (by linarith) (by norm_num)
+  have hεhalf : ε ≤ 1 / 2 := min_le_right _ _
+  have hε1' : ε < 1 := lt_of_le_of_lt hεhalf (by norm_num)
+  set K : ℕ := max 5 ⌈40 / ε⌉₊ with hKdef
+  set γ : ℝ := (1 / 4 : ℝ) ^ K with hγdef
+  set Dcap : ℕ := max 2 (⌈2 / ζ₀⌉₊ + 10) with hDdef
+  have hγ0 : 0 < γ := by rw [hγdef]; positivity
+  have hγ1 : γ < 1 := by
+    rw [hγdef]
+    apply pow_lt_one₀ (by norm_num) (by norm_num)
+    omega
+  have hceil : 2 / ζ₀ ≤ (⌈2 / ζ₀⌉₊ : ℝ) := Nat.le_ceil _
+  have hDζR : 2 / ζ₀ + 10 ≤ (Dcap : ℝ) := by
+    have h1 : (⌈2 / ζ₀⌉₊ + 10 : ℕ) ≤ Dcap := le_max_right _ _
+    have h2 : ((⌈2 / ζ₀⌉₊ + 10 : ℕ) : ℝ) ≤ (Dcap : ℝ) := by
+      exact_mod_cast h1
+    push_cast at h2
+    linarith
+  have hlog4 : (0 : ℝ) < Real.log 4 := Real.log_pos (by norm_num)
+  have hinvγ : (1 : ℝ) / γ = 4 ^ K := by
+    rw [hγdef, one_div, ← inv_pow]
+    norm_num
+  have hlogγ : Real.log (1 / γ) = (K : ℝ) * Real.log 4 := by
+    rw [hinvγ, Real.log_pow]
+  have hK40 : 40 / ε ≤ (K : ℝ) := by
+    calc (40 : ℝ) / ε ≤ (⌈40 / ε⌉₊ : ℝ) := Nat.le_ceil _
+      _ ≤ (K : ℝ) := by exact_mod_cast le_max_right 5 ⌈40 / ε⌉₊
+  have hK5 : (5 : ℕ) ≤ K := le_max_left _ _
+  refine ⟨Dcap, ε, 1 / 2, γ, 5, ?_, ?_, hε0, ?_, hεhalf, le_refl _,
+    by norm_num, by norm_num, hγ0, hγ1, ?_⟩
+  · exact le_max_left _ _
+  · linarith
+  · rw [hεdef]
+    have := min_le_left (ε₁ / 2) (1 / 2 : ℝ)
+    linarith [min_le_left (ε₁ / 2) (1 / 2 : ℝ)]
+  · intro hdown1
+    apply prepSupplier_final pkgs Dcap ζ₀ ε (1 / 2) γ 5
+      hζ₀ (by norm_num) (by norm_num) hγ0 hγ1 hε0 hε1' (by norm_num)
+      ?_ ?_ (by linarith) hdown1
+    · -- `γ ≤ (1/4)^{(5:ℝ)}`
+      have h1 : ((1 / 2 : ℝ) / 2) = 1 / 4 := by norm_num
+      rw [h1, show ((5 : ℝ)) = ((5 : ℕ) : ℝ) by norm_num,
+        Real.rpow_natCast]
+      rw [hγdef]
+      exact pow_le_pow_of_le_one (by norm_num) (by norm_num) hK5
+    · -- `40·log 4 ≤ ε·K·log 4`
+      have h1 : (2 : ℝ) / (1 / 2) = 4 := by norm_num
+      rw [h1, hlogγ]
+      have h2 : (40 : ℝ) ≤ ε * K := by
+        have h3 : ε * (40 / ε) ≤ ε * K :=
+          mul_le_mul_of_nonneg_left hK40 hε0.le
+        rw [mul_div_cancel₀ _ (ne_of_gt hε0)] at h3
+        linarith
+      calc 40 * Real.log 4 ≤ (ε * K) * Real.log 4 :=
+            mul_le_mul_of_nonneg_right h2 hlog4.le
+        _ = ε * ((K : ℝ) * Real.log 4) := by ring
+
 end Nondividing
