@@ -1,83 +1,155 @@
-# Nondividing
+# Erdős Problem 131 — a Lean 4 formalization
 
-Lean 4 formalization of the main theorem in `Manuscript.tex`
-([Erdős problem 131](https://www.erdosproblems.com/131)):
+**The question** ([erdosproblems.com/131](https://www.erdosproblems.com/131)):
+call a set of integers *non-dividing* if no member divides the sum of any
+nonempty subset of the other members. How large can a non-dividing subset of
+`{1, …, N}` be?
 
-> **`Nondividing.main_log_limit`** (`Nondividing/FinalAssembly.lean`):
-> the maximum size `F(N)` of a *non-dividing* subset of `{1, …, N}` satisfies
-> `log F(N) / log N → 1/5`, i.e. `F(N) = N^{1/5+o(1)}`.
+**The answer, formalized here:** if `F(N)` is that maximum size, then
 
-```powershell
-$env:PATH = "$env:USERPROFILE\.elan\bin;$env:PATH"
-lake update
-lake build
+```
+log F(N) / log N  →  1/5        (i.e.  F(N) = N^(1/5 + o(1)))
 ```
 
-Lean is pinned by `lean-toolchain`; mathlib is pinned to the commit in
-`lakefile.toml`.
+This repository contains a complete, kernel-checked Lean 4 proof of that
+statement — the main theorem of the accompanying paper (`Manuscript.tex`).
+The theorem is `Nondividing.main_log_limit`, and it lives in
+[`Nondividing/FinalAssembly.lean`](Nondividing/FinalAssembly.lean).
 
-## Verifying the formalization (Comparator)
+---
 
-Following the [Lean FRO Comparator](https://github.com/leanprover/comparator)
-workflow, the repository ships a mechanically checkable statement/proof pair,
-so a referee does **not** have to trawl the 400+ lemmas:
+## I just want to know: should I trust this?
 
-- **`Challenge.lean`** — the trusted surface: the two definitions
-  (`NonDividing`, `F`) and the main statement, with `sorry`. Read this file
-  (≈50 lines) to check the theorem *says what it should*.
-- **`Solution.lean`** — imports the full development; its environment contains
-  the real `Nondividing.main_log_limit`.
-- **`comparator-config.json`** — names the theorem and whitelists the
-  permitted axioms: Lean's `propext`, `Classical.choice`, `Quot.sound` plus
-  the eight E1–E5 interfaces below (and nothing else).
+You don't need to read the proof (400+ lemmas). You need three short reads
+and one command. In increasing order of effort:
 
-To run the Comparator locally (it kernel-replays the proof and certifies the
-solution proves *exactly* the challenge statement under the whitelist):
+**1. Check the statement says the right thing (2 minutes, no download).**
+Read [`Challenge.lean`](Challenge.lean). It is ~50 lines: the definition of
+*non-dividing*, the definition of `F`, and the theorem statement. Nothing
+else. If that file matches your understanding of the problem, the statement
+is right.
+
+**2. Check what is assumed (5 minutes).**
+The proof uses Lean's three standard axioms plus **eight explicitly declared
+external results** — published theorems from the literature that were taken
+as axioms rather than re-proved. They live in the five short files of
+[`Nondividing/External/`](Nondividing/External/) (245 lines total), each with
+a citation. The list is in the table below. *This is the entire trust
+surface:* everything else is verified by the Lean kernel down to mathlib.
+
+**3. Check the proof actually proves that statement (one command).**
+Build the project (next section) — it compiles with **zero `sorry`**. Then
+ask Lean which axioms the theorem really uses:
 
 ```bash
-lake build Challenge Solution
-# clone + build https://github.com/leanprover/comparator, then:
-lake env <path-to-comparator-binary> comparator-config.json
-```
-
-Two lighter checks that need no extra tooling:
-
-```bash
-# axiom audit: must print exactly core + the eight E1–E5 axioms
 echo 'import Nondividing.FinalAssembly
 #print axioms Nondividing.main_log_limit' > AxCheck.lean
 lake env lean AxCheck.lean && rm AxCheck.lean
-
-# statement identity: Challenge's statement is byte-identical (pp.all) to the
-# proven theorem's — compare `#check @Nondividing.main_log_limit` under
-# `set_option pp.all true` in the two environments (import Challenge vs
-# import Nondividing.FinalAssembly) and diff the output.
 ```
 
-The complete trust surface is: `Challenge.lean` + `comparator-config.json` +
-the five short files in `Nondividing/External/` (245 lines, the statements of
-the whitelisted axioms).
+The output must list exactly: `propext`, `Classical.choice`, `Quot.sound`,
+and the eight `Nondividing.External.*` axioms. Nothing more — in particular
+no `sorryAx`.
 
-**Lean 4 Web.** A self-contained single-file version of the challenge
-(definitions + statement against `import Mathlib`) is kept locally as
-`comparator_web.lean` (gitignored; regenerate by inlining `Challenge.lean`'s
-imports to `import Mathlib`). Paste it at
-[live.lean-lang.org](https://live.lean-lang.org) to check the statement
-compiles, or into the Challenge pane at
+**4. (Optional, strongest) Mechanical verification with the Comparator.**
+See the [Comparator section](#full-verification-with-the-comparator) below.
+
+---
+
+## Building the project
+
+Requires [elan](https://github.com/leanprover/elan) (the Lean toolchain
+manager). Lean's version is pinned by `lean-toolchain`, mathlib by
+`lakefile.toml`, so the build is reproducible.
+
+```powershell
+# Windows (PowerShell)
+$env:PATH = "$env:USERPROFILE\.elan\bin;$env:PATH"
+lake exe cache get   # download prebuilt mathlib (much faster than compiling it)
+lake build
+```
+
+```bash
+# Linux / macOS
+lake exe cache get
+lake build
+```
+
+A successful `lake build` means every proof in the project was checked by
+the Lean kernel.
+
+---
+
+## Full verification with the Comparator
+
+The [Lean FRO Comparator](https://github.com/leanprover/comparator) is an
+independent tool that certifies three things at once:
+
+- the project proves **exactly** the statement in the trusted
+  `Challenge.lean` (not a lookalike),
+- using **only** the whitelisted axioms,
+- and the proof is accepted by the Lean kernel on replay.
+
+The three pieces it needs are already in the repository:
+
+| File | Role |
+|---|---|
+| [`Challenge.lean`](Challenge.lean) | The trusted statement (with `sorry`) |
+| [`Solution.lean`](Solution.lean) | The real proof (imports the development) |
+| [`comparator-config.json`](comparator-config.json) | Theorem name + axiom whitelist |
+
+To run it:
+
+```bash
+lake build Challenge Solution
+# clone and build https://github.com/leanprover/comparator, then:
+lake env <path-to-comparator-binary> comparator-config.json
+```
+
+**Checking the statement online instead (no install at all):** a
+self-contained one-file version of the challenge (kept locally as the
+gitignored `comparator_web.lean`; it is `Challenge.lean` with the imports
+inlined to `import Mathlib`) can be pasted into
+[live.lean-lang.org](https://live.lean-lang.org) — it compiles against plain
+mathlib with a single `sorry` warning, showing the statement is well-formed
+and self-contained — or into the Challenge pane of
 [comparator.live.lean-lang.org](https://comparator.live.lean-lang.org).
 
-## Trusted external interfaces
+---
 
-The only non-foundational interfaces are the whitelisted results in
-`Nondividing/External/`:
+## What exactly is assumed (the eight external results)
 
-- `cfp_structure` — Conlon–Fox–Pham / Pham–Zakharov, Corollary 5;
-- `discrete_john` — Pham–Zakharov, Lemma 7;
-- `zonotope_rounding` — Conlon–Fox–Pham as used in Pham–Zakharov,
-  Lemma 13 and equation (15);
-- `convex_density_set` — Pham–Zakharov, Lemma 1;
-- `blaschke_selection` and `convexBody_volume_tendsto` — Schneider,
-  Theorems 1.8.6 and 1.8.20;
-- `rogers_shephard` — Rogers–Shephard, Theorem 1;
-- `full_rank_lattice_points_le_volume` — the stated corollary of
-  Betke–Henk–Wills, Proposition 2.1, and Minkowski's second theorem.
+These are the only non-foundational axioms. Each is a published result,
+stated in [`Nondividing/External/`](Nondividing/External/) with its citation:
+
+| Axiom | Source |
+|---|---|
+| `cfp_structure` | Conlon–Fox–Pham structure theorem, as in Pham–Zakharov, Cor. 5 |
+| `discrete_john` | Pham–Zakharov, Lemma 7 (discrete John's theorem) |
+| `zonotope_rounding` | Conlon–Fox–Pham rounding, as in Pham–Zakharov, Lemma 13 / eq. (15) |
+| `convex_density_set` | Pham–Zakharov, Lemma 1 (convex density lemma) |
+| `blaschke_selection` | Schneider, *Convex Bodies*, Thm. 1.8.6 |
+| `convexBody_volume_tendsto` | Schneider, *Convex Bodies*, Thm. 1.8.20 |
+| `rogers_shephard` | Rogers–Shephard difference-body inequality, Thm. 1 |
+| `full_rank_lattice_points_le_volume` | Corollary of Betke–Henk–Wills, Prop. 2.1 + Minkowski's second theorem |
+
+Everything else in the paper — including all of its named lemmas
+(preprocessing, progression comparison, slab counting, one-sided filling,
+index bound, projective span/duality/convexity, robust zonotope, weighted
+density, cap lifting, numerology, the density-increment iteration) — is
+proved in Lean from mathlib.
+
+---
+
+## Repository layout
+
+| Path | Contents |
+|---|---|
+| `Manuscript.tex` | The paper (the informal source of truth) |
+| `Nondividing/Basic.lean` | The definitions: `NonDividing`, `F` |
+| `Nondividing/FinalAssembly.lean` | **The main theorem** `main_log_limit` |
+| `Nondividing/External/` | The eight axioms (the trust surface) |
+| `Nondividing/Audit.lean`, `Audit2.lean` | `#print axioms` for every major result |
+| `Nondividing/…` | The proof: ~430 lemmas across geometry, projective framework, preprocessing, and the descent iteration |
+| `Challenge.lean`, `Solution.lean`, `comparator-config.json` | Comparator verification pair |
+| `FORMALIZATION_STATUS.md` | Lemma-by-lemma progress ledger kept during development |
