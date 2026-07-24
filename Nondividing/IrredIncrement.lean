@@ -954,4 +954,267 @@ theorem cap_lifting_full (d : ℕ) :
       _ = (Cj : ℝ) * ((C₀ : ℝ) * (binom : ℝ) * 2 ^ d) * η *
             ((coordinateBox M).card : ℝ) := by ring
 
+/-! ## 5. The irreducible-stage increment step
+
+The full geometric pipeline at ambient dimension `d = r + 1`, for a stage
+whose projective family is in `μ`-convex position: weighted density in the
+chart `H_λ ≅ ℝ^r` returns a captured body of chart volume `≤ η·vol(Ω_c)`; the
+captured shell subset is `δ`-large, hence spans (`span_top_of_large_subset`);
+full-rank cap lifting transports it to a box of size `≤ C·η·|B|`.  At `r = 0`
+(`d = 1`) the convex-position hypothesis is itself contradictory (all
+projective points coincide), so the conclusion is vacuous. -/
+
+/-- At `d = 1` every projective normalization coincides, so indexed
+`μ`-convex position with `μ < 1` on a nonempty family is absurd. -/
+theorem muConvexPosition_dim_one_absurd {ℓ : Fin 1 → ℤ} {X : ℕ}
+    {V : Finset (Fin 1 → ℤ)} {μ : ℝ} (hX : 1 ≤ X) (hμ1 : μ < 1)
+    (hV1 : 1 ≤ V.card)
+    (hshell : ShellNonDividing (fun v => (intFunctional ℓ v : ℤ)) X V)
+    (hconv : IndexedMuConvexPosition μ
+      (fun v : {x // x ∈ V} => projNorm ℓ v.1)) : False := by
+  classical
+  obtain ⟨v₀, hv₀⟩ := Finset.card_pos.mp (by omega : 0 < V.card)
+  have hl0 : (ℓ 0 : ℝ) ≠ 0 := by
+    have hpos := intFunctional_pos_of_shell hX hshell hv₀
+    rw [intFunctional_apply, Fin.sum_univ_one] at hpos
+    intro h0
+    have : (ℓ 0 : ℝ) = 0 := h0
+    have hz : ℓ 0 = 0 := by exact_mod_cast this
+    rw [hz, zero_mul] at hpos
+    exact lt_irrefl 0 hpos
+  -- All projective points coincide.
+  have hall : ∀ v ∈ V, projNorm ℓ v = projNorm ℓ v₀ := by
+    have hval : ∀ v ∈ V, projNorm ℓ v 0 = 1 / (ℓ 0 : ℝ) := by
+      intro v hv
+      have h1 := realFunctional_projNorm_of_shell hX hshell hv
+      rw [realFunctional_apply, Fin.sum_univ_one] at h1
+      field_simp
+      linarith [h1]
+    intro v hv
+    funext i
+    have hi : i = 0 := Subsingleton.elim i 0
+    rw [hi, hval v hv, hval v₀ hv₀]
+  obtain ⟨u, t, htle, hcount⟩ := hconv ⟨v₀, hv₀⟩
+  have htle' : t ≤ u (projNorm ℓ v₀) := htle
+  have hfilter : (Finset.univ.filter
+      fun k : {x // x ∈ V} =>
+        t ≤ u ((fun v : {x // x ∈ V} => projNorm ℓ v.1) k))
+      = Finset.univ := by
+    refine Finset.filter_true_of_mem fun k _ => ?_
+    show t ≤ u (projNorm ℓ k.1)
+    rw [hall k.1 k.2]
+    exact htle'
+  rw [hfilter, Finset.card_univ, Fintype.card_coe] at hcount
+  have hcard1 : (1 : ℝ) ≤ (V.card : ℝ) := by exact_mod_cast hV1
+  nlinarith [hcount]
+
+/-- **The irreducible-stage cap step** (Manuscript.tex 1941–2024, geometric
+core).  At ambient dimension `r + 1`, given the weighted-density and
+cap-lifting constants, a `μ`-convex-position stage yields `η ∈ [μ, μ^tau]`, a
+shell-preserving transported set `W'` of size `≥ η^{κ_r + ε}·|V|` in a box of
+size `≤ C·η·|B|` (same ambient dimension). -/
+theorem irreducible_cap_step {β : ℝ} (eps : ℝ) (heps : 0 < eps) (r : ℕ)
+    (pkg : Package (r + 1) β) :
+    ∃ tau K C μ₀ : ℝ, 0 < tau ∧ tau < 1 ∧ 0 < K ∧ 0 < C ∧ 0 < μ₀ ∧
+    ∀ μ : ℝ, ∃ n₀ : ℕ, 1 ≤ n₀ ∧
+    ∀ (X : ℕ) (ℓ : Fin (r + 1) → ℤ) (V : Finset (Fin (r + 1) → ℤ))
+      (M : Fin (r + 1) → ℕ) (δ γ : ℝ),
+      0 < μ → μ < μ₀ → μ < 1 →
+      1 ≤ X → V ⊆ coordinateBox M →
+      ShellNonDividing (fun v => (intFunctional ℓ v : ℤ)) X V →
+      UnshiftedIrreducible pkg δ γ V M →
+      0 < γ → δ ≤ μ ^ (1 + eps) →
+      n₀ ≤ V.card →
+      integerRealSpan V = ⊤ →
+      (∀ W : Finset (Fin (r + 1) → ℤ), W ⊆ V →
+        δ * (V.card : ℝ) ≤ (W.card : ℝ) →
+        Eligible β pkg.m₀ W M ∧
+        1 ≤ External.structureScale W.card ∧
+        1 ≤ pkg.c * External.structureScale W.card ∧
+        K < External.structureScale W.card * γ) →
+      IndexedMuConvexPosition μ
+        (fun v : {x // x ∈ V} => projNorm ℓ v.1) →
+      ∃ (η : ℝ) (lam' : (Fin (r + 1) → ℤ) →+ ℤ)
+        (W' : Finset (Fin (r + 1) → ℤ)) (N : Fin (r + 1) → ℕ),
+        μ ≤ η ∧ η ≤ μ ^ tau ∧
+        W' ⊆ coordinateBox N ∧
+        ShellNonDividing (fun n => lam' n) X W' ∧
+        η ^ (((r : ℝ) - 1) / ((r : ℝ) + 1) + eps) * (V.card : ℝ) ≤
+          (W'.card : ℝ) ∧
+        ((coordinateBox N).card : ℝ) ≤
+          C * η * ((coordinateBox M).card : ℝ) := by
+  classical
+  by_cases hr0 : r = 0
+  · -- `r = 0`, ambient dimension 1: the convex-position hypothesis is absurd.
+    subst hr0
+    refine ⟨1 / 2, 1, 1, 1 / 2, by norm_num, by norm_num, by norm_num,
+      by norm_num, by norm_num, ?_⟩
+    intro μ
+    refine ⟨1, le_rfl, ?_⟩
+    intro X ℓ V M δ γ hμ hμμ₀ hμ1 hX hVbox hshell hirr hγ hδμ hn hspanV
+      hsupply hconv
+    exact absurd hconv
+      (fun h => muConvexPosition_dim_one_absurd hX hμ1 hn hshell h)
+  · -- `r ≥ 1`, ambient dimension `≥ 2`: the real pipeline.
+    have hr : 1 ≤ r := Nat.one_le_iff_ne_zero.mpr hr0
+    obtain ⟨tau, μ₀, htau0, htau1, hμ₀, hstep⟩ :=
+      weighted_density r hr eps heps
+    obtain ⟨Kspan, hKspan, hspanthm⟩ :=
+      span_top_of_large_subset pkg (by omega)
+    obtain ⟨Ccap, hCcap, hcap⟩ := cap_lifting_full (r + 1)
+    refine ⟨tau, Kspan, Ccap, μ₀, htau0, htau1, hKspan, hCcap, hμ₀, ?_⟩
+    intro μ
+    by_cases hμok : 0 < μ ∧ μ < μ₀
+    swap
+    · refine ⟨1, le_rfl, ?_⟩
+      intro X ℓ V M δ γ hμ hμμ₀ _ _ _ _ _ _ _ _ _ _ _
+      exact absurd ⟨hμ, hμμ₀⟩ hμok
+    obtain ⟨n₀, hn₀⟩ := hstep μ hμok.1 hμok.2
+    refine ⟨max n₀ 1, le_max_right _ _, ?_⟩
+    intro X ℓ V M δ γ hμ hμμ₀ hμ1 hX hVbox hshell hirr hγ hδμ hn hspanV
+      hsupply hconv
+    set n : ℕ := V.card with hn_def
+    have hn₀n : n₀ ≤ n := le_trans (le_max_left _ _) hn
+    have h1n : 1 ≤ n := le_trans (le_max_right _ _) hn
+    have hVne : V.Nonempty := Finset.card_pos.mp (by omega)
+    -- A nonvanishing coordinate of the functional.
+    obtain ⟨v₀, hv₀⟩ := hVne
+    obtain ⟨j, hj⟩ : ∃ j, ℓ j ≠ 0 := by
+      by_contra h0
+      have hall0 : ∀ i, ℓ i = 0 := fun i => by
+        by_contra hi
+        exact h0 ⟨i, hi⟩
+      have hpos := intFunctional_pos_of_shell hX hshell hv₀
+      rw [intFunctional_apply] at hpos
+      rw [Finset.sum_eq_zero (fun i _ => by rw [hall0 i, zero_mul])] at hpos
+      exact lt_irrefl 0 hpos
+    have hjR : (ℓ j : ℝ) ≠ 0 := by exact_mod_cast hj
+    -- The chart body.
+    set Ωc : Set (Fin r → ℝ) := chartProj j '' stageOmega ℓ X M with hΩc_def
+    have hcompΩc : IsCompact Ωc :=
+      (stageOmega_isCompact ℓ M hX).image (continuous_chartProj j)
+    have hconvΩc : Convex ℝ Ωc :=
+      (stageOmega_convex ℓ X M).linear_image (chartProjL j)
+    have hintΩc : (interior Ωc).Nonempty :=
+      interior_chart_stageOmega_nonempty hjR hX hshell hVbox
+        ⟨v₀, hv₀⟩ hspanV
+    -- The indexed family in the chart.
+    have hproj1 : ∀ v : {x // x ∈ V},
+        realFunctional ℓ (projNorm ℓ v.1) = 1 := fun v =>
+      realFunctional_projNorm_of_shell hX hshell v.2
+    have hchartpos : IndexedMuConvexPosition μ
+        (fun v : {x // x ∈ V} => chartProj j (projNorm ℓ v.1)) :=
+      indexedMuConvexPosition_chartProj hjR hproj1 hconv
+    set e : {x // x ∈ V} ≃ Fin n :=
+      Fintype.equivFinOfCardEq (Fintype.card_coe V) with he_def
+    set p : Fin n → (Fin r → ℝ) :=
+      fun i => chartProj j (projNorm ℓ ((e.symm i) : {x // x ∈ V}).1)
+      with hp_def
+    have hppos : IndexedMuConvexPosition μ p :=
+      hchartpos.comp_equiv e.symm
+    have hpΩ : ∀ i, p i ∈ Ωc := fun i =>
+      ⟨projNorm ℓ (e.symm i).1,
+        projNorm_mem_stageOmega hX hshell hVbox (e.symm i).2, rfl⟩
+    -- Weighted density in the chart.
+    obtain ⟨η, hημ, hημtau, Kb, hKsub, hKvol, hcount⟩ :=
+      hn₀ n p Ωc hn₀n h1n hcompΩc hconvΩc hintΩc hpΩ hppos
+    have hη0 : 0 < η := lt_of_lt_of_le hμ hημ
+    -- The captured shell subset.
+    set W : Finset (Fin (r + 1) → ℤ) := V.filter
+      (fun v => chartProj j (projNorm ℓ v) ∈ (Kb : Set (Fin r → ℝ)))
+      with hW_def
+    have hWV : W ⊆ V := Finset.filter_subset _ _
+    have hWcard_eq : (Finset.univ.filter
+        (fun i => p i ∈ (Kb : Set (Fin r → ℝ)))).card = W.card := by
+      refine Finset.card_bij
+        (fun i _ => ((e.symm i) : {x // x ∈ V}).1) ?_ ?_ ?_
+      · intro i hi
+        rw [Finset.mem_filter] at hi ⊢
+        exact ⟨(e.symm i).2, hi.2⟩
+      · intro i₁ h₁ i₂ h₂ heq
+        have : e.symm i₁ = e.symm i₂ := Subtype.ext heq
+        exact e.symm.injective this
+      · intro v hv
+        rw [Finset.mem_filter] at hv
+        refine ⟨e ⟨v, hv.1⟩, ?_, ?_⟩
+        · rw [Finset.mem_filter]
+          refine ⟨Finset.mem_univ _, ?_⟩
+          rw [hp_def]
+          simp only [Equiv.symm_apply_apply]
+          exact hv.2
+        · simp only [Equiv.symm_apply_apply]
+    have hWlow : η ^ (((r : ℝ) - 1) / ((r : ℝ) + 1) + eps) * (n : ℝ) ≤
+        (W.card : ℝ) := by
+      rw [← hWcard_eq]
+      exact hcount
+    -- The captured set is `δ`-large.
+    have hrR : (1 : ℝ) ≤ (r : ℝ) := by exact_mod_cast hr
+    have hκ0 : 0 ≤ ((r : ℝ) - 1) / ((r : ℝ) + 1) + eps := by
+      have h1 : (0 : ℝ) ≤ ((r : ℝ) - 1) / ((r : ℝ) + 1) :=
+        div_nonneg (by linarith) (by linarith)
+      linarith
+    have hκ1 : ((r : ℝ) - 1) / ((r : ℝ) + 1) + eps ≤ 1 + eps := by
+      have h1 : ((r : ℝ) - 1) / ((r : ℝ) + 1) ≤ 1 := by
+        rw [div_le_one (by linarith)]
+        linarith
+      linarith
+    have hδW : δ * (n : ℝ) ≤ (W.card : ℝ) := by
+      have hnn : (0 : ℝ) ≤ (n : ℝ) := Nat.cast_nonneg _
+      have h1 : μ ^ ((1 : ℝ) + eps) ≤
+          μ ^ (((r : ℝ) - 1) / ((r : ℝ) + 1) + eps) :=
+        Real.rpow_le_rpow_of_exponent_ge hμ hμ1.le hκ1
+      have h2 : μ ^ (((r : ℝ) - 1) / ((r : ℝ) + 1) + eps) ≤
+          η ^ (((r : ℝ) - 1) / ((r : ℝ) + 1) + eps) :=
+        Real.rpow_le_rpow hμ.le hημ hκ0
+      calc δ * (n : ℝ) ≤ μ ^ ((1 : ℝ) + eps) * (n : ℝ) :=
+            mul_le_mul_of_nonneg_right hδμ hnn
+        _ ≤ η ^ (((r : ℝ) - 1) / ((r : ℝ) + 1) + eps) * (n : ℝ) :=
+            mul_le_mul_of_nonneg_right (h1.trans h2) hnn
+        _ ≤ (W.card : ℝ) := hWlow
+    obtain ⟨hE_W, hsW1, hcsW1, hKsW⟩ := hsupply W hWV hδW
+    -- The captured set spans: full rank.
+    have hspanW : integerRealSpan W = ⊤ :=
+      hspanthm V W M δ γ hE_W hirr hWV hVbox hδW hγ hsW1 hcsW1 hKsW hspanV
+    -- The ambient cap body.
+    set Ω' : Set (Fin (r + 1) → ℝ) :=
+      chartSec ℓ j '' (Kb : Set (Fin r → ℝ)) with hΩ'_def
+    have hconvΩ' : Convex ℝ Ω' := convex_chartSec_image ℓ j Kb.convex
+    have hcompΩ' : IsCompact Ω' :=
+      Kb.isCompact.image (continuous_chartSec ℓ j)
+    have hneΩ' : Ω'.Nonempty := Kb.nonempty.image _
+    have hΩ'hyp : ∀ x ∈ Ω', realFunctional ℓ x = 1 := by
+      rintro _ ⟨y, hy, rfl⟩
+      exact realFunctional_chartSec hjR y
+    -- The chart image of the cap body is the captured body.
+    have hchartΩ' : chartProj j '' Ω' = (Kb : Set (Fin r → ℝ)) := by
+      rw [hΩ'_def, ← Set.image_comp]
+      have : (chartProj j ∘ chartSec ℓ j) '' (Kb : Set (Fin r → ℝ))
+          = id '' (Kb : Set (Fin r → ℝ)) := by
+        refine Set.image_congr fun y _ => ?_
+        show chartProj j (chartSec ℓ j y) = y
+        exact chartProj_chartSec ℓ j y
+      rw [this, Set.image_id]
+    -- The cone-volume ratio.
+    have hvolratio : volume (cone 1 Ω') ≤
+        ENNReal.ofReal η * volume (cone 1 (stageOmega ℓ X M)) := by
+      refine cone_volume_ratio ℓ j hj hcompΩ' (stageOmega_isCompact ℓ M hX)
+        hΩ'hyp (fun x hx => hx.1) ?_
+      rw [hchartΩ']
+      exact hKvol
+    -- Cap membership of the captured shell points.
+    have hWΩ' : ∀ v ∈ W, projNorm ℓ v ∈ Ω' := by
+      intro v hv
+      rw [Finset.mem_filter] at hv
+      refine ⟨chartProj j (projNorm ℓ v), hv.2, ?_⟩
+      exact chartSec_chartProj hjR
+        (realFunctional_projNorm_of_shell hX hshell hv.1)
+    -- Full-rank cap lifting.
+    obtain ⟨lam', W', N, hW'box, hW'card, hW'shell, hW'bound⟩ :=
+      hcap ℓ X η (stageOmega ℓ X M) Ω' W M hX hη0.le hconvΩ' hcompΩ' hneΩ'
+        hvolratio (cone_stageOmega_subset ℓ X M)
+        (hshell.mono hWV) hWΩ' hspanW
+    refine ⟨η, lam', W', N, hημ, hημtau, hW'box, hW'shell, ?_, hW'bound⟩
+    rw [hW'card]
+    exact hWlow
+
 end Nondividing
