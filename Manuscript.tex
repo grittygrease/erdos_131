@@ -11,7 +11,7 @@
 \hypersetup{
   pdftitle={A Projective Approach to Non-Dividing Sets},
   pdfsubject={Non-dividing sets, subset sums, and projective density increment},
-  pdfkeywords={non-dividing sets, subset sums, generalized arithmetic progressions, convex position, density increment}
+  pdfkeywords={non-dividing sets, subset sums, generalized arithmetic progressions, convex position, density increment, formal verification}
 }
 
 \newtheorem{theorem}{Theorem}[section]
@@ -59,24 +59,26 @@
 \date{}
 \subjclass[2020]{11B30, 11B75, 52C07}
 \keywords{non-dividing sets, subset sums, generalized arithmetic progressions,
-convex position, density increment}
+convex position, density increment, formal verification}
 
 \begin{document}
 
 \begin{abstract}
-Let $F(N)$ be the largest cardinality of a set $A\subseteq[N]$ such that
-no $a\in A$ divides the sum of a nonempty collection of distinct elements
-of $A\setminus\{a\}$.  We prove
+Let $F(N)$ be the largest size of a set $A\subseteq\{1,\dots,N\}$ in which
+no element divides the sum of any nonempty subset of the remaining
+elements.  Erd\H{o}s, Lev, Rauzy, S\'andor and S\'ark\H{o}zy proved
+$F(N)=O(N^{1/2})$, and constructions of Erd\H{o}s give
+$F(N)\gg N^{1/5}$.  We prove the matching upper bound:
 \[
  F(N)=N^{1/5+o(1)}.
 \]
-The lower bound follows from an explicit translated parabola construction.
-For the upper bound, we combine the homogeneous subset-sum structure theorem
-of Conlon--Fox--Pham with the density-increment framework of Pham--Zakharov.
-The principal new ingredient is a projective normalization
-$v\mapsto v/\lambda(v)$, which lowers the relevant convex-geometric dimension
-by one, together with a tube-filling mechanism for subset sums that combines
-zonotope rounding with a small-index structural lattice.
+The key new idea is a projective normalization $v\mapsto v/\lambda(v)$.
+Divisibility constraints depend only on the values of the linear
+functional $\lambda$, so they survive the normalization, while the
+associated convex geometry drops by one dimension; the density-increment
+method behind Pham and Zakharov's sharp non-averaging bound then applies
+one dimension lower, moving the exponent from $1/4$ to $1/5$.  The proof
+has been formally verified in Lean~4.
 \end{abstract}
 
 \maketitle
@@ -101,7 +103,9 @@ $[N]=\{1,\dots,N\}$.
 \end{definition}
 
 Erd\H{o}s, Lev, Rauzy, S\'andor and S\'ark\H{o}zy introduced this problem
-and proved the bound $F(N)<3N^{1/2}+1$~\cite{ELRSS99}.  The previously
+and proved the bound $F(N)<3N^{1/2}+1$~\cite{ELRSS99}; it appears as
+Problem~131 in the collection of Erd\H{o}s problems maintained by
+Bloom~\cite{ErdosProblems}.  The previously
 known polynomial estimates were
 \[
  N^{1/5}\ll F(N)\le N^{1/4+o(1)}.
@@ -121,26 +125,85 @@ One has
 \]
 \end{theorem}
 
-The proof imports the homogeneous subset-sum structure theorem of
-Conlon--Fox--Pham, in the higher-dimensional form recorded by
-Pham--Zakharov, and the convex-density lemma underlying their density
-increment.  The new ingredient is arithmetic projective normalization.
-Divisibility depends only on the values of the shell functional, so
-homogeneous coefficient identifications preserve the forbidden relations
-exactly, while normalization places the convex geometry in an affine
-hyperplane of codimension one.
+\subsection{Outline of the proof}
 
-After homogeneous structural preprocessing, failure of approximate convex
-position gives a bounded positive representation of one vector by the
-others.  Zonotope rounding and a small-index structural lattice turn this
-representation into a tube of subset sums containing a positive multiple of
-the distinguished vector, contradicting non-divisibility.  The resulting
-projective convexity theorem feeds into a density-increment iteration.  We
-also note that every non-dividing set is non-averaging: an averaging relation
-$\sum_{s\in S}s=|S|a$ is already forbidden modulo $a$.
+A dyadic pigeonhole argument places a positive proportion (up to a
+logarithmic factor) of a non-dividing set in a shell $X\le a\le2X$.  We
+work throughout with the following $d$-dimensional generalization: a set
+$V$ in a symmetric box $B\subseteq\Z^d$, together with an integer linear
+functional $\lambda$ taking values in $[X,2X]$ on $V$, such that
+$\lambda(a)$ never divides $\sum_{v\in S}\lambda(v)$ for $a\in V$ and
+nonempty $S\subseteq V\setminus\{a\}$.  The point of this formulation is
+that the forbidden relations involve only the values of $\lambda$, so
+they are preserved exactly by two operations: passing to subsets, and
+applying the coefficient identification of a proper homogeneous
+generalized arithmetic progression (GAP) containing $V$.
+
+The homogeneous subset-sum structure theorem of
+Conlon--Fox--Pham~\cite{CFPHomogeneous}, in the form recorded by
+Pham--Zakharov~\cite{PhamZakharov}, places such a set in a proper GAP
+whose subset sums fill a large translated copy of the GAP.  Iterating
+coefficient identifications (Section~\ref{sec:technical-package})
+produces an \emph{irreducible} pair $(V,B)$: every large subset has full
+structural dimension and a structural GAP occupying a fixed proportion of
+the box.
+
+The new ingredient is the projective normalization
+$\pi(v)=v/\lambda(v)$, which maps the shell into the affine hyperplane
+$\{\lambda=1\}$ of dimension $d-1$.  We show
+(Theorem~\ref{thm:projective-convexity}) that for an irreducible pair the
+family $\pi(V)$ must be in approximate convex position.  If not, a
+duality argument gives a bounded positive representation
+$Ta=\sum_{v\ne a}\theta_vv$ of a multiple of some $a\in V$ by the
+remaining elements.  Zonotope rounding converts this representation into
+genuine subset sums filling a \emph{tube}: all points of a small-index
+structural lattice in a box around $Ta$.  The index bound places a
+positive multiple $m_0a$ inside the tube, so $m_0\lambda(a)$ is a subset
+sum of the values $\lambda(v)$, $v\ne a$ --- precisely a forbidden
+relation.
+
+Approximate convex position feeds the density-increment engine of
+Pham--Zakharov: their convex-density lemma, applied in the
+$(d-1)$-dimensional hyperplane, produces a small cap containing many
+points, and lifting the cap back to the lattice
+(Lemma~\ref{lem:cap-lifting}) shrinks the box by the cap volume.  Because
+the convex geometry now lives in dimension $d-1$ rather than $d$, the
+critical exponent is the sharp non-averaging exponent one dimension
+lower: with $\sigma_1=\frac15$, $\sigma_2=\frac14$ and
+$\sigma_d=\frac{d-2}d$ for $d\ge3$, the iteration
+(Theorem~\ref{thm:projective-main}) shows
+$|V|\le|B|^{\sigma_d+o(1)}$, and the case $d=1$ gives
+Theorem~\ref{thm:main}.  We also note that every non-dividing set is
+non-averaging: an averaging relation $\sum_{s\in S}s=|S|a$ is already
+forbidden modulo $a$.
+
+\subsection{Formal verification}
+\label{sec:formalization}
+
+The complete proof of Theorem~\ref{thm:main} has been formalized and
+machine-checked in Lean~4 over the mathlib
+library~\cite{Formalization}.  The formalization follows the Comparator
+workflow of the Lean Focused Research Organization: a short trusted file
+states the two definitions and the main theorem, and the kernel certifies
+that the development proves exactly that statement.  The only
+non-foundational axioms are the statements of the quoted literature
+inputs --- the structure theorem of Conlon--Fox--Pham in the form of
+\cite[Corollary~5]{PhamZakharov}, the discrete John lemma
+\cite[Lemma~7]{PhamZakharov}, zonotope rounding
+\cite[Lemma~13]{PhamZakharov}, the convex-density lemma
+\cite[Lemma~1]{PhamZakharov}, and the Blaschke selection and volume
+continuity theorems from \cite{Schneider} --- so the formalization
+verifies precisely the reduction carried out in this paper.  In view of
+this, we abbreviate some routine uniformity and bookkeeping verifications
+in the longer proofs below; every abbreviated step is carried out in
+complete detail in the formalization.
 
 \section{Elementary structure and the lower bound}
 \label{sec:elementary}
+
+The bound $F(N)\gg N^{1/5}$ is essentially known, being implicit in the
+constructions of \cite{Er97,ELRSS99}; we include a short self-contained
+proof.
 
 \subsection{A translation lemma}
 
@@ -221,12 +284,6 @@ and
 \]
 for $m\ge2$.
 \end{proof}
-
-\begin{remark}
-At the extremal scale, the sharp non-averaging bound corresponds to diameter
-$m^{4+o(1)}$; the translation in Lemma~\ref{lem:translation} contributes one
-further factor of $m$.
-\end{remark}
 
 \section{The projective framework}
 \label{sec:projective-framework}
@@ -310,11 +367,7 @@ thus $s(C)=s(|C|)$ below.
 
 \begin{theorem}[Conlon--Fox--Pham; Pham--Zakharov]
 \label{thm:cfp-structure}
-For every fixed ambient dimension $\ell$ and every $\beta>1$ there are constants $c>0$ and $D\in\mathbb N$ with the following property.  Let $C\subseteq\Z^\ell$ have cardinality $m$ and be contained in an axis-parallel box $Q$ satisfying $|Q|\le m^\beta$, and put
-\[
- s(C)=\frac{m}{(\log m)^2}.
-\]
-For all sufficiently large $m$ there are a set $\widehat C\subseteq C$ with
+For every fixed ambient dimension $\ell$ and every $\beta>1$ there are constants $c>0$ and $D\in\mathbb N$ with the following property.  Let $C\subseteq\Z^\ell$ have cardinality $m$ and be contained in an axis-parallel box $Q$ satisfying $|Q|\le m^\beta$.  For all sufficiently large $m$ there are a set $\widehat C\subseteq C$ with
 \[
  |\widehat C|\ge m-c^{-1}\frac{m}{\log m},
 \]
@@ -336,19 +389,18 @@ For fixed ambient dimension and polynomial-box exponent, a
 \emph{structural package} means a fixed choice of the constants and of the
 objects $\widehat C,C_0,q,P(C)$ in Theorem~\ref{thm:cfp-structure} for every
 eligible sufficiently large set $C$.  When dimensions vary over a fixed
-finite range, we choose one package in each ambient dimension before beginning
-an iteration.  Compatibility means that, after every coefficient
-identification, the package indexed by the new ambient dimension is used; no
-post hoc choice of a polynomial-box exponent or of structural constants is
-made.  Thus all constants are uniform once the finite dimension range and the
-common polynomial-box exponent have been fixed.
-
-Within each package we choose an admissible structural GAP of minimum
-dimension and write $d(C)=\dim P(C)$; ties are broken arbitrarily.  Every
-radius then satisfies $N_i\ge1$.  For sufficiently large $|C|$, properness of
+finite range, we choose one package in each ambient dimension before
+beginning an iteration and, after every coefficient identification, use
+the package indexed by the new ambient dimension; no post hoc choice of a
+polynomial-box exponent or of structural constants is ever made, so all
+constants are uniform once the finite dimension range and the common
+polynomial-box exponent have been fixed.  Within each package we choose
+an admissible structural GAP of minimum dimension and write
+$d(C)=\dim P(C)$; ties are broken arbitrarily, and every radius then
+satisfies $N_i\ge1$.  For sufficiently large $|C|$, properness of
 $cs(C)P(C)$ implies properness of $P(C)$, and the centered representation
-makes $\phi_{P(C)}$ based at the origin.  We suppress the chosen package from
-the notation.
+makes $\phi_{P(C)}$ based at the origin.  We suppress the chosen package
+from the notation.
 
 \begin{definition}[Unshifted irreducibility]
 Fix a structural package applicable to all sets under consideration.  Let
@@ -411,38 +463,31 @@ If $e>r$, properness of $csR$ and of the coordinate GAP $Q$ gives
 which proves the first assertion.
 
 Suppose $e\le r$.  Let $H$ be the real span of the steps of $R$, of
-dimension $h\le e$.  The affine hull of $q+csR$ has direction space $H$ for
-all sufficiently large $|C|$.  Since
-$q+csR\subseteq\SigmaSet(C_0)\subseteq\Span_{\R}(C_0)$, differences of
-points of $q+csR$ show that $H\subseteq\Span_{\R}(C_0)$.  Conversely
-$C_0\subseteq R\subseteq H$, and hence $C_0$ spans $H$.  In particular,
-the lattice points of $H\cap\conv(Q)$ span $H$.
-
-Apply the fixed-dimensional discrete John lemma
-\cite[Lemma~7]{PhamZakharov} to the symmetric convex body
-$H\cap\conv(Q)$ in the lattice $H\cap\Z^r$, after identifying that
-lattice with $\Z^h$.  Since $Q$ is a coordinate box,
-\[
- (H\cap\conv(Q))\cap\Z^r=H\cap Q.
-\]
-The lemma therefore gives a proper symmetric rank-$h$ GAP $Q_H$ such that
+dimension $h\le e$; for all sufficiently large $|C|$ the affine hull of
+$q+csR$ has direction space $H$.  Differences of points of
+$q+csR\subseteq\SigmaSet(C_0)\subseteq\Span_{\R}(C_0)$ show that
+$H\subseteq\Span_{\R}(C_0)$; conversely $C_0\subseteq R\subseteq H$, so
+$C_0$ spans $H$ and, in particular, the lattice points of
+$H\cap\conv(Q)$ span $H$.  Apply the fixed-dimensional discrete John
+lemma \cite[Lemma~7]{PhamZakharov} to the symmetric convex body
+$H\cap\conv(Q)$ in the lattice $H\cap\Z^r$, identified with $\Z^h$.
+Since $Q$ is a coordinate box,
+$(H\cap\conv(Q))\cap\Z^r=H\cap Q$, so the lemma gives a proper symmetric
+rank-$h$ GAP $Q_H$ with
 \[
  H\cap Q\subseteq Q_H,
  \qquad
  |Q_H|\ll_r |H\cap Q|\le |Q|.
 \]
-The set $C_0$ lies in $R\cap Q\subseteq H\cap Q$, and hence
-\[
- q+csR\subseteq\SigmaSet(C_0)\subseteq sQ_H.
-\]
-Consequently
+The set $C_0$ lies in $R\cap Q\subseteq H\cap Q$, hence
+$q+csR\subseteq\SigmaSet(C_0)\subseteq sQ_H$, and consequently
 \[
  s^e|R|\ll |csR|
  \le |sQ_H|
  \ll_r s^h|Q_H|
  \ll_r s^e|Q|,
 \]
-and the second assertion follows.
+proving the second assertion.
 \end{proof}
 
 \begin{lemma}[Unshifted preprocessing]
@@ -478,10 +523,10 @@ $\ell,\beta,\eps,K_0$.
 \end{lemma}
 
 \begin{proof}
-Put $n=|V|$ and $\delta_*=\delta/2$.  We assume throughout that $n$ is
-sufficiently large in the fixed parameters and enlarge $K$ whenever needed.
-Let $D_{\rm init}=D(\ell,\beta)$ be the structural-dimension bound in
-Theorem~\ref{thm:cfp-structure}.  Choose an integer
+Put $n=|V|$ and $\delta_*=\delta/2$; we assume throughout that $n$ is
+sufficiently large in the fixed parameters and enlarge $K$ whenever
+needed.  Let $D_{\rm init}=D(\ell,\beta)$ be the structural-dimension
+bound in Theorem~\ref{thm:cfp-structure}, and choose
 \[
  C_U>3(\beta+2),
  \qquad
@@ -489,16 +534,13 @@ Theorem~\ref{thm:cfp-structure}.  Choose an integer
  \qquad
  \bar\beta=4(\beta+3).
 \]
-Before beginning the iteration, fix the initial package for $(\ell,\beta)$
-and structural packages with common polynomial-box exponent $\bar\beta$ in
-every ambient dimension $1\le r\le\bar d$.  Let
-\[
- D_*=\max_{1\le r\le\bar d}D(r,\bar\beta).
-\]
-Choose $C=C(\bar d,\bar\beta)$ to dominate the progression-comparison
-constants whenever the ambient dimension is at most $\bar d$ and the output
-structural dimension is at most $D_*$.  These choices are made before the
-iteration.
+Before beginning the iteration, fix the initial package for
+$(\ell,\beta)$, structural packages with common polynomial-box exponent
+$\bar\beta$ in every ambient dimension $1\le r\le\bar d$, the bound
+$D_*=\max_{1\le r\le\bar d}D(r,\bar\beta)$, and a constant
+$C=C(\bar d,\bar\beta)$ dominating the constants of
+Lemma~\ref{lem:progression-comparison} whenever the ambient dimension is
+at most $\bar d$ and the output structural dimension is at most $D_*$.
 
 Apply the structural package for $(\ell,\beta)$ to $V\subseteq B$, and write
 $A_0=V$, $P_0=P(V)$ and $d_0=\dim P_0$.  Lemma~\ref{lem:progression-comparison},
@@ -511,37 +553,31 @@ applied initially in $B$, and $s(V)\ge n^{1-\eps}$ give
 \end{equation}
 for all sufficiently large $n$.
 
-At an accepted stage $A_j$ let $P_j$ be its assigned structural progression,
-put $d_j=\dim P_j$, and define
+At an accepted stage $A_j$ let $P_j$ be its assigned structural progression
+of dimension $d_j$, and define
 \[
  A_j^\sharp=\phi_{P_j}(\widehat A_j),
- \qquad Q_j=\phi_{P_j}(P_j).
+ \qquad Q_j=\phi_{P_j}(P_j),
 \]
-Thus $Q_j$ is a proper symmetric coordinate box of dimension $d_j$ and
+so that $Q_j$ is a proper symmetric coordinate box of dimension $d_j$ and
 cardinality $|P_j|$, while
-\[
- |A_j^\sharp|=|\widehat A_j|=(1-o(1))|A_j|\ge\frac12|A_j|.
-\]
-We impose the provisional eligibility condition
+$|A_j^\sharp|=(1-o(1))|A_j|\ge\frac12|A_j|$.  We impose the provisional
+eligibility condition
 \begin{equation}
 \label{eq:package-eligibility}
- |Q_j|\le(\delta|A_j^\sharp|)^{\bar\beta}.
+ |Q_j|\le(\delta|A_j^\sharp|)^{\bar\beta};
 \end{equation}
-If it fails, the procedure stops.  If it holds, every
+if it fails the procedure stops, and if it holds every
 $D\subseteq A_j^\sharp$ with $|D|\ge\delta|A_j^\sharp|$ is eligible for the
 already fixed package in ambient dimension $d_j$.
 
 If $(A_j^\sharp,Q_j)$ is not unshiftedly
 $(\delta,\gamma)$-irreducible, choose a witnessing set
 $A_{j+1}\subseteq A_j^\sharp$ with
-$|A_{j+1}|\ge\delta|A_j^\sharp|$.  Its structural data are taken from the
-fixed package in dimension $d_j$.  We call the proposed move a down-move if
-$d_{j+1}<d_j$, an up-move if $d_{j+1}>d_j$, and a shrink-move if
-$d_{j+1}=d_j$ and $|P_{j+1}|<\gamma|P_j|$.  Every proposed move satisfies
-\begin{equation}
-\label{eq:move-cardinality}
- |A_{j+1}|\ge\delta_*|A_j|.
-\end{equation}
+$|A_{j+1}|\ge\delta|A_j^\sharp|\ge\delta_*|A_j|$, its structural data
+taken from the fixed package in dimension $d_j$.  We call the proposed
+move a down-move if $d_{j+1}<d_j$, an up-move if $d_{j+1}>d_j$, and a
+shrink-move if $d_{j+1}=d_j$ and $|P_{j+1}|<\gamma|P_j|$.
 Lemma~\ref{lem:progression-comparison} gives
 \begin{align*}
  |P_{j+1}|&\le C|P_j|&&\text{for a down-move},\\
@@ -554,123 +590,91 @@ Lemma~\ref{lem:functional-transform}; hence every accepted set remains shell
 non-dividing.
 
 Accept proposed moves sequentially, but stop before accepting one if its
-cardinality is at most $n^{1-\eps/2}$ or if its structural dimension exceeds
-$\bar d$.  Otherwise stop when the eligibility condition fails or no move is
-available.  Suppose that $A_0,\dots,A_i$ have been accepted.  Let
-$\mathcal D,\mathcal U,\mathcal S$ be the sets of down-, up- and shrink-move
-indices, and put
-\[
- U=\sum_{j\in\mathcal U}(d_{j+1}-d_j).
-\]
+cardinality is at most $n^{1-\eps/2}$ or if its structural dimension
+exceeds $\bar d$; otherwise stop when the eligibility condition fails or
+no move is available.  Suppose that $A_0,\dots,A_i$ have been accepted,
+let $\mathcal D,\mathcal U,\mathcal S$ be the sets of down-, up- and
+shrink-move indices, and put $U=\sum_{j\in\mathcal U}(d_{j+1}-d_j)$.
 Multiplying the move estimates gives
 \begin{equation}
 \label{eq:unshifted-product}
  |P_i|
  \le C^{|\mathcal D|+|\mathcal U|}
  \gamma^{|\mathcal S|}
- \prod_{j\in\mathcal U}s(A_{j+1})^{-(d_{j+1}-d_j)}|P_0|.
+ \prod_{j\in\mathcal U}s(A_{j+1})^{-(d_{j+1}-d_j)}|P_0|,
 \end{equation}
-Also
-\begin{equation}
-\label{eq:dimension-bookkeeping}
- d_i-d_0\le U-|\mathcal D|,
- \qquad
- |\mathcal U|\le U,
- \qquad
- |A_i|\ge\delta_*^i n.
-\end{equation}
-Every accepted set after $A_0$ has size greater than $n^{1-\eps/2}$, so
-\[
- s(A_j)\ge n^{1-\eps}
-\]
-for every $j\ge1$ occurring in an up-move, once $n$ is sufficiently large.
-Since $|P_i|\ge1$ and $\gamma\le1$, equation~\eqref{eq:unshifted-product}
-implies
-\[
- n^{(1-\eps)U}
- \le C^{|\mathcal D|+|\mathcal U|}|P_0|.
-\]
-The dimension bookkeeping gives
-\[
- |\mathcal D|\le d_0+U,
- \qquad
- |\mathcal U|\le U.
-\]
-Choose $n$ large enough that
-$C^{D_{\rm init}}\le n$ and $C^2\le n^{(1-\eps)/2}$.  Using
-\eqref{eq:initial-progression-bound}, we obtain
+while the dimension bookkeeping gives $d_i-d_0\le U-|\mathcal D|$, hence
+$|\mathcal D|\le d_0+U$ and $|\mathcal U|\le U$; moreover
+$|A_i|\ge\delta_*^in$.  Every accepted set after $A_0$ has size greater
+than $n^{1-\eps/2}$, so $s(A_j)\ge n^{1-\eps}$ for every $j\ge1$
+occurring in an up-move.  Since $|P_i|\ge1$ and $\gamma\le1$,
+equation~\eqref{eq:unshifted-product} together
+with~\eqref{eq:initial-progression-bound} implies, once
+$C^{D_{\rm init}}\le n$ and $C^2\le n^{(1-\eps)/2}$,
 \[
  n^{(1-\eps)U/2}\le n^{\beta+2},
  \qquad\text{and hence}\qquad
  U\le\frac{2(\beta+2)}{1-\eps}
  \le3(\beta+2)<C_U.
 \]
-Thus every accepted dimension is at most
+
+We check that none of the three provisional cutoffs ever triggers; the
+uniformity bookkeeping abbreviated here is carried out in full in the
+formalization (Section~\ref{sec:formalization}).
+
+\emph{Dimension.}  Every accepted dimension is at most
 $d_0+U<D_{\rm init}+C_U<\bar d$.  The identical calculation applies after
 adjoining any proposed move whose cardinality exceeds $n^{1-\eps/2}$: its
-structural dimension is at most $D_*$, so the same constant $C$ applies, and
-the resulting total upward change is still less than $C_U$.  Therefore the
-proposed dimension is also less than $\bar d$, and the dimension cutoff never
-triggers.
+structural dimension is at most $D_*$, so the same constant $C$ applies,
+the total upward change is still less than $C_U$, and the proposed
+dimension is also less than $\bar d$.
 
-The same estimates applied to every partial sequence, now discarding all
-factors at most one in~\eqref{eq:unshifted-product}, give
+\emph{Eligibility.}  The same estimates applied to every partial
+sequence, discarding all factors at most one
+in~\eqref{eq:unshifted-product}, give
 \begin{equation}
 \label{eq:coarse-partial-box}
- |P_i|\le C^{D_{\rm init}+2C_U}|P_0|\le n^{\beta+2}
+ |P_i|\le C^{D_{\rm init}+2C_U}|P_0|\le n^{\beta+2}.
 \end{equation}
-for all sufficiently large $n$.  On the other hand, at every accepted stage,
-using $K\ge1$, $\gamma\ge n^{-1/3}$ and
-$|A_i|>n^{1-\eps/2}$, we have
-\[
- \delta|A_i^\sharp|
- \ge\frac12 n^{1-\eps/2-1/(3K)}
- \ge\frac12n^{2/3-\eps/2}.
-\]
-Since $\eps<1/3$ and $\bar\beta=4(\beta+3)$, the right-hand side raised to
-the power $\bar\beta$ exceeds $n^{\beta+2}$ for all sufficiently large $n$.
-Together with~\eqref{eq:coarse-partial-box}, this proves
-\eqref{eq:package-eligibility} at every accepted stage.  Thus the package
-eligibility cutoff never triggers, and the entire argument has used only the
-packages fixed before the iteration.
+On the other hand, $K\ge1$, $\gamma\ge n^{-1/3}$ and $|A_i|>n^{1-\eps/2}$
+give
+$\delta|A_i^\sharp|\ge\frac12n^{1-\eps/2-1/(3K)}\ge\frac12n^{2/3-\eps/2}$;
+since $\eps<1/3$ and $\bar\beta=4(\beta+3)$, the right-hand side raised
+to the power $\bar\beta$ exceeds $n^{\beta+2}$.  Together
+with~\eqref{eq:coarse-partial-box}, this
+proves~\eqref{eq:package-eligibility} at every accepted stage, so the
+entire argument uses only the packages fixed before the iteration.
 
-Equation~\eqref{eq:unshifted-product} and the bound on $U$ now give
+\emph{Cardinality.}  Equation~\eqref{eq:unshifted-product} and the bound
+on $U$ give
 \begin{equation}
 \label{eq:unshifted-product-simplified}
  |P_i|\ll_{\ell,\beta,\eps}
  \gamma^{i-|\mathcal U|-|\mathcal D|}
  n^{-(1-\eps)U}|P_0|.
 \end{equation}
-We next exclude stopping because a proposed set $A_{i+1}$ is too small.  Such
-a set would satisfy
+A proposed set $A_{i+1}$ of size at most $n^{1-\eps/2}$ would satisfy
+$\delta_*^{i+1}n\le|A_{i+1}|\le n^{1-\eps/2}$, hence
+$\delta_*^{i+1}\le n^{-\eps/2}$.  Since $\delta\le1/2$, one has
+$\delta^2\le\delta_*$ and therefore
+$\gamma\le\delta^K\le\delta_*^{K/2}$.  With
+$C_1=C_1(\ell,\beta,\eps)$ bounding $|\mathcal U|+|\mathcal D|$,
+$|P_0|\le n^{\beta+1}$ and $\gamma\ge n^{-1/3}$, we get
 \[
- \delta_*^{i+1}n\le |A_{i+1}|\le n^{1-\eps/2},
- \qquad\text{hence}\qquad
- \delta_*^{i+1}\le n^{-\eps/2}.
-\]
-Since $\delta\le1/2$, one has $\delta^2\le\delta_*$ and therefore
-$\gamma\le\delta^K\le\delta_*^{K/2}$.  Let
-$C_1=C_1(\ell,\beta,\eps)$ bound
-$|\mathcal U|+|\mathcal D|$, and write $|P_0|\le n^{C_2}$ with
-$C_2=\beta+1$.  Using also $\gamma\ge n^{-1/3}$, we get
-\begin{align*}
  \gamma^{i-|\mathcal U|-|\mathcal D|}|P_0|
- &\le \gamma^{i-C_1}|P_0|\\
- &=\gamma^{i+1}\gamma^{-(C_1+1)}|P_0|\\
- &\le n^{-\eps K/4+(C_1+1)/3+C_2}.
-\end{align*}
+ \le\gamma^{i+1}\gamma^{-(C_1+1)}|P_0|
+ \le n^{-\eps K/4+(C_1+1)/3+\beta+1}.
+\]
 Taking $K$ sufficiently large in $\ell,\beta,\eps,K_0$ and then $n$
 sufficiently large makes this smaller than the reciprocal of the implicit
-constant in~\eqref{eq:unshifted-product-simplified}.  This contradicts
-$|P_i|\ge1$.  Hence the cardinality cutoff never triggers.
+constant in~\eqref{eq:unshifted-product-simplified}, contradicting
+$|P_i|\ge1$.
 
-The procedure therefore stops only because no move is available.  Let
-$A_i^\sharp=\phi_{P_i}(\widehat A_i)$ and
-$Q_i=\phi_{P_i}(P_i)$.  Every
-$D\subseteq A_i^\sharp$ with $|D|\ge\delta|A_i^\sharp|$ then has
-$d(D)=d_i$ and $|P(D)|\ge\gamma|P_i|$.  Thus
-$(A_i^\sharp,Q_i)$ is unshiftedly $(\delta,\gamma)$-irreducible relative to
-the fixed package in dimension $d_i$.  Put
+The procedure therefore stops only because no move is available: every
+$D\subseteq A_i^\sharp$ with $|D|\ge\delta|A_i^\sharp|$ has $d(D)=d_i$
+and $|P(D)|\ge\gamma|P_i|$, so $(A_i^\sharp,Q_i)$ is unshiftedly
+$(\delta,\gamma)$-irreducible relative to the fixed package in dimension
+$d_i$.  Put
 \[
  \widetilde V=A_i^\sharp,
  \qquad
@@ -679,7 +683,9 @@ the fixed package in dimension $d_i$.  Put
  \widetilde d=d_i.
 \]
 The deletion estimate and the stopping rule give
-$|\widetilde V|>|V|^{1-\eps}$.
+$|\widetilde V|>|V|^{1-\eps}$, and the terminal package belongs to the
+preselected finite collection, whose dimensions, exponent $\bar\beta$,
+constants and thresholds depend only on $\ell,\beta,\eps,K_0$.
 
 It remains to prove the three box estimates.  Combining
 \eqref{eq:unshifted-product-simplified} with
@@ -690,41 +696,20 @@ It remains to prove the three box estimates.  Combining
  \gamma^{i-|\mathcal U|-|\mathcal D|}
  n^{-(1-\eps)(U+\max(0,d_0-\ell))}|B|.
 \end{equation}
-If $d_i>\ell$, then
-\[
- U+\max(0,d_0-\ell)\ge d_i-\ell,
-\]
-so~\eqref{eq:final-box-master} gives the first displayed alternative.  If
+If $d_i>\ell$, then $U+\max(0,d_0-\ell)\ge d_i-\ell$,
+so~\eqref{eq:final-box-master} gives the first displayed alternative; if
 $d_i<\ell$, discarding all factors at most one gives
-$|P_i|\ll_{\ell,\beta,\eps}|B|$.
-
-Finally suppose $d_i=\ell$ and put
-\[
- M=U+\max(0,d_0-\ell).
-\]
-The dimension bookkeeping gives
-\[
- |\mathcal U|+|\mathcal D|\le2M.
-\]
-Since $\eps<1/3$ and $\gamma\ge n^{-1/3}$,
-\[
- n^{-(1-\eps)M}\le\gamma^{2M}.
-\]
-Equation~\eqref{eq:final-box-master} therefore gives
-\[
- |P_i|\ll_{\ell,\beta,\eps}\gamma^i|B|.
-\]
-Furthermore $|A_i|\ge\delta_*^i n$ and
-$|\widetilde V|=(1-o(1))|A_i|$.  If
-$\rho=|\widetilde V|/n$, then $\delta_*^i\ll\rho$.  Since
+$|P_i|\ll_{\ell,\beta,\eps}|B|$.  Finally suppose $d_i=\ell$ and put
+$M=U+\max(0,d_0-\ell)$, so that the dimension bookkeeping gives
+$|\mathcal U|+|\mathcal D|\le2M$.  Since $\eps<1/3$ and
+$\gamma\ge n^{-1/3}$, one has $n^{-(1-\eps)M}\le\gamma^{2M}$, and
+equation~\eqref{eq:final-box-master} gives
+$|P_i|\ll_{\ell,\beta,\eps}\gamma^i|B|$.  Furthermore
+$|A_i|\ge\delta_*^in$ and $|\widetilde V|=(1-o(1))|A_i|$, so
+$\rho=|\widetilde V|/n$ satisfies $\delta_*^i\ll\rho$; since
 $\gamma\le\delta_*^{K/2}$, choosing $K\ge2K_0$ sufficiently large gives
-\[
- \gamma^i\ll_{K_0}\rho^{K_0}.
-\]
-This proves the same-dimensional alternative.  The terminal package belongs
-to the preselected finite collection, whose dimensions, exponent
-$\bar\beta$, constants and thresholds depend only on
-$\ell,\beta,\eps,K_0$.  This completes the proof.
+$\gamma^i\ll_{K_0}\rho^{K_0}$.  This proves the same-dimensional
+alternative and completes the proof.
 \end{proof}
 
 
@@ -844,46 +829,33 @@ most $c_{d,\beta}\gamma$ contains fewer than $\delta n$ points of $V$.
 \begin{proof}
 Suppose that $D\subseteq V$ lies in a central slab of relative width
 $\tau\le c_{d,\beta}\gamma$ and that $|D|\ge\delta n$.  Since
-$\delta\ge n^{-1/2}$,
-\[
- |B|\le n^\beta\le |D|^{2\beta},
-\]
-so the fixed structural package is applicable to $D$.  Irreducibility gives
-\[
- d(D)=d,
- \qquad
- |P(D)|\ge\gamma|B|.
-\]
+$\delta\ge n^{-1/2}$, one has $|B|\le n^\beta\le|D|^{2\beta}$, so the
+fixed structural package is applicable to $D$, and irreducibility gives
+$d(D)=d$ and $|P(D)|\ge\gamma|B|$.
 
 Let $r$ be the dimension of the real span of all lattice points in the
-slab, and let $Q$ be supplied by Lemma~\ref{lem:slab-count}.  Put
+slab, let $Q$ be supplied by Lemma~\ref{lem:slab-count}, and put
 $s_D=s(D)$.  The structural core $D_0\subseteq D\subseteq Q$ has size at
-most $s_D$, and therefore
-\[
- q+cs_DP(D)\subseteq\SigmaSet(D_0)\subseteq s_DQ.
-\]
-The left-hand GAP is proper.  Consequently
+most $s_D$, so
+$q+cs_DP(D)\subseteq\SigmaSet(D_0)\subseteq s_DQ$, and the left-hand
+GAP is proper.  Consequently
 \[
  s_D^d|P(D)|\ll_{d,\beta}|cs_DP(D)|
  \le |s_DQ|
  \ll_d s_D^r|Q|.
 \]
 If $r<d$, then
-\[
- |P(D)|\ll_{d,\beta}s_D^{r-d}|Q|
- \le C_{d,\beta}s_D^{-1}|B|.
-\]
-The function $x/(\log x)^2$ is increasing for large $x$, so
-$s_D\ge s(\delta n)$; the parameter hypothesis makes the last expression
-$o(\gamma|B|)$, a contradiction.
-
-If $r=d$, then
+$|P(D)|\ll_{d,\beta}s_D^{r-d}|Q|\le C_{d,\beta}s_D^{-1}|B|$; since
+$x/(\log x)^2$ is increasing for large $x$, one has
+$s_D\ge s(\delta n)$, and the parameter hypothesis makes the last
+expression $o(\gamma|B|)$, a contradiction.  If $r=d$, then
 \[
  |P(D)|\ll_{d,\beta}|Q|
  \ll_d\tau|B|
- \le C_{d,\beta}c_{d,\beta}\gamma|B|.
+ \le C_{d,\beta}c_{d,\beta}\gamma|B|,
 \]
-Choosing $c_{d,\beta}$ sufficiently small gives the final contradiction.
+and choosing $c_{d,\beta}$ sufficiently small gives the final
+contradiction.
 \end{proof}
 
 \subsection{One-sided filling around a zonotope}
@@ -913,63 +885,50 @@ For all sufficiently large $|C|$,
 \end{lemma}
 
 \begin{proof}
-Write
-\[
- P=\left\{\sum_{i=1}^d n_iq_i:|n_i|\le N_i\right\}.
-\]
-The rank assumption and the fact that $P$ has exactly $d$ steps imply that $q_1,\dots,q_d$ are linearly independent.  They are therefore a $\Z$-basis of $L$, and the coefficient map extends to a real-linear isomorphism
-\[
- \psi:\operatorname{span}_{\R}L\longrightarrow\R^d,
- \qquad
- \psi\!\left(\sum_{i=1}^d x_iq_i\right)=(x_1,\dots,x_d).
-\]
-In particular,
-\[
- \psi(P)=\prod_{i=1}^d[-N_i,N_i]\cap\Z^d.
-\]
+Write $P=\bigl\{\sum_{i=1}^d n_iq_i:|n_i|\le N_i\bigr\}$.  The rank
+assumption and the fact that $P$ has exactly $d$ steps imply that
+$q_1,\dots,q_d$ are linearly independent, hence a $\Z$-basis of $L$, and
+the coefficient map extends to a real-linear isomorphism
+$\psi:\operatorname{span}_{\R}L\to\R^d$,
+$\psi(\sum_i x_iq_i)=(x_1,\dots,x_d)$, with
+$\psi(P)=\prod_{i=1}^d[-N_i,N_i]\cap\Z^d$.
 
 Let
 \[
  y=z+t\in L\cap\left(Z(\overline C)+q+\frac{cs}{2}P\right),
 \]
-where $z\in Z(\overline C)$ and $t\in q+(cs/2)P$.  Since $q\in sP$, both $q$ and $t$ belong to $L$; hence $z=y-t\in L$.  The linearity of $\psi$ gives
-\[
- \psi(z)\in Z(\psi(\overline C)).
-\]
-Apply the Conlon--Fox--Pham zonotope-rounding lemma in the form of \cite[Lemma~13]{PhamZakharov} to
-\[
- A^*=\psi(\overline C)\cup\{0\}
-\]
-inside the coefficient box $\prod_i[-N_i,N_i]\cap\Z^d$.  In the width convention of that lemma, the $i$th width is $2N_i+1$.  It therefore gives a subset sum $\widetilde z'\in\SigmaSet(\psi(\overline C))$ such that
+where $z\in Z(\overline C)$ and $t\in q+(cs/2)P$.  Since $q\in sP$, both
+$q$ and $t$ belong to $L$; hence $z=y-t\in L$ and
+$\psi(z)\in Z(\psi(\overline C))$.  Apply the Conlon--Fox--Pham
+zonotope-rounding lemma in the form of \cite[Lemma~13]{PhamZakharov} to
+$A^*=\psi(\overline C)\cup\{0\}$ inside the coefficient box
+$\prod_i[-N_i,N_i]\cap\Z^d$, whose $i$th width is $2N_i+1$ in the
+convention of that lemma.  It gives a subset sum
+$\widetilde z'\in\SigmaSet(\psi(\overline C))$ such that
 \[
  |\psi(z)_i-\widetilde z'_i|
  \le \sqrt{d|A^*|}\,(2N_i+1)
  \le 3\sqrt{2d|C|}\,N_i
- \qquad(1\le i\le d).
+ \qquad(1\le i\le d),
 \]
-Here we used $|A^*|\le|C|+1\le2|C|$ and $N_i\ge1$, the latter following from the minimum-dimension convention after Theorem~\ref{thm:cfp-structure}.  Thus, with the explicit choice $C_d=3\sqrt{2d}$,
+using $|A^*|\le|C|+1\le2|C|$ and $N_i\ge1$; the rounding error carries
+the sign of \cite[equation~(15)]{PhamZakharov}, whose rounding is written
+$z=\widetilde z+r$.  Pulling back by $\psi$ gives a subset sum
+$\widetilde z\in\SigmaSet(\overline C)$ with
 \[
- \psi(z)-\widetilde z'
- \in C_d\sqrt{|C|}\prod_{i=1}^d[-N_i,N_i].
+ z-\widetilde z\in C_d\sqrt{|C|}\,P,
+ \qquad
+ C_d=3\sqrt{2d}.
 \]
-Pulling back by $\psi$ gives a subset sum $\widetilde z\in\SigmaSet(\overline C)$ satisfying
-\[
- z-\widetilde z\in C_d\sqrt{|C|}\,P.
-\]
-The sign agrees with \cite[equation~(15)]{PhamZakharov}: their rounding is written $z=\widetilde z+r$, so the error used in the core is exactly $r=z-\widetilde z$.
-
-Since $s=|C|/(\log|C|)^2$, for sufficiently large $|C|$ one has
-\[
- C_d\sqrt{|C|}\le\frac{cs}{2}.
-\]
-As $t\in q+(cs/2)P$, coefficientwise addition in the symmetric GAP therefore gives
+Since $s=|C|/(\log|C|)^2$, one has $C_d\sqrt{|C|}\le cs/2$ for all
+sufficiently large $|C|$.  As $t\in q+(cs/2)P$, coefficientwise addition
+in the symmetric GAP therefore gives
 \[
  (z-\widetilde z)+t\in q+csP\subseteq\SigmaSet(C_0).
 \]
-The subset producing $\widetilde z$ lies in $\overline C$, whereas the subset producing $(z-\widetilde z)+t$ lies in $C_0$.  These sets are disjoint, so
-\[
- y=\widetilde z+\bigl((z-\widetilde z)+t\bigr)\in\SigmaSet(C).
-\]
+The subset producing $\widetilde z$ lies in $\overline C$ and the subset
+producing $(z-\widetilde z)+t$ lies in $C_0$; these are disjoint, so
+$y=\widetilde z+\bigl((z-\widetilde z)+t\bigr)\in\SigmaSet(C)$.
 \end{proof}
 
 \subsection{A large progression has small lattice index}
@@ -1042,40 +1001,26 @@ then $L$ has rank $d$ and
 \end{lemma}
 
 \begin{proof}
-Irreducibility gives
-\[
- \dim P=d,
- \qquad
- |P|\ge\gamma|B|.
-\]
-Let $c=c(d,\beta)>0$ be the structural constant in
-Theorem~\ref{thm:cfp-structure}.  The proof of
+Irreducibility gives $\dim P=d$ and $|P|\ge\gamma|B|$.  Let
+$c=c(d,\beta)>0$ be the structural constant in
+Theorem~\ref{thm:cfp-structure}; the proof of
 Lemma~\ref{lem:gap-contained} gives the stronger core containment
 \begin{equation}
  csP\subseteq2sB_{\R}.
  \label{eq:index-core-containment}
 \end{equation}
-
-Write
-\[
- P=\left\{\sum_{i=1}^d n_iq_i:|n_i|\le N_i\right\},
-\]
-where every $N_i\ge1$, as zero-width directions are not counted in the
-dimension.  Let
-\[
- H=\Span_{\R}\{q_1,\dots,q_d\},
- \qquad r=\dim H.
-\]
-Because $csP$ is proper, its cardinality is the product of its coefficient
-widths.  For all sufficiently large $s$,
+Write $P=\bigl\{\sum_{i=1}^d n_iq_i:|n_i|\le N_i\bigr\}$, where every
+$N_i\ge1$ as zero-width directions are not counted in the dimension, and
+let $H=\Span_{\R}\{q_1,\dots,q_d\}$, of dimension $r$.  Because $csP$ is
+proper, its cardinality is the product of its coefficient widths, so for
+all sufficiently large $s$
 \begin{equation}
  |csP|
  =\prod_{i=1}^d\bigl(2\lfloor csN_i\rfloor+1\bigr)
- \gg_{d,\beta}s^d\prod_{i=1}^d(2N_i+1)
- =s^d|P|.
+ \gg_{d,\beta}s^d|P|,
  \label{eq:index-proper-lower}
 \end{equation}
-On the other hand, \eqref{eq:index-core-containment} and
+while \eqref{eq:index-core-containment} and
 Lemma~\ref{lem:lattice-section-box} give
 \begin{equation}
  |csP|
@@ -1084,48 +1029,27 @@ Lemma~\ref{lem:lattice-section-box} give
  \label{eq:index-section-upper}
 \end{equation}
 Combining \eqref{eq:index-proper-lower} and
-\eqref{eq:index-section-upper} with
-$|P|\ge\gamma|B|$ yields
-\[
- s^{d-r}\gamma\ll_{d,\beta}1.
-\]
-If $r<d$, then $d-r\ge1$, and the left-hand side is at least $s\gamma$
-for large $s$, contradicting the hypothesis.  Hence $r=d$.  Thus the
-$d$ step vectors are linearly independent and form a $\Z$-basis of their
-integer span $L$.
+\eqref{eq:index-section-upper} with $|P|\ge\gamma|B|$ yields
+$s^{d-r}\gamma\ll_{d,\beta}1$.  If $r<d$, the left-hand side is at least
+$s\gamma$ for large $s$, contradicting the hypothesis.  Hence $r=d$, the
+$d$ step vectors are linearly independent, and they form a $\Z$-basis of
+their integer span $L$.
 
-Let $M$ be the $d\times d$ matrix whose columns are $q_1,\dots,q_d$.
-Then
-\[
- L=M\Z^d,
- \qquad
- [\Z^d:L]=|\det M|.
-\]
-Moreover
-\[
- \conv P=M\left(\prod_{i=1}^d[-N_i,N_i]\right),
-\]
-so
+Let $M$ be the $d\times d$ matrix whose columns are $q_1,\dots,q_d$, so
+that $L=M\Z^d$ and $[\Z^d:L]=|\det M|$.  Since
+$\conv P=M\bigl(\prod_{i=1}^d[-N_i,N_i]\bigr)$,
 \begin{equation}
  \vol_d(\conv P)
  =2^d|\det M|\prod_{i=1}^dN_i
- \asymp_d[\Z^d:L]|P|.
+ \asymp_d[\Z^d:L]|P|,
  \label{eq:index-volume}
 \end{equation}
-Here the comparison uses $N_i\ge1$, and is therefore uniform in the
-widths.  Lemma~\ref{lem:gap-contained} and convexity give
-\[
- \conv P\subseteq C_{d,\beta}B_{\R}.
-\]
-Since $\vol_d(B_{\R})\asymp_d|B|$, equation~\eqref{eq:index-volume} implies
-\[
- [\Z^d:L]|P|\ll_{d,\beta}|B|.
-\]
-Using $|P|\ge\gamma|B|$ now gives
-\[
- [\Z^d:L]\ll_{d,\beta}\gamma^{-1},
-\]
-as claimed.
+the comparison using $N_i\ge1$ and therefore uniform in the widths.
+Lemma~\ref{lem:gap-contained} and convexity give
+$\conv P\subseteq C_{d,\beta}B_{\R}$, and
+$\vol_d(B_{\R})\asymp_d|B|$, so equation~\eqref{eq:index-volume} implies
+$[\Z^d:L]|P|\ll_{d,\beta}|B|$.  Using $|P|\ge\gamma|B|$ now gives
+$[\Z^d:L]\ll_{d,\beta}\gamma^{-1}$, as claimed.
 \end{proof}
 
 \begin{lemma}[Full-dimensional projective support]
@@ -1201,7 +1125,7 @@ space the only nonempty half-space is the whole space.
 
 \begin{lemma}[Projective duality]
 \label{lem:projective-duality}
-Let $V$ be a finite set lying in an $(\lambda,X)$-shell, and suppose that the indexed projective family $\pi(V)$ is not in $\mu$-convex position.  If $\mu n\ge4$, then there are $a\in V$ and coefficients $\beta_v$ for $v\in V\setminus\{a\}$ such that
+Let $V$ be a finite set lying in a $(\lambda,X)$-shell, and suppose that the indexed projective family $\pi(V)$ is not in $\mu$-convex position.  If $\mu n\ge4$, then there are $a\in V$ and coefficients $\beta_v$ for $v\in V\setminus\{a\}$ such that
 \[
  a=\sum_{v\ne a}\beta_vv,
  \qquad
@@ -1367,52 +1291,31 @@ consequently applies before any rounding is performed and gives
  [\Z^d:L]\ll_{d,\beta}\gamma^{-1}.
 \]
 
-The discarded set
-\[
- R=C\setminus\overline C
-\]
-has size $O(n/\log n)=o(\mu n)$.  Lemma~\ref{lem:robust-zonotope} gives
+The discarded set $R=C\setminus\overline C$ has size
+$O(n/\log n)=o(\mu n)$, so Lemma~\ref{lem:robust-zonotope} gives
 \[
  \overline z+\xi_0 nB_{\R}\subseteq Z(\overline C),
  \qquad
  \overline z=\sum_{v\in\overline C}\theta_vv,
  \qquad
- \xi_0\asymp_{d,\beta}\mu\gamma.
+ \xi_0\asymp_{d,\beta}\mu\gamma,
 \]
-Moreover
-\[
- Ta-\overline z\in O(n/\log n)B_{\R}.
-\]
-By Lemma~\ref{lem:one-sided-filling},
-\[
- L\cap\left(Z(\overline C)+q+\frac{cs}{2}P\right)
- \subseteq\SigmaSet(C).
-\]
-Lemma~\ref{lem:gap-contained} gives $P\subseteq C_{d,\beta}B_{\R}$,
-and $q\in sP$.  Hence
+while $Ta-\overline z\in O(n/\log n)B_{\R}$.
+Lemma~\ref{lem:gap-contained} gives $P\subseteq C_{d,\beta}B_{\R}$, and
+$q\in sP$; hence
 \[
  (Ta-\overline z)-q
  \in O\!\left(\frac{n}{\log n}+s\right)B_{\R}
- =o(\xi_0 n)B_{\R}.
+ =o(\xi_0 n)B_{\R},
 \]
-After replacing $\xi_0$ by a smaller constant multiple, write the new radius
-as $\xi$;
-then, for all sufficiently large $n$,
+so the choice $\xi=\xi_0/2$ gives, for all sufficiently large $n$,
 \[
  (Ta-\overline z)-q+\xi nB_{\R}\subseteq\xi_0nB_{\R}.
 \]
 Consequently, if $y\in L\cap(Ta+\xi nB_{\R})$, then
-\[
- y-q-\overline z\in\xi_0nB_{\R},
- \qquad\text{so}\qquad
- y-q\in Z(\overline C).
-\]
-Thus
-\[
- y\in Z(\overline C)+q
- \subseteq Z(\overline C)+q+\frac{cs}{2}P,
-\]
-and Lemma~\ref{lem:one-sided-filling} gives the tube inclusion
+$y-q-\overline z\in\xi_0nB_{\R}$, so $y-q\in Z(\overline C)$ and
+$y\in Z(\overline C)+q+\frac{cs}{2}P$;
+Lemma~\ref{lem:one-sided-filling} therefore gives the tube inclusion
 \[
  \boxed{
  L\cap(Ta+\xi nB_{\R})\subseteq\SigmaSet(C).
@@ -1470,43 +1373,38 @@ For $r=1$ this means $\kappa_1=0$.
 \begin{proof}
 Take $\tau$ and $\mu_0$ from \cite[Lemma~1]{PhamZakharov}.  For each $j$,
 choose a witnessing closed half-space $H_j$ containing $p_j$ and at most
-$\mu n$ indices.  For fixed $i$, every $H_j$ not containing $p_i$ has
-positive distance from $p_i$.  Since there are only finitely many such
-half-spaces, for each $m$ we may choose a sufficiently small neighbourhood
-of $p_i$ that avoids all of them.  Its intersection with $H_i$ contains
-infinitely many points because $r\ge1$.  Choosing successively, perturb each
-$p_i$ to a distinct point
-$q_i^{(m)}\in H_i\cap B(p_i,1/m)$ so that
-$q_i^{(m)}\in H_j$ only when $p_i\in H_j$.  Thus $H_j$ contains
-$q_j^{(m)}$ and no more perturbed points than the number of original indices
-it contained.  The set $Q_m=\{q_i^{(m)}:1\le i\le n\}$ is therefore in
-$\mu$-convex position and lies in
+$\mu n$ indices.  For each $m\ge1$, perturb the points successively to
+distinct points $q_i^{(m)}\in H_i\cap B(p_i,1/m)$ chosen so close to
+$p_i$ that $q_i^{(m)}\in H_j$ only when $p_i\in H_j$; this is possible
+because only finitely many of the half-spaces $H_j$ omit $p_i$, each at
+positive distance from it, and $H_i\cap B(p_i,1/m)$ is infinite since
+$r\ge1$.  Then each $H_j$ contains $q_j^{(m)}$ and at most as many
+perturbed points as original indices, so the set
+$Q_m=\{q_i^{(m)}:1\le i\le n\}$ is in $\mu$-convex position and lies in
 $\Omega_m=\Omega+m^{-1}\overline{B_2^r}$.
 
 The set version of the Pham--Zakharov lemma gives
-$\eta_m\in[\mu,\mu^\tau]$ and a convex set $K_m\subseteq\Omega_m$ with
+$\eta_m\in[\mu,\mu^\tau]$ and a convex set $K_m\subseteq\Omega_m$, which
+we may take compact by passing to its closure, with
 \[
  \vol_r(K_m)\le\eta_m\vol_r(\Omega_m),
  \qquad
  |Q_m\cap K_m|\ge\eta_m^{\kappa_r+\eps}n.
 \]
-Replacing $K_m$ by its closure, we may assume it is compact; this does not
-change its volume or decrease the point count.  The bodies $K_m$ are
-uniformly bounded, since $K_m\subseteq\Omega_m\subseteq
-\Omega+\overline{B_2^r}$ for $m\ge1$.  Pass to a subsequence on which
-$\eta_m\to\eta$, the finite index set
-$\{i:q_i^{(m)}\in K_m\}$ is constant, and $K_m$ converges in the Hausdorff
-metric to a compact convex set $K$.  Blaschke selection and continuity of
-convex-body volume under Hausdorff convergence may be found, for example, in
-\cite{Schneider}.  Since $\Omega_m$ decreases to $\Omega$, one has
-$K\subseteq\Omega$, and every stabilized index yields $p_i\in K$.
-Consequently
+The bodies $K_m$ lie in the fixed bounded set
+$\Omega+\overline{B_2^r}$.  Pass to a subsequence on which
+$\eta_m\to\eta$, the finite index set $\{i:q_i^{(m)}\in K_m\}$ is
+constant, and $K_m$ converges in the Hausdorff metric to a compact convex
+set $K$; Blaschke selection and the continuity of convex-body volume
+under Hausdorff convergence may be found in \cite{Schneider}.  Since
+$\Omega_m$ decreases to $\Omega$, one has $K\subseteq\Omega$, and every
+stabilized index yields $p_i\in K$.  Consequently
 \[
  \vol_r(K)\le\eta\vol_r(\Omega),
  \qquad
- \#\{i:p_i\in K\}\ge\eta^{\kappa_r+\eps}n.
+ \#\{i:p_i\in K\}\ge\eta^{\kappa_r+\eps}n,
 \]
-Take $\Omega'=K$.
+and $\Omega'=K$ has the required properties.
 \end{proof}
 
 We now lift a projective cap back to the lattice.
@@ -1547,35 +1445,23 @@ exactly under the identification.
 \end{lemma}
 
 \begin{proof}
-Write
-\[
- \lambda(x)=\ell\cdot x
-\]
-for a nonzero vector $\ell\in\Z^d$.  For a measurable set
-$E\subseteq H_\lambda$ and $T>0$, put
-\[
- \operatorname{Cone}_T(E)=\{ty:y\in E,\ 0\le t\le T\}.
-\]
-Perspective coordinates give
+Write $\lambda(x)=\ell\cdot x$ for a nonzero vector $\ell\in\Z^d$.  For
+a measurable set $E\subseteq H_\lambda$ and $T>0$, put
+$\operatorname{Cone}_T(E)=\{ty:y\in E,\ 0\le t\le T\}$.  Integrating the
+Jacobian $t^{d-1}/\|\ell\|_2$ on
+$H_\lambda=\ell/\|\ell\|_2^2+\ker\lambda$ gives
 \begin{equation}
  \vol_d(\operatorname{Cone}_T(E))
  =\frac{T^d}{d\|\ell\|_2}\,m_\lambda(E),
  \label{eq:perspective-volume}
 \end{equation}
-by integrating the Jacobian $t^{d-1}/\|\ell\|_2$ on
-$H_\lambda=\ell/\|\ell\|_2^2+\ker\lambda$.  The factor depending on
-$\lambda$ therefore cancels from volume ratios.
+so the factor depending on $\lambda$ cancels from volume ratios.
 
-Define
-\[
- K=B_{\R}\cap\operatorname{Cone}_{2X}(\Omega').
-\]
-The set $K$ is convex, contains $0$, and contains $W$.  Moreover,
-\[
- \operatorname{Cone}_{X}(\Omega)\subseteq B_{\R},
-\]
-because $Xy\in B_{\R}$ for $y\in\Omega$ and $B_{\R}$ is convex and
-contains the origin.  Formula~\eqref{eq:perspective-volume} therefore gives
+Define $K=B_{\R}\cap\operatorname{Cone}_{2X}(\Omega')$; it is convex,
+contains $0$, and contains $W$.  Since
+$\operatorname{Cone}_{X}(\Omega)\subseteq B_{\R}$ (as $Xy\in B_{\R}$ for
+$y\in\Omega$ and $B_{\R}$ is convex and contains the origin),
+formula~\eqref{eq:perspective-volume} gives
 \begin{align}
  \vol_d(K)
  &\le \vol_d(\operatorname{Cone}_{2X}(\Omega'))\notag\\
@@ -1585,22 +1471,11 @@ contains the origin.  Formula~\eqref{eq:perspective-volume} therefore gives
  \label{eq:cap-cone-volume}
 \end{align}
 
-Put
-\[
- S=(K-K)\cap\Z^d,
- \qquad
- H=\Span_{\R}S,
- \qquad
- r=\dim H.
-\]
-Since $0\in K$ and $W\subseteq K\cap\Z^d$, one has $W\subseteq S$.
-Also
-\[
- K-K\subseteq2B_{\R}.
-\]
-Apply Lemma~\ref{lem:convex-lattice-john} in the lattice
-$H\cap\Z^d$ to the symmetric convex body $(K-K)\cap H$.  It gives a
-proper symmetric homogeneous rank-$r$ GAP $Q\subseteq H\cap\Z^d$ such
+Put $S=(K-K)\cap\Z^d$, $H=\Span_{\R}S$ and $r=\dim H$.  Since $0\in K$
+and $W\subseteq K\cap\Z^d$, one has $W\subseteq S$; also
+$K-K\subseteq2B_{\R}$.  Applying Lemma~\ref{lem:convex-lattice-john} in
+the lattice $H\cap\Z^d$ to the symmetric convex body $(K-K)\cap H$ gives
+a proper symmetric homogeneous rank-$r$ GAP $Q\subseteq H\cap\Z^d$ such
 that
 \[
  S\subseteq Q,
@@ -1608,56 +1483,39 @@ that
  |Q|\ll_d|S|.
  \tag{*}
 \]
-
-If $r<d$, then
+If $r<d$, then, writing $B_{\R}=\prod_i[-M_i,M_i]$,
 \[
  |S|
  \le |2B_{\R}\cap\Z^d|
  =\prod_{i=1}^d(4M_i+1)
  \le2^d|B|,
 \]
-where $B_{\R}=\prod_i[-M_i,M_i]$.  Thus $(*)$ gives
-$|Q|\ll_d|B|$.
-
-Suppose now that $r=d$.  Then $K-K$ is full-dimensional, and hence so is
-$K$.  The Rogers--Shephard inequality~\cite{Schneider} and
-\eqref{eq:cap-cone-volume} yield
-\[
- \vol_d(K-K)
- \le \binom{2d}{d}\vol_d(K)
- \ll_d\eta\vol_d(B_{\R}).
-\]
-The full-rank part of Lemma~\ref{lem:convex-lattice-john}, followed by
-$(*)$, gives
+so $(*)$ gives $|Q|\ll_d|B|$.  If $r=d$, then $K-K$, and hence $K$, is
+full-dimensional, and the full-rank part of
+Lemma~\ref{lem:convex-lattice-john}, the Rogers--Shephard
+inequality~\cite{Schneider} and \eqref{eq:cap-cone-volume} give
 \[
  |Q|\ll_d|S|
  \ll_d\vol_d(K-K)
+ \le \binom{2d}{d}\vol_d(K)
  \ll_d\eta\vol_d(B_{\R})
  \ll_d\eta|B|.
 \]
 
-Write
-\[
- Q=\left\{\sum_{i=1}^r n_iq_i:|n_i|\le N_i\right\}.
-\]
-Let
+Finally write $Q=\bigl\{\sum_{i=1}^r n_iq_i:|n_i|\le N_i\bigr\}$ and put
 \[
  B'=\prod_{i=1}^r[-N_i,N_i]\cap\Z^r,
  \qquad
  \phi=\phi_Q|_W,
+ \qquad
+ \lambda'(n_1,\dots,n_r)=\sum_{i=1}^r n_i\lambda(q_i),
 \]
-where $\phi_Q$ is the coefficient identification of the proper GAP $Q$.
-Then $|B'|=|Q|$ and $\phi$ is injective.  Define
-\[
- \lambda'(n_1,\dots,n_r)=\sum_{i=1}^r n_i\lambda(q_i).
-\]
+where $\phi_Q$ is the coefficient identification of the proper GAP $Q$;
+then $|B'|=|Q|$ and $\phi$ is injective.
 Lemma~\ref{lem:functional-transform} gives
-\[
- \lambda'(\phi(v))=\lambda(v)
- \qquad(v\in W).
-\]
-The preceding bounds for $|Q|$ give alternatives (i) and (ii), and the
-identity of functional values proves the final assertion.
+$\lambda'(\phi(v))=\lambda(v)$ for $v\in W$.  The preceding bounds for
+$|Q|$ give alternatives (i) and (ii), and the identity of functional
+values proves the final assertion.
 \end{proof}
 
 \section{The density-increment iteration}
@@ -1736,7 +1594,7 @@ non-dividing, because the only operations are passage to subsets and
 coefficient identifications of proper homogeneous GAPs, with the shell
 functional transported by Lemma~\ref{lem:functional-transform}.
 
-We first choose the constants used throughout the iteration.  At any
+\medskip\noindent\emph{Choice of parameters.}\quad At any
 noncontradictory stage $A\subseteq B\subseteq\Z^d$ with excess at least
 $\zeta_0$, the inequalities $|A|\le|B|$ and
 $|A|>|B|^{\sigma_d+\zeta_0}$ give
@@ -1835,27 +1693,15 @@ Uniformly as $n\to\infty$, these parameters satisfy
  \gamma^{-1}&=o(\mu\gamma n),&
  [s(\delta n)]^{-1}&=o(\gamma).
 \end{align*}
-Indeed, $\omega(n)=n^{o(1)}$ and
-\[
- \frac{\delta}{\mu}=\omega(n)^{\kappa-1},
- \qquad
- \frac{1}{\mu\gamma\log n}
-   =\frac{\omega(n)^{K+\kappa}}{\log n},
- \qquad
- \frac{\gamma^{-1}}{\mu\gamma n}
-   =\frac{\omega(n)^{2K+\kappa}}{n},
-\]
-while
-\[
- \frac{1}{\gamma s(\delta n)}
- \ll \frac{\omega(n)^{K+1}(\log n)^2}{n};
-\]
-each displayed quantity tends to zero by the defining growth condition on
-$\omega$.  They therefore meet all hypotheses of the preprocessing theorem.  The
-last condition in the definition of $\omega$ will supply the largeness
-hypothesis in the weighted convex-density lemma after preprocessing.
+Each condition follows from $\omega(n)\to\infty$ together with the growth
+condition $\omega(n)^{2K+2}=o(\log n)$, which also forces
+$\omega(n)=n^{o(1)}$; we omit the routine verification, which is carried
+out in full in the formalization.  The parameters therefore meet all
+hypotheses of the preprocessing theorem, and the last condition in the
+definition of $\omega$ will supply the largeness hypothesis in the
+weighted convex-density lemma after preprocessing.
 
-We now record a complete one-step increment.  Suppose
+\medskip\noindent\emph{The one-step increment.}\quad Suppose
 $A\subseteq B\subseteq\Z^d$ is a current stage, put $n=|A|$, and define
 its exact excess by
 \[
@@ -2023,7 +1869,8 @@ addition,
 \]
 This completes the one-step analysis.
 
-We next prove that the iteration cannot lose too many points.  An upward
+\medskip\noindent\emph{The iteration terminates.}\quad We first prove
+that the iteration cannot lose too many points.  An upward
 step increases the excess by at least $c_{\rm up}$, while the exact excess
 is always at most $1-\sigma_d<1$.  Hence there are only
 $O_{D,\zeta_0}(1)$ upward steps.  Every downward step decreases the
@@ -2147,75 +1994,27 @@ $\varepsilon/2$, contradicting the preceding strict inequality.  Hence
 $F(N)\le N^{1/5+o(1)}$, and the theorem follows.
 \end{proof}
 
-\appendix
+\section{A concluding remark}
+\label{sec:remarks}
 
-\section{Fourier compression at a forbidden modulus}
-\label{sec:fourier}
-
-The following inverse statement is independent of the projective proof.
-
-\begin{proposition}[Fourier compression]
-\label{prop:fourier}
-Let $A$ be non-dividing, let $M=\max A$, and put $B=A\setminus\{M\}$.  If
-\[
-   2^{|B|}\ge2M,
-\]
-then there exists $t\in\{1,\dots,M-1\}$ such that
-\[
-   \sum_{b\in B}\left\|\frac{tb}{M}\right\|^2\ll\log M.
-\]
-Here $\|x\|$ is the distance from $x$ to the nearest integer.
-\end{proposition}
-
-\begin{proof}
-The number of zero-sum subsets of $B$ modulo $M$ equals
-\[
- \frac1M\sum_{t=0}^{M-1}
- \prod_{b\in B}\left(1+e^{2\pi i tb/M}\right).
-\]
-By non-divisibility this number is exactly $1$.  Write
-\[
- P_t=2^{-|B|}\prod_{b\in B}\left(1+e^{2\pi i tb/M}\right).
-\]
-Then
-\[
- \sum_{t=1}^{M-1}P_t=\frac{M}{2^{|B|}}-1\le-\frac12.
-\]
-Thus $|P_t|\ge 1/(2M)$ for some $t\ne0$.  Since
-\[
- |P_t|=\prod_{b\in B}
- \left|\cos\left(\frac{\pi tb}{M}\right)\right|
-\]
-and
-\[
- |\cos(\pi x)|\le \exp(-c\|x\|^2),
-\]
-the result follows.
-\end{proof}
-
-\begin{remark}
-The estimate controls quadratic residue mass but is not used in the proof of
-Theorem~\ref{thm:main}.
-\end{remark}
-
-\section{A further question}
-\label{sec:further-questions}
-
-\subsection{Residue fibers}
-
-For $x=\min A$, a residue fiber $A_r=\{a\in A:a\equiv r\pmod x\}$
-becomes a non-averaging set after the affine normalization
-$a\mapsto(a-r)/x$.  If a fiber has size $h$, then
-\[
- N\ge xh^{4-o(1)}.
-\]
-Thus a direct multiplicity amplification estimate of the form
+For $x=\min A$, a residue fiber $A_r=\{a\in A:a\equiv r\pmod x\}$ of a
+non-dividing set $A\subseteq[N]$ becomes a non-averaging set after the
+affine normalization $a\mapsto(a-r)/x$.  If a fiber has size $h$, the
+sharp non-averaging bound therefore gives $N\ge xh^{4-o(1)}$, so a direct
+multiplicity amplification estimate of the form
 \[
  h\ge |A|^{5/4-o(1)}x^{-1/4}
 \]
-would give another proof of Theorem~\ref{thm:main}.  Such a statement is false for arbitrary zero-sum-free sequences, so it would have to exploit the simultaneous forbidden-modulus property.
+would give another proof of Theorem~\ref{thm:main}.  Such a statement is
+false for arbitrary zero-sum-free sequences, so it would have to exploit
+the simultaneous forbidden-modulus property.
 
 \begin{thebibliography}{99}
+
+\bibitem{ErdosProblems}
+T.~F.~Bloom,
+\emph{Erd\H{o}s problems}, Problem~131,
+\url{https://www.erdosproblems.com/131}.
 
 \bibitem{CFPHomogeneous}
 D.~Conlon, J.~Fox and H.~T.~Pham,
@@ -2245,6 +2044,13 @@ R.~Schneider,
 \emph{Convex Bodies: The Brunn--Minkowski Theory},
 2nd expanded ed., Encyclopedia of Mathematics and its Applications 151,
 Cambridge University Press, Cambridge, 2014.
+
+% For double-blind submission, replace the repository URL by an
+% anonymized artifact link (e.g. anonymous.4open.science or the journal's
+% ancillary-files mechanism).
+\bibitem{Formalization}
+Lean~4 formalization of the present paper,
+\url{https://github.com/felixhoff/erdos_131}.
 
 \end{thebibliography}
 
