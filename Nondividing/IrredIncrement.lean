@@ -649,4 +649,309 @@ theorem interior_chart_stageOmega_nonempty {r : ℕ} {ℓ : Fin (r + 1) → ℤ}
     exact haff
   exact h1.mono (interior_mono hsubset)
 
+/-! ## 3. Span dichotomy at an irreducible stage
+
+A `δ`-large subset of an irreducible stage spans `ℝ^d`: otherwise it lies in
+the width-`0` slab of a functional annihilating its span, contradicting
+`slab_exclusion`. -/
+
+/-- **Span dichotomy** (`lem:slab-exclusion` consequence): under
+irreducibility with eligibility/scale thresholds, a `δ`-large subset `W ⊆ V`
+of a stage whose full set spans `ℝ^d` must itself span `ℝ^d`. -/
+theorem span_top_of_large_subset {d : ℕ} {β : ℝ} (pkg : Package d β)
+    (hd : 1 ≤ d) :
+    ∃ K : ℝ, 0 < K ∧
+    ∀ (V W : Finset (Fin d → ℤ)) (M : Fin d → ℕ) (δ γ : ℝ),
+      Eligible β pkg.m₀ W M →
+      UnshiftedIrreducible pkg δ γ V M → W ⊆ V → V ⊆ coordinateBox M →
+      δ * (V.card : ℝ) ≤ (W.card : ℝ) → 0 < γ →
+      1 ≤ External.structureScale W.card →
+      1 ≤ pkg.c * External.structureScale W.card →
+      K < External.structureScale W.card * γ →
+      integerRealSpan V = ⊤ →
+      integerRealSpan W = ⊤ := by
+  classical
+  obtain ⟨cstar, K, hcstar, hK, hexcl⟩ := slab_exclusion pkg hd
+  refine ⟨K, hK, ?_⟩
+  intro V W M δ γ hE hirr hWV hVbox hWcard hγ hs1 hcs1 hKs hspanV
+  by_contra hne
+  have hlt : integerRealSpan W < ⊤ := lt_top_iff_ne_top.mpr hne
+  obtain ⟨f, hf0, hfmap⟩ :=
+    Submodule.exists_dual_map_eq_bot_of_lt_top hlt inferInstance
+  set a : Fin d → ℝ := fun i => f (Pi.single i 1) with ha
+  -- The functional in coordinates.
+  have hfz : ∀ z : Fin d → ℤ,
+      f (External.realPoint z) = ∑ i, a i * (z i : ℝ) := by
+    intro z
+    have hdecomp : External.realPoint z
+        = ∑ i, ((z i : ℝ)) • Pi.single (M := fun _ => ℝ) i 1 :=
+      pi_eq_sum_univ' _
+    rw [hdecomp, map_sum]
+    exact Finset.sum_congr rfl fun i _ => by
+      rw [map_smul, smul_eq_mul, ha]
+      ring
+  -- `f` vanishes on `W`.
+  have hfW : ∀ z ∈ W, f (External.realPoint z) = 0 := by
+    intro z hz
+    have hmem : External.realPoint z ∈ integerRealSpan W :=
+      Submodule.subset_span ⟨z, hz, rfl⟩
+    have h1 : f (External.realPoint z) ∈ (integerRealSpan W).map f :=
+      Submodule.mem_map_of_mem hmem
+    rw [hfmap] at h1
+    exact (Submodule.mem_bot ℝ).mp h1
+  -- Positive width, else `f` kills the spanning set `V`.
+  set w : ℝ := ∑ i, |a i| * (M i : ℝ) with hw
+  have hbound : ∀ v ∈ coordinateBox M, |f (External.realPoint v)| ≤ w := by
+    intro v hv
+    rw [hfz v]
+    calc |∑ i, a i * (v i : ℝ)| ≤ ∑ i, |a i * (v i : ℝ)| :=
+          Finset.abs_sum_le_sum_abs _ _
+      _ ≤ ∑ i, |a i| * (M i : ℝ) := by
+          refine Finset.sum_le_sum fun i _ => ?_
+          rw [abs_mul]
+          refine mul_le_mul_of_nonneg_left ?_ (abs_nonneg _)
+          have hvi := (mem_coordinateBox.mp hv) i
+          have h1 : |v i| ≤ (M i : ℤ) := abs_le.mpr hvi
+          calc |(v i : ℝ)| = ((|v i| : ℤ) : ℝ) := by rw [Int.cast_abs]
+            _ ≤ (M i : ℝ) := by exact_mod_cast h1
+  have hw0 : 0 < w := by
+    rcases lt_or_ge 0 w with h | h
+    · exact h
+    · exfalso
+      have hwnn : 0 ≤ w := by
+        rw [hw]
+        exact Finset.sum_nonneg fun i _ =>
+          mul_nonneg (abs_nonneg _) (Nat.cast_nonneg _)
+      have hweq : w = 0 := le_antisymm h hwnn
+      have hfV : ∀ v ∈ V, f (External.realPoint v) = 0 := fun v hv =>
+        abs_nonpos_iff.mp (hweq ▸ hbound v (hVbox hv))
+      have hker : integerRealSpan V ≤ LinearMap.ker f := by
+        rw [integerRealSpan, Submodule.span_le]
+        rintro _ ⟨v, hv, rfl⟩
+        exact LinearMap.mem_ker.mpr (hfV v hv)
+      rw [hspanV, top_le_iff] at hker
+      apply hf0
+      refine LinearMap.ext fun x => ?_
+      rw [LinearMap.zero_apply]
+      have hx : x ∈ LinearMap.ker f := by rw [hker]; trivial
+      exact LinearMap.mem_ker.mp hx
+  -- Slab exclusion at width `τ = 0`.
+  refine hexcl V W M hE a 0 δ γ hirr hWV hWcard hγ le_rfl (hw ▸ hw0)
+    hs1 hcs1 ?_ hKs (by positivity)
+  intro z hz
+  rw [← hfz z, hfW z hz, abs_zero, zero_mul]
+
+/-! ## 4. Full-rank cap lifting (`lem:cap-lifting`, alternative (ii))
+
+The `r = d` branch: `discrete_john` (E2) applied to the lattice points of the
+difference body of the cone cap, whose count is volume-bounded via
+Rogers–Shephard (E5c) and the full-rank lattice count (E5d), yields a GAP box
+`B'` with `|B'| ≤ C·η·|B|` and a shell-preserving identification. -/
+
+theorem cap_lifting_full (d : ℕ) :
+    ∃ C : ℝ, 0 < C ∧
+    ∀ (ℓ : Fin d → ℤ) (X : ℕ) (η : ℝ) (Ω Ω' : Set (Fin d → ℝ))
+      (W : Finset (Fin d → ℤ)) (M : Fin d → ℕ),
+      1 ≤ X → 0 ≤ η →
+      Convex ℝ Ω' → IsCompact Ω' → Ω'.Nonempty →
+      volume (cone 1 Ω') ≤ ENNReal.ofReal η * volume (cone 1 Ω) →
+      cone (X : ℝ) Ω ⊆ realCoordinateBox M →
+      ShellNonDividing (fun v => (intFunctional ℓ v : ℤ)) X W →
+      (∀ v ∈ W, projNorm ℓ v ∈ Ω') →
+      integerRealSpan W = ⊤ →
+      ∃ (lam' : (Fin d → ℤ) →+ ℤ) (W' : Finset (Fin d → ℤ))
+        (N : Fin d → ℕ),
+        W' ⊆ coordinateBox N ∧ W'.card = W.card ∧
+        ShellNonDividing (fun n => lam' n) X W' ∧
+        ((coordinateBox N).card : ℝ) ≤
+          C * η * ((coordinateBox M).card : ℝ) := by
+  classical
+  obtain ⟨C₀, hC₀, hcount⟩ := card_latticePoints_le_volume d
+  obtain ⟨cj, hcj, Cj, hCj, hjohn⟩ := External.discrete_john d
+  set binom : ℕ := Nat.choose (2 * d) d with hbinom_def
+  have hbinom_pos : 0 < binom := Nat.choose_pos (by omega)
+  refine ⟨(Cj : ℝ) * ((C₀ : ℝ) * (binom : ℝ) * 2 ^ d), by positivity, ?_⟩
+  intro ℓ X η Ω Ω' W M hX hη hconv hcomp hne hvol hconeΩ hshell hWΩ' hspan
+  set T : ℝ := 2 * (X : ℝ) with hT_def
+  have hT : 0 ≤ T := by positivity
+  set K : ConvexBody (Fin d → ℝ) := coneBody T Ω' hT hconv hcomp hne
+    with hK_def
+  set Kd : ConvexBody (Fin d → ℝ) := K + (-1 : ℝ) • K with hKd_def
+  have hDcoe : (Kd : Set (Fin d → ℝ)) =
+      (K : Set (Fin d → ℝ)) + (-1 : ℝ) • (K : Set (Fin d → ℝ)) := by
+    rw [hKd_def, ConvexBody.coe_add, ConvexBody.coe_smul]
+  set A : Finset (Fin d → ℤ) :=
+    latticePoints (Kd : Set (Fin d → ℝ)) Kd.isBounded with hA_def
+  -- `K ⊆ K − K` since `0 ∈ K`.
+  have h0K : (0 : Fin d → ℝ) ∈ (K : Set (Fin d → ℝ)) :=
+    zero_mem_cone hT hne
+  have hKD : (K : Set (Fin d → ℝ)) ⊆ (Kd : Set (Fin d → ℝ)) := by
+    intro x hx
+    rw [hDcoe]
+    have hmem : x + (-1 : ℝ) • (0 : Fin d → ℝ) ∈
+        (K : Set (Fin d → ℝ)) + (-1 : ℝ) • (K : Set (Fin d → ℝ)) :=
+      Set.add_mem_add hx (Set.smul_mem_smul_set h0K)
+    simpa using hmem
+  -- `W ⊆ A` via the shell containment.
+  have hWA : W ⊆ A := by
+    intro v hv
+    rw [hA_def, mem_latticePoints]
+    obtain ⟨hlo, hhi⟩ := hshell.1 v hv
+    exact hKD (realPoint_mem_cone hX hlo hhi (hWΩ' v hv))
+  -- `K − K` is origin-symmetric (one-directional and iff forms).
+  have hsymm : ∀ x ∈ (Kd : Set (Fin d → ℝ)), -x ∈ Kd := by
+    intro x hx
+    rw [hDcoe] at hx
+    show -x ∈ (Kd : Set (Fin d → ℝ))
+    rw [hDcoe]
+    obtain ⟨u, hu, w, hw, rfl⟩ := Set.mem_add.mp hx
+    obtain ⟨k, hk, rfl⟩ := Set.mem_smul_set.mp hw
+    refine Set.mem_add.mpr ⟨k, hk, (-1 : ℝ) • u,
+      Set.smul_mem_smul_set hu, ?_⟩
+    simp only [neg_one_smul]
+    abel
+  have hsymm_iff : ∀ x, x ∈ (Kd : Set (Fin d → ℝ)) ↔
+      -x ∈ (Kd : Set (Fin d → ℝ)) := by
+    intro x
+    constructor
+    · exact hsymm x
+    · intro hx
+      have := hsymm (-x) hx
+      rwa [neg_neg] at this
+  -- The lattice points of `K − K` span (they contain `W`).
+  have hspanA : integerRealSpan A = ⊤ := by
+    refine eq_top_iff.mpr ?_
+    rw [← hspan]
+    exact Submodule.span_mono
+      (Set.image_mono (Finset.coe_subset.mpr hWA))
+  -- Discrete John (E2) on `K − K` at full rank.
+  have hfr : Module.finrank ℝ (⊤ : Submodule ℝ (Fin d → ℝ)) = d := by
+    rw [finrank_top, Module.finrank_fin_fun]
+  obtain ⟨Q, _hQstep, hQprop, _hQinner, hAQ, hQcard⟩ :=
+    hjohn d ⊤ (Kd : Set (Fin d → ℝ)) A hfr Kd.isCompact Kd.convex
+      hsymm_iff (by intro x _; exact Submodule.mem_top)
+      (fun z => mem_latticePoints Kd.isBounded z) hspanA
+  -- The volume count for `A`.
+  have hcardA : (A.card : ENNReal) ≤
+      (C₀ : ENNReal) * ((binom : ENNReal) * ENNReal.ofReal (T ^ d) *
+        (ENNReal.ofReal η * volume (cone 1 Ω))) := by
+    calc (A.card : ENNReal)
+        ≤ (C₀ : ENNReal) * volume (Kd : Set (Fin d → ℝ)) :=
+          hcount Kd hsymm hspanA
+      _ ≤ (C₀ : ENNReal) * ((binom : ENNReal) * ENNReal.ofReal (T ^ d) *
+            volume (cone 1 Ω')) := by
+          refine mul_le_mul_right ?_ _
+          exact volume_coneBody_diff_le T Ω' hT hconv hcomp hne
+      _ ≤ (C₀ : ENNReal) * ((binom : ENNReal) * ENNReal.ofReal (T ^ d) *
+            (ENNReal.ofReal η * volume (cone 1 Ω))) := by
+          exact mul_le_mul_right (mul_le_mul_right hvol _) _
+  -- The cone volume is bounded by the box cardinality.
+  have hconevol : ENNReal.ofReal ((X : ℝ) ^ d) * volume (cone 1 Ω) ≤
+      ((coordinateBox M).card : ENNReal) := by
+    have h1 : ENNReal.ofReal ((X : ℝ) ^ d) * volume (cone 1 Ω)
+        = volume (cone (X : ℝ) Ω) :=
+      (volume_cone (by positivity) Ω).symm
+    have h2 : volume (cone (X : ℝ) Ω) ≤ volume (realCoordinateBox M) :=
+      measure_mono hconeΩ
+    have h3 : realCoordinateBox M = realBox M := by
+      rw [realCoordinateBox, realBox, Set.pi_univ_Icc]
+    have h4 : volume (realCoordinateBox M) ≤
+        ((coordinateBox M).card : ENNReal) := by
+      rw [h3, volume_realBox, ← ENNReal.ofReal_natCast]
+      apply ENNReal.ofReal_le_ofReal
+      rw [card_coordinateBox]
+      push_cast
+      have h5 : (2 : ℝ) ^ d * ∏ i, (M i : ℝ) = ∏ i, (2 * (M i : ℝ)) := by
+        rw [Finset.prod_mul_distrib, Finset.prod_const, Finset.card_univ,
+          Fintype.card_fin]
+      rw [h5]
+      exact Finset.prod_le_prod (fun i _ => by positivity)
+        (fun i _ => by linarith [Nat.cast_nonneg (α := ℝ) (M i)])
+    calc ENNReal.ofReal ((X : ℝ) ^ d) * volume (cone 1 Ω)
+        = volume (cone (X : ℝ) Ω) := h1
+      _ ≤ volume (realCoordinateBox M) := h2
+      _ ≤ ((coordinateBox M).card : ENNReal) := h4
+  -- Assemble the ENNReal bound with the box.
+  have hTsplit : ENNReal.ofReal (T ^ d) =
+      ENNReal.ofReal ((2 : ℝ) ^ d) * ENNReal.ofReal ((X : ℝ) ^ d) := by
+    rw [← ENNReal.ofReal_mul (by positivity), hT_def, mul_pow]
+  have hcardA' : (A.card : ENNReal) ≤
+      (C₀ : ENNReal) * ((binom : ENNReal) * (ENNReal.ofReal η *
+        (ENNReal.ofReal ((2 : ℝ) ^ d) *
+          ((coordinateBox M).card : ENNReal)))) := by
+    refine hcardA.trans ?_
+    rw [hTsplit]
+    calc (C₀ : ENNReal) * ((binom : ENNReal) *
+          (ENNReal.ofReal ((2 : ℝ) ^ d) * ENNReal.ofReal ((X : ℝ) ^ d)) *
+          (ENNReal.ofReal η * volume (cone 1 Ω)))
+        = (C₀ : ENNReal) * ((binom : ENNReal) * (ENNReal.ofReal η *
+            (ENNReal.ofReal ((2 : ℝ) ^ d) *
+              (ENNReal.ofReal ((X : ℝ) ^ d) * volume (cone 1 Ω))))) := by
+          ring
+      _ ≤ (C₀ : ENNReal) * ((binom : ENNReal) * (ENNReal.ofReal η *
+            (ENNReal.ofReal ((2 : ℝ) ^ d) *
+              ((coordinateBox M).card : ENNReal)))) := by
+          exact mul_le_mul_right (mul_le_mul_right
+            (mul_le_mul_right (mul_le_mul_right hconevol _) _) _) _
+  -- To the reals.
+  have hRHS_ne : (C₀ : ENNReal) * ((binom : ENNReal) * (ENNReal.ofReal η *
+      (ENNReal.ofReal ((2 : ℝ) ^ d) *
+        ((coordinateBox M).card : ENNReal)))) ≠ ⊤ := by
+    apply ENNReal.mul_ne_top ENNReal.coe_ne_top
+    apply ENNReal.mul_ne_top (ENNReal.natCast_ne_top binom)
+    apply ENNReal.mul_ne_top ENNReal.ofReal_ne_top
+    exact ENNReal.mul_ne_top ENNReal.ofReal_ne_top
+      (ENNReal.natCast_ne_top _)
+  have hrealA := ENNReal.toReal_mono hRHS_ne hcardA'
+  rw [ENNReal.toReal_natCast, ENNReal.toReal_mul, ENNReal.toReal_mul,
+    ENNReal.toReal_mul, ENNReal.toReal_mul, ENNReal.coe_toReal,
+    ENNReal.toReal_natCast, ENNReal.toReal_natCast,
+    ENNReal.toReal_ofReal hη, ENNReal.toReal_ofReal (by positivity)]
+    at hrealA
+  -- The transported stage through the John GAP.
+  have hWQ : W ⊆ Q.carrier := hWA.trans hAQ
+  set lift : {x // x ∈ W} ↪ {v // v ∈ Q.carrier} :=
+    ⟨fun x => ⟨x.1, hWQ x.2⟩, by
+      intro x y hxy
+      apply Subtype.ext
+      exact Subtype.mk_eq_mk.mp hxy⟩ with hlift
+  set Wsub : Finset {v // v ∈ Q.carrier} := W.attach.map lift with hWsub
+  have hval : Wsub.map ⟨Subtype.val, Subtype.val_injective⟩ = W := by
+    ext z
+    constructor
+    · intro hz
+      obtain ⟨v, hv, rfl⟩ := Finset.mem_map.mp hz
+      obtain ⟨x, _, rfl⟩ := Finset.mem_map.mp (hWsub ▸ hv)
+      exact x.2
+    · intro hz
+      refine Finset.mem_map.mpr ⟨lift ⟨z, hz⟩, ?_, rfl⟩
+      rw [hWsub]
+      exact Finset.mem_map_of_mem lift (Finset.mem_attach W ⟨z, hz⟩)
+  have hshellsub : ShellNonDividing
+      (fun v : {v // v ∈ Q.carrier} => intFunctional ℓ v.1) X Wsub := by
+    have := ShellNonDividing.of_map
+      (ell := fun v => (intFunctional ℓ v : ℤ)) (S := Wsub)
+      ⟨Subtype.val, Subtype.val_injective⟩ (by rwa [hval])
+    exact this
+  have htrans := Q.shell_transport hQprop (intFunctional ℓ) X Wsub hshellsub
+  refine ⟨Q.transportedFunctional (intFunctional ℓ),
+    Wsub.map (Q.coeffCarrierEmbedding hQprop), Q.radius, ?_, ?_, htrans, ?_⟩
+  · intro n hn
+    obtain ⟨v, _, rfl⟩ := Finset.mem_map.mp hn
+    exact Q.coeffOf_mem v
+  · rw [Finset.card_map, hWsub, Finset.card_map, Finset.card_attach]
+  · -- The box-cardinality chain.
+    have hQA : (Q.carrier.card : ℝ) ≤ (Cj : ℝ) * (A.card : ℝ) := by
+      exact_mod_cast hQcard
+    calc ((coordinateBox Q.radius).card : ℝ)
+        = (Q.coeffBox.card : ℝ) := by rw [GAP.coeffBox]
+      _ = (Q.carrier.card : ℝ) := by
+          rw [Q.card_carrier_of_proper hQprop]
+      _ ≤ (Cj : ℝ) * (A.card : ℝ) := hQA
+      _ ≤ (Cj : ℝ) * ((C₀ : ℝ) * ((binom : ℝ) * (η * ((2 : ℝ) ^ d *
+            ((coordinateBox M).card : ℝ))))) := by
+          exact mul_le_mul_of_nonneg_left hrealA (Nat.cast_nonneg _)
+      _ = (Cj : ℝ) * ((C₀ : ℝ) * (binom : ℝ) * 2 ^ d) * η *
+            ((coordinateBox M).card : ℝ) := by ring
+
 end Nondividing
