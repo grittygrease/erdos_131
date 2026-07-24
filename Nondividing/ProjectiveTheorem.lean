@@ -438,4 +438,334 @@ theorem main_log_limit_of_descent (hsupply : DescentSupplier) :
       Filter.atTop (nhds ((1 : ℝ) / 5)) :=
   main_log_limit_of_upper (main_upper_eps_of_descent hsupply)
 
+/-! ## Toward discharging the descent step
+
+The manuscript's one-step analysis (Manuscript.tex 1858–2024) produces, from
+an excessive stage, a new stage with *counting* estimates (`n^{1−ε}` point
+retention plus per-case box bounds).  Here we prove the entire *numerology
+conversion*: those counting estimates imply the excess-gain/box-shrink
+disjunction of `DescentStep`.  The remaining `TODO(orchestrator)` input is
+`RawStep` — the geometric one-step output itself. -/
+
+/-- Nontrivial boxes force positive ambient dimension (a `d = 0` box is the
+single point `Fin 0 → ℤ`). -/
+theorem one_le_dim_of_two_le_box {d : ℕ} {M : Fin d → ℕ}
+    (h : 2 ≤ (coordinateBox M).card) : 1 ≤ d := by
+  by_contra h0
+  push Not at h0
+  interval_cases d
+  rw [card_coordinateBox] at h
+  simp at h
+
+/-- Excessive stages have positive ambient dimension. -/
+theorem ExcessiveStage.one_le_dim {ζ₀ : ℝ} {X : ℕ} {s : PrepStage X}
+    (h : ExcessiveStage ζ₀ s) (hζ₀ : 0 ≤ ζ₀) : 1 ≤ s.dim :=
+  one_le_dim_of_two_le_box (h.two_le_box hζ₀)
+
+/-- `σ` is monotone (with the `d ≤ 1` plateau `σ₀ = σ₁ = 1/5`). -/
+theorem sigma_le_sigma {d e : ℕ} (hde : d ≤ e) : sigma d ≤ sigma e := by
+  rcases Nat.lt_or_ge d 1 with hd | hd
+  · have hd0 : d = 0 := by omega
+    have h0 : sigma d = 1 / 5 := by rw [hd0]; norm_num [sigma]
+    rw [h0]
+    exact one_fifth_le_sigma e
+  · rcases eq_or_lt_of_le hde with rfl | h
+    · exact le_rfl
+    · exact (sigma_lt_sigma hd h).le
+
+/-- **Exactness of the excess**: `|B|^{σ_d+ζ} = |V|` for `ζ = stageExcess`
+(the manuscript's defining identity `p = log n / log |B|`). -/
+theorem rpow_sigma_add_stageExcess {X : ℕ} {s : PrepStage X}
+    (hbox : 2 ≤ (coordinateBox s.M).card) (hV : 1 ≤ s.V.card) :
+    ((coordinateBox s.M).card : ℝ) ^ (sigma s.dim + stageExcess s) =
+      (s.V.card : ℝ) := by
+  have hB2 : (2 : ℝ) ≤ ((coordinateBox s.M).card : ℝ) := by exact_mod_cast hbox
+  have hBpos : (0 : ℝ) < ((coordinateBox s.M).card : ℝ) := by linarith
+  have hlogB : Real.log ((coordinateBox s.M).card : ℝ) ≠ 0 :=
+    ne_of_gt (Real.log_pos (by linarith))
+  have hVpos : (0 : ℝ) < (s.V.card : ℝ) := by
+    have : 0 < s.V.card := hV
+    exact_mod_cast this
+  have hexp : sigma s.dim + stageExcess s =
+      Real.log (s.V.card : ℝ) / Real.log ((coordinateBox s.M).card : ℝ) := by
+    unfold stageExcess; ring
+  rw [hexp, Real.rpow_def_of_pos hBpos, mul_comm, div_mul_cancel₀ _ hlogB,
+    Real.exp_log hVpos]
+
+/-- Counting-to-excess conversion: a strict counting bound at exponent `q`
+forces exact excess above `q − σ_dim`. -/
+theorem lt_stageExcess_of_rpow_lt {X : ℕ} {s : PrepStage X} {q : ℝ}
+    (hbox : 2 ≤ (coordinateBox s.M).card)
+    (h : ((coordinateBox s.M).card : ℝ) ^ q < (s.V.card : ℝ)) :
+    q - sigma s.dim < stageExcess s := by
+  have hB2 : (2 : ℝ) ≤ ((coordinateBox s.M).card : ℝ) := by exact_mod_cast hbox
+  have hBpos : (0 : ℝ) < ((coordinateBox s.M).card : ℝ) := by linarith
+  have hlogB : 0 < Real.log ((coordinateBox s.M).card : ℝ) :=
+    Real.log_pos (by linarith)
+  have hlt : q * Real.log ((coordinateBox s.M).card : ℝ) <
+      Real.log (s.V.card : ℝ) := by
+    have hlog := Real.log_lt_log (Real.rpow_pos_of_pos hBpos q) h
+    rwa [Real.log_rpow hBpos] at hlog
+  have hdiv : q < Real.log (s.V.card : ℝ) /
+      Real.log ((coordinateBox s.M).card : ℝ) := by
+    rw [lt_div_iff₀ hlogB]
+    exact hlt
+  unfold stageExcess
+  linarith
+
+/-- **Counting form of the descent step**: from an excessive stage, a new
+stage beating the *counting* exponent `σ_dim' + ζ + c` (excess-gain case) or
+`σ_dim' + ζ` with a strictly smaller box (same-dimension case), where
+`ζ = stageExcess s`.  This is what the geometric pipeline outputs. -/
+def CountingStep (ζ₀ c : ℝ) (n₁ : ℕ) : Prop :=
+  ∀ (X : ℕ) (s : PrepStage X), 1 ≤ X →
+    ExcessiveStage ζ₀ s → n₁ ≤ s.V.card →
+    ∃ s' : PrepStage X, n₁ ≤ s'.V.card ∧
+      (((coordinateBox s'.M).card : ℝ) ^
+          (sigma s'.dim + stageExcess s + c) < (s'.V.card : ℝ) ∨
+        (((coordinateBox s'.M).card : ℝ) ^
+            (sigma s'.dim + stageExcess s) < (s'.V.card : ℝ) ∧
+          (coordinateBox s'.M).card < (coordinateBox s.M).card))
+
+/-- Counting bounds convert to the descent step (log bookkeeping only). -/
+theorem descentStep_of_countingStep {ζ₀ c : ℝ} {n₁ : ℕ} (hζ₀ : 0 < ζ₀)
+    (hc : 0 ≤ c) (hn₁ : 2 ≤ n₁) (h : CountingStep ζ₀ c n₁) :
+    DescentStep ζ₀ c n₁ := by
+  intro X s hX hbad hn
+  obtain ⟨s', hn', hcase⟩ := h X s hX hbad hn
+  have hbox' : 2 ≤ (coordinateBox s'.M).card :=
+    le_trans (le_trans hn₁ hn') (stage_card_le_box s')
+  have hB'1 : (1 : ℝ) ≤ ((coordinateBox s'.M).card : ℝ) := by
+    have : (2 : ℝ) ≤ ((coordinateBox s'.M).card : ℝ) := by exact_mod_cast hbox'
+    linarith
+  have hζe : ζ₀ < stageExcess s := hbad.zeta_lt_stageExcess hζ₀.le
+  rcases hcase with hcount | ⟨hcount, hboxlt⟩
+  · -- excess-gain case
+    have hbad' : ExcessiveStage ζ₀ s' := by
+      unfold ExcessiveStage
+      refine lt_of_le_of_lt ?_ hcount
+      exact Real.rpow_le_rpow_of_exponent_le hB'1 (by linarith)
+    have hgain := lt_stageExcess_of_rpow_lt hbox' hcount
+    exact ⟨s', hbad', hn', Or.inl (by linarith)⟩
+  · -- same-dimension case
+    have hbad' : ExcessiveStage ζ₀ s' := by
+      unfold ExcessiveStage
+      refine lt_of_le_of_lt ?_ hcount
+      exact Real.rpow_le_rpow_of_exponent_le hB'1 (by linarith)
+    have hmono := lt_stageExcess_of_rpow_lt hbox' hcount
+    exact ⟨s', hbad', hn', Or.inr ⟨by linarith, hboxlt⟩⟩
+
+/-- **Raw one-step output** (`TODO(orchestrator)`: this is the geometric
+content of the manuscript's one-step analysis, to be discharged from
+`unshifted_preprocessing_toward` + `projective_convexity_assembled` +
+`weighted_density` + `cap_lifting_deficient`/`cap_cone_count`).  From an
+excessive stage `s` (`n = |V|`, `ζ = stageExcess s`), a new stage `s'` with
+`|V'| ≥ n₁` and one of:
+
+* **up-move** (`dim < dim' ≤ D`): `|V'| ≥ n^{1−ε}` and the box estimate
+  `|B'| ≤ n^{1/(σ_d+ζ) − (1−ε)(dim'−dim)}` (manuscript: `|B̃| ≪ n^a`);
+* **down-move** (`dim' < dim`): `|V'| ≥ n^{1−ε}` and `|B'| ≤ |B|`;
+* **same-dimension** (`dim' = dim`): the density increment
+  `|B'|^{σ_d+ζ} < |V'|` with `|B'| < |B|`. -/
+def RawStep (D : ℕ) (ζ₀ ε : ℝ) (n₁ : ℕ) : Prop :=
+  ∀ (X : ℕ) (s : PrepStage X), 1 ≤ X →
+    ExcessiveStage ζ₀ s → n₁ ≤ s.V.card →
+    ∃ s' : PrepStage X, n₁ ≤ s'.V.card ∧
+      ((s.dim < s'.dim ∧ s'.dim ≤ D ∧
+          (s.V.card : ℝ) ^ (1 - ε) ≤ (s'.V.card : ℝ) ∧
+          ((coordinateBox s'.M).card : ℝ) ≤
+            (s.V.card : ℝ) ^ (1 / (sigma s.dim + stageExcess s) -
+              (1 - ε) * ((s'.dim : ℝ) - (s.dim : ℝ)))) ∨
+        (s'.dim < s.dim ∧
+          (s.V.card : ℝ) ^ (1 - ε) ≤ (s'.V.card : ℝ) ∧
+          (coordinateBox s'.M).card ≤ (coordinateBox s.M).card) ∨
+        (s'.dim = s.dim ∧
+          ((coordinateBox s'.M).card : ℝ) ^
+              (sigma s.dim + stageExcess s) < (s'.V.card : ℝ) ∧
+          (coordinateBox s'.M).card < (coordinateBox s.M).card))
+
+/-- **The numerology conversion** (`thm:projective-main`, one-step analysis).
+The raw counting output `RawStep` yields the counting descent step with the
+uniform excess gain `c = min(c₊/10, Δ_D/4)`: an up-move raises the excess via
+`numerology` (`(σ_e+ζ)·a ≤ 1−c₊` plus `a ≤ 5` absorbs the gain), a down-move
+via the sigma gap `Δ_D` (`exists_sigma_gap`), and a same-dimensional move
+strictly shrinks the box.  The `a ≤ 0` branch of an up-move is impossible
+(the box would collapse below the retained points). -/
+theorem countingStep_of_rawStep (D : ℕ) (hD : 2 ≤ D) {ζ₀ : ℝ} (hζ₀ : 0 < ζ₀)
+    (hDcap : 2 / ζ₀ ≤ (D : ℝ)) :
+    ∃ c ε₁ : ℝ, 0 < c ∧ 0 < ε₁ ∧
+      ∀ ε : ℝ, 0 < ε → ε ≤ ε₁ → ∀ n₁ : ℕ, 2 ≤ n₁ →
+        RawStep D ζ₀ ε n₁ → CountingStep ζ₀ c n₁ := by
+  obtain ⟨ε₀, cstar, hε₀, hcstar, hnum⟩ := numerology hD hζ₀
+  obtain ⟨Δ, hΔ, hgap⟩ := exists_sigma_gap D hD
+  refine ⟨min (cstar / 10) (Δ / 4),
+    min (min (ε₀ / 2) (1 / 2)) (min (cstar / 4) (Δ / 4)),
+    by positivity, by positivity, ?_⟩
+  intro ε hε hεle n₁ hn₁ hraw X s hX hbad hn
+  set c : ℝ := min (cstar / 10) (Δ / 4) with hcdef
+  have hc0 : 0 < c := by positivity
+  have hεε₀ : ε < ε₀ := by
+    have h1 : ε ≤ ε₀ / 2 :=
+      hεle.trans ((min_le_left _ _).trans (min_le_left _ _))
+    linarith
+  have hεhalf : ε ≤ 1 / 2 :=
+    hεle.trans ((min_le_left _ _).trans (min_le_right _ _))
+  have hεc : ε ≤ cstar / 4 :=
+    hεle.trans ((min_le_right _ _).trans (min_le_left _ _))
+  have hεΔ : ε ≤ Δ / 4 :=
+    hεle.trans ((min_le_right _ _).trans (min_le_right _ _))
+  obtain ⟨s', hn', hcase⟩ := hraw X s hX hbad hn
+  -- Common stage facts.
+  have hbox2 : 2 ≤ (coordinateBox s.M).card := hbad.two_le_box hζ₀.le
+  have hbox2' : 2 ≤ (coordinateBox s'.M).card :=
+    le_trans (le_trans hn₁ hn') (stage_card_le_box s')
+  have hd1 : 1 ≤ s.dim := hbad.one_le_dim hζ₀.le
+  have hd1' : 1 ≤ s'.dim := one_le_dim_of_two_le_box hbox2'
+  set ζ : ℝ := stageExcess s with hζdef
+  have hζlo : ζ₀ < ζ := hbad.zeta_lt_stageExcess hζ₀.le
+  have hζhi : ζ ≤ 1 - sigma s.dim := hbad.stageExcess_le hζ₀.le
+  have hσd := sigma_pos s.dim
+  have hσd5 := one_fifth_le_sigma s.dim
+  have hσd' := sigma_pos s'.dim
+  have hp : 0 < sigma s.dim + ζ := by linarith
+  have hn2 : 2 ≤ s.V.card := le_trans hn₁ hn
+  have hnR : (2 : ℝ) ≤ (s.V.card : ℝ) := by exact_mod_cast hn2
+  have hn1R : (1 : ℝ) < (s.V.card : ℝ) := by linarith
+  have hnpos : (0 : ℝ) < (s.V.card : ℝ) := by linarith
+  have hB2 : (2 : ℝ) ≤ ((coordinateBox s.M).card : ℝ) := by
+    exact_mod_cast hbox2
+  have hB'2 : (2 : ℝ) ≤ ((coordinateBox s'.M).card : ℝ) := by
+    exact_mod_cast hbox2'
+  have hB'1 : (1 : ℝ) ≤ ((coordinateBox s'.M).card : ℝ) := by linarith
+  have hB'0 : (0 : ℝ) ≤ ((coordinateBox s'.M).card : ℝ) := by linarith
+  have hnexact : ((coordinateBox s.M).card : ℝ) ^ (sigma s.dim + ζ) =
+      (s.V.card : ℝ) := rpow_sigma_add_stageExcess hbox2 (by omega)
+  refine ⟨s', hn', ?_⟩
+  rcases hcase with ⟨hlt, hDle, hcard, hboxle⟩ | ⟨hlt, hcard, hboxle⟩ |
+    ⟨heq, hcount, hboxlt⟩
+  · -- UP-MOVE: numerology gain.
+    left
+    set a : ℝ := 1 / (sigma s.dim + ζ) -
+      (1 - ε) * ((s'.dim : ℝ) - (s.dim : ℝ)) with hadef
+    -- `a > 0`, else the box collapses.
+    have hapos : 0 < a := by
+      by_contra hcon
+      push Not at hcon
+      have hb1 : ((coordinateBox s'.M).card : ℝ) ≤ 1 :=
+        hboxle.trans
+          (Real.rpow_le_one_of_one_le_of_nonpos (by linarith) hcon)
+      linarith
+    -- `a ≤ 5` from `σ_d + ζ ≥ 1/5`.
+    have ha5 : a ≤ 5 := by
+      have h1 : 1 / (sigma s.dim + ζ) ≤ 1 / (1 / 5 : ℝ) :=
+        one_div_le_one_div_of_le (by norm_num) (by linarith)
+      have h2 : (0 : ℝ) ≤ (1 - ε) * ((s'.dim : ℝ) - (s.dim : ℝ)) := by
+        have : (s.dim : ℝ) ≤ (s'.dim : ℝ) := by exact_mod_cast hlt.le
+        nlinarith
+      rw [hadef]
+      norm_num at h1 ⊢
+      linarith
+    -- The numerology inequality `(σ_e+ζ)·a ≤ 1 − c₊`.
+    have hnume : (sigma s'.dim + ζ) * a ≤ 1 - cstar := by
+      have := hnum s.dim s'.dim hd1 hlt hDle ζ hζlo.le hζhi ε hε hεε₀
+      rw [hadef]
+      calc (sigma s'.dim + ζ) *
+            (1 / (sigma s.dim + ζ) - (1 - ε) * ((s'.dim : ℝ) - (s.dim : ℝ)))
+          = (sigma s'.dim + ζ) *
+            (1 / (sigma s.dim + ζ) - (1 - ε) * ((s'.dim : ℝ) - (s.dim : ℝ))) := rfl
+        _ ≤ 1 - cstar := this
+    -- Assemble the chain.
+    have hc10 : c ≤ cstar / 10 := min_le_left _ _
+    have hexp0 : (0 : ℝ) ≤ sigma s'.dim + ζ + cstar / 10 := by linarith
+    have step1 : ((coordinateBox s'.M).card : ℝ) ^ (sigma s'.dim + ζ + c) ≤
+        ((coordinateBox s'.M).card : ℝ) ^ (sigma s'.dim + ζ + cstar / 10) :=
+      Real.rpow_le_rpow_of_exponent_le hB'1 (by linarith)
+    have step2 : ((coordinateBox s'.M).card : ℝ) ^
+        (sigma s'.dim + ζ + cstar / 10) ≤
+        ((s.V.card : ℝ) ^ a) ^ (sigma s'.dim + ζ + cstar / 10) :=
+      Real.rpow_le_rpow hB'0 hboxle hexp0
+    have step3 : ((s.V.card : ℝ) ^ a) ^ (sigma s'.dim + ζ + cstar / 10) =
+        (s.V.card : ℝ) ^ (a * (sigma s'.dim + ζ + cstar / 10)) :=
+      (Real.rpow_mul hnpos.le _ _).symm
+    have hexpbound : a * (sigma s'.dim + ζ + cstar / 10) ≤ 1 - cstar / 2 := by
+      have h1 : a * (sigma s'.dim + ζ + cstar / 10) =
+          (sigma s'.dim + ζ) * a + a * (cstar / 10) := by ring
+      have h2 : a * (cstar / 10) ≤ 5 * (cstar / 10) :=
+        mul_le_mul_of_nonneg_right ha5 (by positivity)
+      rw [h1]
+      linarith
+    have step4 : (s.V.card : ℝ) ^ (a * (sigma s'.dim + ζ + cstar / 10)) ≤
+        (s.V.card : ℝ) ^ (1 - cstar / 2) :=
+      Real.rpow_le_rpow_of_exponent_le (by linarith) hexpbound
+    have step5 : (s.V.card : ℝ) ^ (1 - cstar / 2) <
+        (s.V.card : ℝ) ^ (1 - ε) :=
+      Real.rpow_lt_rpow_of_exponent_lt hn1R (by linarith)
+    calc ((coordinateBox s'.M).card : ℝ) ^ (sigma s'.dim + ζ + c)
+        ≤ ((coordinateBox s'.M).card : ℝ) ^
+            (sigma s'.dim + ζ + cstar / 10) := step1
+      _ ≤ ((s.V.card : ℝ) ^ a) ^ (sigma s'.dim + ζ + cstar / 10) := step2
+      _ = (s.V.card : ℝ) ^ (a * (sigma s'.dim + ζ + cstar / 10)) := step3
+      _ ≤ (s.V.card : ℝ) ^ (1 - cstar / 2) := step4
+      _ < (s.V.card : ℝ) ^ (1 - ε) := step5
+      _ ≤ (s'.V.card : ℝ) := hcard
+  · -- DOWN-MOVE: sigma-gap gain.
+    left
+    have hd2 : 2 ≤ s.dim := by omega
+    have hdD : s.dim ≤ D := by
+      have h1 := hbad.dim_cast_le hζ₀
+      have h2 : (s.dim : ℝ) ≤ (D : ℝ) := le_trans h1 hDcap
+      exact_mod_cast h2
+    have hσgap : sigma s'.dim + Δ ≤ sigma s.dim := by
+      have h1 : sigma (s.dim - 1) + Δ ≤ sigma s.dim := hgap s.dim hd2 hdD
+      have h2 : sigma s'.dim ≤ sigma (s.dim - 1) :=
+        sigma_le_sigma (by omega)
+      linarith
+    have hcΔ : c ≤ Δ / 4 := min_le_right _ _
+    have hexplt : sigma s'.dim + ζ + c < (1 - ε) * (sigma s.dim + ζ) := by
+      have h1 : (1 - ε) * (sigma s.dim + ζ) =
+          sigma s.dim + ζ - ε * (sigma s.dim + ζ) := by ring
+      have h2 : ε * (sigma s.dim + ζ) ≤ ε := by nlinarith
+      have h3 : sigma s'.dim + c + ε < sigma s.dim := by linarith
+      linarith
+    have hexp0 : (0 : ℝ) ≤ sigma s'.dim + ζ + c := by linarith
+    have hBB : ((coordinateBox s'.M).card : ℝ) ≤
+        ((coordinateBox s.M).card : ℝ) := by exact_mod_cast hboxle
+    have step1 : ((coordinateBox s'.M).card : ℝ) ^ (sigma s'.dim + ζ + c) ≤
+        ((coordinateBox s.M).card : ℝ) ^ (sigma s'.dim + ζ + c) :=
+      Real.rpow_le_rpow hB'0 hBB hexp0
+    have step2 : ((coordinateBox s.M).card : ℝ) ^ (sigma s'.dim + ζ + c) <
+        ((coordinateBox s.M).card : ℝ) ^ ((1 - ε) * (sigma s.dim + ζ)) :=
+      Real.rpow_lt_rpow_of_exponent_lt (by linarith) hexplt
+    have step3 : ((coordinateBox s.M).card : ℝ) ^
+        ((1 - ε) * (sigma s.dim + ζ)) = (s.V.card : ℝ) ^ (1 - ε) := by
+      rw [mul_comm, Real.rpow_mul (by linarith), hnexact]
+    calc ((coordinateBox s'.M).card : ℝ) ^ (sigma s'.dim + ζ + c)
+        ≤ ((coordinateBox s.M).card : ℝ) ^ (sigma s'.dim + ζ + c) := step1
+      _ < ((coordinateBox s.M).card : ℝ) ^ ((1 - ε) * (sigma s.dim + ζ)) :=
+          step2
+      _ = (s.V.card : ℝ) ^ (1 - ε) := step3
+      _ ≤ (s'.V.card : ℝ) := hcard
+  · -- SAME-DIMENSION: strict box shrink.
+    right
+    refine ⟨?_, hboxlt⟩
+    have hσeq : sigma s'.dim = sigma s.dim := by rw [heq]
+    rw [hσeq]
+    exact hcount
+
+/-- **Descent supplier from raw steps**: if for every excess parameter `ζ₀`
+the geometric pipeline supplies raw one-step outputs at some dimension bound
+`D ≥ max(2, 2/ζ₀)` and every sufficiently small `ε`, then the descent
+supplier — and with it the whole main theorem — follows. -/
+theorem descentSupplier_of_rawStep
+    (h : ∀ ζ₀ : ℝ, 0 < ζ₀ → ∃ D : ℕ, 2 ≤ D ∧ 2 / ζ₀ ≤ (D : ℝ) ∧
+      ∀ ε₁ : ℝ, 0 < ε₁ → ∃ (ε : ℝ) (n₁ : ℕ), 0 < ε ∧ ε ≤ ε₁ ∧ 2 ≤ n₁ ∧
+        RawStep D ζ₀ ε n₁) :
+    DescentSupplier := by
+  intro ζ₀ hζ₀
+  obtain ⟨D, hD, hDcap, hsup⟩ := h ζ₀ hζ₀
+  obtain ⟨c, ε₁, hc, hε₁, hmain⟩ := countingStep_of_rawStep D hD hζ₀ hDcap
+  obtain ⟨ε, n₁, hε, hεle, hn₁, hraw⟩ := hsup ε₁ hε₁
+  exact ⟨c, n₁, hc,
+    descentStep_of_countingStep hζ₀ hc.le hn₁ (hmain ε hε hεle n₁ hn₁ hraw)⟩
+
 end Nondividing
