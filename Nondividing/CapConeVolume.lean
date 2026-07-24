@@ -138,4 +138,56 @@ theorem cone_convex {d : ℕ} {T : ℝ} (hT : 0 ≤ T) {E : Set (Fin d → ℝ)}
     have e2 : s * (q * t₂ / s) = q * t₂ := by field_simp
     rw [smul_add, smul_smul, smul_smul, smul_smul, smul_smul, e1, e2]
 
+/-! ## 5. Compactness, the cone body, and the Rogers–Shephard step -/
+
+/-- The truncated cone over a compact set is compact: it is the image of the
+compact set `[0, T] × E` under the continuous scalar action. -/
+theorem cone_isCompact {d : ℕ} (T : ℝ) {E : Set (Fin d → ℝ)}
+    (hE : IsCompact E) : IsCompact (cone T E) := by
+  have himg : cone T E =
+      (fun p : ℝ × (Fin d → ℝ) => p.1 • p.2) '' (Set.Icc 0 T ×ˢ E) := by
+    ext x
+    constructor
+    · rintro ⟨y, hy, t, ht0, htT, rfl⟩
+      exact ⟨(t, y), ⟨Set.mem_Icc.mpr ⟨ht0, htT⟩, hy⟩, rfl⟩
+    · rintro ⟨⟨t, y⟩, ⟨htI, hy⟩, rfl⟩
+      obtain ⟨ht0, htT⟩ := Set.mem_Icc.mp htI
+      exact ⟨y, hy, t, ht0, htT, rfl⟩
+  rw [himg]
+  exact (isCompact_Icc.prod hE).image continuous_smul
+
+/-- The truncated cone over a compact convex nonempty set, packaged as a
+`ConvexBody`. -/
+def coneBody {d : ℕ} (T : ℝ) (Ω' : Set (Fin d → ℝ)) (hT : 0 ≤ T)
+    (hconv : Convex ℝ Ω') (hcomp : IsCompact Ω') (hne : Ω'.Nonempty) :
+    ConvexBody (Fin d → ℝ) :=
+  ⟨cone T Ω', cone_convex hT hconv, cone_isCompact T hcomp,
+    ⟨0, zero_mem_cone hT hne⟩⟩
+
+@[simp] theorem coneBody_coe {d : ℕ} (T : ℝ) (Ω' : Set (Fin d → ℝ))
+    (hT : 0 ≤ T) (hconv : Convex ℝ Ω') (hcomp : IsCompact Ω')
+    (hne : Ω'.Nonempty) :
+    (coneBody T Ω' hT hconv hcomp hne : Set (Fin d → ℝ)) = cone T Ω' := rfl
+
+/-- **Rogers–Shephard step** (E5c applied to the cone body, combined with the
+scaling law): the difference body of `cone T Ω'` has volume at most
+`C(2d,d) · T^d · vol(cone 1 Ω')`. -/
+theorem volume_coneBody_diff_le {d : ℕ} (T : ℝ) (Ω' : Set (Fin d → ℝ))
+    (hT : 0 ≤ T) (hconv : Convex ℝ Ω') (hcomp : IsCompact Ω')
+    (hne : Ω'.Nonempty) :
+    volume ((coneBody T Ω' hT hconv hcomp hne +
+        (-1 : ℝ) • coneBody T Ω' hT hconv hcomp hne :
+        ConvexBody (Fin d → ℝ)) : Set (Fin d → ℝ)) ≤
+      (Nat.choose (2 * d) d : ENNReal) * ENNReal.ofReal (T ^ d) *
+        volume (cone 1 Ω') := by
+  calc volume ((coneBody T Ω' hT hconv hcomp hne +
+        (-1 : ℝ) • coneBody T Ω' hT hconv hcomp hne :
+        ConvexBody (Fin d → ℝ)) : Set (Fin d → ℝ))
+      ≤ (Nat.choose (2 * d) d : ENNReal) *
+          volume ((coneBody T Ω' hT hconv hcomp hne : Set (Fin d → ℝ))) :=
+        External.rogers_shephard _
+    _ = (Nat.choose (2 * d) d : ENNReal) * ENNReal.ofReal (T ^ d) *
+          volume (cone 1 Ω') := by
+        rw [coneBody_coe, volume_cone hT, mul_assoc]
+
 end Nondividing
