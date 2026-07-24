@@ -171,4 +171,187 @@ theorem small_progression_move {ell : ℕ} {β : ℝ} (pkg : Package ell β)
   · rw [hboxcard]
     exact hsmall
 
+/-! ## Deliverable 3: the dimension move -/
+
+/-- The real span of any subset of a rank-`e` GAP carrier has dimension at
+most `e` (every carrier point is an integer combination of the `e` steps). -/
+theorem finrank_integerRealSpan_le_of_subset_carrier {d e : ℕ} (P : GAP d e)
+    {S : Finset (Fin d → ℤ)} (hS : S ⊆ P.carrier) :
+    Module.finrank ℝ (integerRealSpan S) ≤ e := by
+  classical
+  have hsub : integerRealSpan S ≤
+      Submodule.span ℝ
+        (Set.range fun i : Fin e => (fun j : Fin d => (P.step i j : ℝ))) := by
+    rw [integerRealSpan, Submodule.span_le]
+    rintro _ ⟨w, hw, rfl⟩
+    obtain ⟨n, _hn, rfl⟩ := P.mem_carrier.mp (hS (Finset.mem_coe.mp hw))
+    have heq : realPoint (P.evalHom n) =
+        ∑ i, (n i : ℝ) • (fun j : Fin d => (P.step i j : ℝ)) := by
+      funext j
+      simp only [realPoint, GAP.evalHom_apply, Finset.sum_apply, Pi.smul_apply,
+        smul_eq_mul]
+      push_cast
+      rfl
+    rw [SetLike.mem_coe, heq]
+    exact Submodule.sum_mem _ fun i _ =>
+      Submodule.smul_mem _ _ (Submodule.subset_span ⟨i, rfl⟩)
+  exact le_trans (Submodule.finrank_mono hsub) (realRank_le P)
+
+/-- Rank-exposed variant of `section_in_gap`: the John GAP produced for
+`S ⊆ box M` has rank exactly `dim span_ℝ(S)` (and cardinality `≤ C·|box M|`).
+The exposed rank feeds the manuscript's `e ≤ r` progression-comparison case,
+where the John GAP of the core `C₀ ⊆ P(D)` has rank `≤ d(D)`. -/
+theorem section_in_gap_rank (d : ℕ) :
+    ∃ C : ℕ, 0 < C ∧ ∀ (S : Finset (Fin d → ℤ)) (M : Fin d → ℕ),
+      S ⊆ coordinateBox M →
+      ∃ (r : ℕ) (Q : GAP d r),
+        r = Module.finrank ℝ (integerRealSpan S) ∧
+        Q.Proper ∧ S ⊆ Q.carrier ∧
+        Q.carrier.card ≤ C * (coordinateBox M).card := by
+  obtain ⟨C, hC, hjohn⟩ := coordinate_section_john d
+  refine ⟨C, hC, ?_⟩
+  intro S M hSbox
+  set H := integerRealSpan S with hH
+  obtain ⟨Q, _hstep, hproper, hcover, hcard⟩ :=
+    hjohn (Module.finrank ℝ H) H M S rfl hSbox rfl
+  refine ⟨Module.finrank ℝ H, Q, rfl, hproper, ?_, hcard⟩
+  intro z hz
+  apply hcover
+  rw [mem_latticeSection]
+  exact ⟨hSbox hz, Submodule.subset_span ⟨z, hz, rfl⟩⟩
+
+/-- **Dimension move, uniform box bound** (`lem:unshifted-preprocessing`,
+down-move estimate `|P_{j+1}| ≤ C|P_j|`).  There is a constant `C` (uniform in
+the package) such that any eligible witness `D` with the scale thresholds
+moves, through the coefficient identification of `P(D)`, to a shell
+non-dividing `D' ⊆ ℤ^{d(D)}` in a coordinate box `N` with
+`c^{d(D)}·|box N| ≤ C·|box M|`.  Valid for *every* displayed dimension
+(the manuscript uses it when `d(D) < ℓ`); the sharper up-move decay is
+`dimension_move_up`.  The chain is `progression_comparison_le` through the
+John GAP of the core, whose rank is `≤ d(D)` by
+`finrank_integerRealSpan_le_of_subset_carrier`. -/
+theorem dimension_move (ell : ℕ) {β : ℝ} (pkg : Package ell β) :
+    ∃ C : ℝ, 0 < C ∧
+      ∀ (D : Finset (Fin ell → ℤ)) (M : Fin ell → ℕ)
+        (hE : Eligible β pkg.m₀ D M),
+        1 ≤ structureScale D.card →
+        1 ≤ pkg.c * structureScale D.card →
+        ∀ (lam : (Fin ell → ℤ) →+ ℤ) (X : ℕ),
+          ShellNonDividing (fun v => lam v) X D →
+          ∃ (r : ℕ) (lam' : (Fin r → ℤ) →+ ℤ) (D' : Finset (Fin r → ℤ))
+            (N : Fin r → ℕ),
+            D' ⊆ coordinateBox N ∧
+            ShellNonDividing (fun n => lam' n) X D' ∧
+            (D.card : ℝ) - pkg.c⁻¹ * D.card / Real.log D.card ≤ (D'.card : ℝ) ∧
+            r = (pkg.out D M hE).e ∧
+            pkg.c ^ (pkg.out D M hE).e * ((coordinateBox N).card : ℝ) ≤
+              C * ((coordinateBox M).card : ℝ) := by
+  classical
+  obtain ⟨Cj, hCj, hsec⟩ := section_in_gap_rank ell
+  have hCjR : (0 : ℝ) < (Cj : ℝ) := by exact_mod_cast hCj
+  refine ⟨9 ^ pkg.D * Cj, by positivity, ?_⟩
+  intro D M hE hs ht lam X hshell
+  set o := pkg.out D M hE with ho
+  obtain ⟨lam', D', hbox, hcard, hshell', hboxcard⟩ :=
+    identification_move pkg hE ht lam X hshell
+  refine ⟨o.e, lam', D', o.P.radius, hbox, hshell', ?_, rfl, ?_⟩
+  · rw [hcard]
+    exact chat_card_ge pkg hE
+  · -- Counting chain through the John GAP of the core.
+    set s := structureScale D.card with hsdef
+    have hC₀box : o.C₀ ⊆ coordinateBox M :=
+      (o.C₀_subset.trans o.Chat_subset).trans hE.subset
+    obtain ⟨r₀, Q, hr₀, hQprop, hC₀Q, hQcard⟩ := hsec o.C₀ M hC₀box
+    have hC₀P : o.C₀ ⊆ o.P.carrier := fun v hv =>
+      o.cover (Finset.mem_union_left _ (o.C₀_subset hv))
+    have hr₀e : r₀ ≤ o.e := by
+      rw [hr₀]
+      exact finrank_integerRealSpan_le_of_subset_carrier o.P hC₀P
+    have hcount := o.P.progression_comparison_le (t := pkg.c * s) ht o.inj Q
+      hQprop hC₀Q (le_refl o.C₀.card) o.incl (Cj := Cj)
+      (Q := coordinateBox M) hQcard
+    have hBnn : (0 : ℝ) ≤ ((coordinateBox M).card : ℝ) := Nat.cast_nonneg _
+    have hspos : (0 : ℝ) < s := lt_of_lt_of_le one_pos hs
+    have h3s1 : (1 : ℝ) ≤ 3 * s := by linarith
+    have hk3s : 2 * (o.C₀.card : ℝ) + 1 ≤ 3 * s := by
+      have h := o.C₀_card
+      rw [← hsdef] at h
+      linarith
+    have hkpow : (2 * (o.C₀.card : ℝ) + 1) ^ r₀ ≤ (3 * s) ^ o.e :=
+      le_trans (pow_le_pow_left₀ (by positivity) hk3s r₀)
+        (pow_le_pow_right₀ h3s1 hr₀e)
+    have h1 : (pkg.c * s) ^ o.e * (o.P.carrier.card : ℝ) ≤
+        (3 ^ o.e * (3 * s) ^ o.e * Cj) * ((coordinateBox M).card : ℝ) := by
+      refine hcount.trans ?_
+      apply mul_le_mul_of_nonneg_right _ hBnn
+      apply mul_le_mul_of_nonneg_right _ hCjR.le
+      exact mul_le_mul_of_nonneg_left hkpow (by positivity)
+    have h2 : pkg.c ^ o.e * (o.P.carrier.card : ℝ) ≤
+        (9 : ℝ) ^ o.e * Cj * ((coordinateBox M).card : ℝ) := by
+      have h1' : pkg.c ^ o.e * (o.P.carrier.card : ℝ) * s ^ o.e ≤
+          (9 : ℝ) ^ o.e * Cj * ((coordinateBox M).card : ℝ) * s ^ o.e := by
+        calc pkg.c ^ o.e * (o.P.carrier.card : ℝ) * s ^ o.e
+            = (pkg.c * s) ^ o.e * (o.P.carrier.card : ℝ) := by
+              rw [mul_pow]; ring
+          _ ≤ (3 ^ o.e * (3 * s) ^ o.e * Cj) * ((coordinateBox M).card : ℝ) := h1
+          _ = (9 : ℝ) ^ o.e * Cj * ((coordinateBox M).card : ℝ) * s ^ o.e := by
+              rw [mul_pow, show (9 : ℝ) ^ o.e = 3 ^ o.e * 3 ^ o.e from by
+                rw [← mul_pow]; norm_num]
+              ring
+      exact le_of_mul_le_mul_right h1' (by positivity)
+    have h9 : (9 : ℝ) ^ o.e ≤ 9 ^ pkg.D :=
+      pow_le_pow_right₀ (by norm_num) o.e_le
+    calc pkg.c ^ o.e * ((coordinateBox o.P.radius).card : ℝ)
+        = pkg.c ^ o.e * (o.P.carrier.card : ℝ) := by rw [hboxcard]
+      _ ≤ (9 : ℝ) ^ o.e * Cj * ((coordinateBox M).card : ℝ) := h2
+      _ ≤ 9 ^ pkg.D * Cj * ((coordinateBox M).card : ℝ) := by
+          apply mul_le_mul_of_nonneg_right _ hBnn
+          exact mul_le_mul_of_nonneg_right h9 hCjR.le
+
+/-- **Dimension move, up-move decay** (`lem:unshifted-preprocessing`,
+up-move estimate `|P_{j+1}| ≤ C·s^{-(d_{j+1}-d_j)}|P_j|` in multiplied form).
+The witness moves into a coordinate box `N ⊆ ℤ^{d(D)}` with
+`(c·s)^{d(D)}·|box N| ≤ 3^{d(D)}·s^ℓ·|box M|`; dividing out, for `d(D) > ℓ`
+the box shrinks by `≈ s^{ℓ-d(D)}`. -/
+theorem dimension_move_up {ell : ℕ} {β : ℝ} (pkg : Package ell β)
+    {D : Finset (Fin ell → ℤ)} {M : Fin ell → ℕ} (hE : Eligible β pkg.m₀ D M)
+    (hs : 1 ≤ structureScale D.card)
+    (ht : 1 ≤ pkg.c * structureScale D.card)
+    (lam : (Fin ell → ℤ) →+ ℤ) (X : ℕ)
+    (hshell : ShellNonDividing (fun v => lam v) X D) :
+    ∃ (r : ℕ) (lam' : (Fin r → ℤ) →+ ℤ) (D' : Finset (Fin r → ℤ))
+      (N : Fin r → ℕ),
+      D' ⊆ coordinateBox N ∧
+      ShellNonDividing (fun n => lam' n) X D' ∧
+      (D.card : ℝ) - pkg.c⁻¹ * D.card / Real.log D.card ≤ (D'.card : ℝ) ∧
+      r = (pkg.out D M hE).e ∧
+      (pkg.c * structureScale D.card) ^ (pkg.out D M hE).e *
+          ((coordinateBox N).card : ℝ) ≤
+        3 ^ (pkg.out D M hE).e * structureScale D.card ^ ell *
+          ((coordinateBox M).card : ℝ) := by
+  classical
+  set o := pkg.out D M hE with ho
+  obtain ⟨lam', D', hbox, hcard, hshell', hboxcard⟩ :=
+    identification_move pkg hE ht lam X hshell
+  refine ⟨o.e, lam', D', o.P.radius, hbox, hshell', ?_, rfl, ?_⟩
+  · rw [hcard]
+    exact chat_card_ge pkg hE
+  · set s := structureScale D.card with hsdef
+    have hcount := progression_comparison_package pkg hE ht
+    push_cast at hcount
+    have hmaxle : max (1 : ℝ) (o.C₀.card : ℝ) ≤ s := by
+      refine max_le hs ?_
+      have h := o.C₀_card
+      rw [← hsdef] at h
+      exact h
+    have hpow : (max (1 : ℝ) (o.C₀.card : ℝ)) ^ ell ≤ s ^ ell :=
+      pow_le_pow_left₀ (le_trans zero_le_one (le_max_left _ _)) hmaxle ell
+    calc (pkg.c * s) ^ o.e * ((coordinateBox o.P.radius).card : ℝ)
+        = (pkg.c * s) ^ o.e * (o.P.carrier.card : ℝ) := by rw [hboxcard]
+      _ ≤ (3 ^ o.e * (max 1 (o.C₀.card : ℝ)) ^ ell) *
+            ((coordinateBox M).card : ℝ) := hcount
+      _ ≤ 3 ^ o.e * s ^ ell * ((coordinateBox M).card : ℝ) := by
+          apply mul_le_mul_of_nonneg_right _ (Nat.cast_nonneg _)
+          exact mul_le_mul_of_nonneg_left hpow (by positivity)
+
 end Nondividing
