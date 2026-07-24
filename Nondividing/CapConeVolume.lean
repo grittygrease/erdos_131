@@ -190,4 +190,57 @@ theorem volume_coneBody_diff_le {d : ℕ} (T : ℝ) (Ω' : Set (Fin d → ℝ))
           volume (cone 1 Ω') := by
         rw [coneBody_coe, volume_cone hT, mul_assoc]
 
+/-! ## 6. Integer points of a bounded set -/
+
+/-- A bounded set of `ℝ^d` contains only finitely many integer points: it fits
+inside a closed ball of radius `R`, whose integer points have all coordinates
+bounded by `⌈R⌉`, hence embed into a `coordinateBox`. -/
+theorem finite_realPoint_preimage {d : ℕ} {D : Set (Fin d → ℝ)}
+    (hD : Bornology.IsBounded D) :
+    {z : Fin d → ℤ | External.realPoint z ∈ D}.Finite := by
+  obtain ⟨R, hR⟩ := hD.subset_closedBall 0
+  apply Set.Finite.subset
+    (coordinateBox (d := d) (fun _ => ⌈R⌉₊)).finite_toSet
+  intro z hz
+  have hzD : External.realPoint z ∈ Metric.closedBall 0 R := hR hz
+  rw [Metric.mem_closedBall, dist_zero_right] at hzD
+  simp only [Finset.mem_coe, mem_coordinateBox]
+  intro i
+  have hcoord : |(z i : ℝ)| ≤ R := by
+    have hle := norm_le_pi_norm (External.realPoint z) i
+    rw [Real.norm_eq_abs] at hle
+    exact le_trans hle hzD
+  have habsR : |(z i : ℝ)| ≤ ((⌈R⌉₊ : ℤ) : ℝ) := by
+    refine le_trans hcoord ?_
+    exact_mod_cast Nat.le_ceil R
+  have hint : |z i| ≤ (⌈R⌉₊ : ℤ) := by exact_mod_cast habsR
+  exact abs_le.mp hint
+
+/-- The integer points of a bounded set `D ⊆ ℝ^d`, as a `Finset`. -/
+noncomputable def latticePoints {d : ℕ} (D : Set (Fin d → ℝ))
+    (hD : Bornology.IsBounded D) : Finset (Fin d → ℤ) :=
+  (finite_realPoint_preimage hD).toFinset
+
+@[simp] theorem mem_latticePoints {d : ℕ} {D : Set (Fin d → ℝ)}
+    (hD : Bornology.IsBounded D) (z : Fin d → ℤ) :
+    z ∈ latticePoints D hD ↔ External.realPoint z ∈ D :=
+  Set.Finite.mem_toFinset _
+
+/-- **Lattice-point count** (E5d packaged for `latticePoints`): if the integer
+points of an origin-symmetric convex body `K` span `ℝ^d`, their number is at
+most `C(d) · vol(K)`. -/
+theorem card_latticePoints_le_volume (d : ℕ) :
+    ∃ C : NNReal, 0 < C ∧
+      ∀ K : ConvexBody (Fin d → ℝ),
+        (∀ x ∈ (K : Set (Fin d → ℝ)), -x ∈ K) →
+        Submodule.span ℝ (External.realPoint ''
+          ((latticePoints (K : Set (Fin d → ℝ)) K.isBounded :
+            Finset (Fin d → ℤ)) : Set (Fin d → ℤ))) = ⊤ →
+        ((latticePoints (K : Set (Fin d → ℝ)) K.isBounded).card : ENNReal) ≤
+          (C : ENNReal) * volume (K : Set (Fin d → ℝ)) := by
+  obtain ⟨C, hC, hcount⟩ := External.full_rank_lattice_points_le_volume d
+  exact ⟨C, hC, fun K hsymm hspan =>
+    hcount K (latticePoints (K : Set (Fin d → ℝ)) K.isBounded) hsymm
+      (fun z => mem_latticePoints K.isBounded z) hspan⟩
+
 end Nondividing
