@@ -1697,4 +1697,31 @@ theorem prepSupplier_params {β : ℝ} (pkgs : ∀ r, Package r β)
             mul_le_mul_of_nonneg_right h2 hlog4.le
         _ = ε * ((K : ℝ) * Real.log 4) := by ring
 
+/-- **Interface artifact (warning).**  `PrepSupplier` as stated is
+*degenerately* satisfiable for any density parameter `δ > 1`: no subset
+`D ⊆ V` can then satisfy `|D| ≥ δ|V|`, so every stage is vacuously
+unshiftedly irreducible and the same-dimension branch fires with `s' = s`,
+`ρ = 1`.  This costs nothing here but shifts all content onto
+`IrreducibleIncrement`, which cannot be discharged from a vacuous
+irreducibility hypothesis — so the *pipeline* still forces `δ ≤ 1/2`.
+Recorded to document that `PrepSupplier` alone does not pin down the
+manuscript's preprocessing content. -/
+theorem prepSupplier_of_one_lt_delta {β : ℝ} (pkgs : ∀ r, Package r β)
+    (D : ℕ) (ζ₀ ε δ γ K₀ : ℝ) (n₁ : ℕ) (hδ : 1 < δ) (hε : 0 ≤ ε)
+    (hn₁ : 1 ≤ n₁) : PrepSupplier pkgs D ζ₀ ε δ γ K₀ n₁ := by
+  intro X s _hX _hbad hn
+  have hV1 : (1 : ℝ) ≤ (s.V.card : ℝ) := by
+    exact_mod_cast le_trans hn₁ hn
+  refine ⟨s, hn, Or.inr (Or.inr ⟨rfl, ?_, 1, one_pos, le_refl 1, ?_, ?_,
+    ?_⟩)⟩
+  · -- vacuous irreducibility: no `δ`-large subset exists for `δ > 1`
+    intro Dw hsub hlarge hE
+    exfalso
+    have h1 : (Dw.card : ℝ) ≤ (s.V.card : ℝ) := by
+      exact_mod_cast Finset.card_le_card hsub
+    nlinarith
+  · exact Real.rpow_le_one_of_one_le_of_nonpos hV1 (by linarith)
+  · rw [one_mul]
+  · rw [Real.one_rpow, one_mul]
+
 end Nondividing
