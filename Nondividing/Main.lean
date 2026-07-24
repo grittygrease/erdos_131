@@ -16,6 +16,7 @@ import Nondividing.Geometry.RobustZonotope
 import Nondividing.ProjectiveConvexity
 import Nondividing.CapLifting
 import Nondividing.WeightedDensity
+import Nondividing.WeightedDensityLimit
 import Nondividing.Numerology
 import Nondividing.QuotientOrder
 import Nondividing.Filling

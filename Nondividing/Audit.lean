@@ -119,3 +119,6 @@ import Nondividing.Main
 #print axioms Nondividing.exists_perturbed_family
 #print axioms Nondividing.mem_of_tendsto_convexBody
 #print axioms Nondividing.weighted_density_step
+
+-- weighted_density FULL (rho->0 Blaschke limit): E4+E5a+E5b+core.
+#print axioms Nondividing.weighted_density
